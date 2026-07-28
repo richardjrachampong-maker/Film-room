@@ -696,7 +696,7 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 
 // Paste a free Gemini key here to switch on Get better and My clip.
 // No credit card needed: aistudio.google.com/apikey
-const GEMINI_KEY = "";
+const GEMINI_KEY = "AIzaSyC5iKhBwtLUwnNg3PBQa67o3nOdWd8Icic";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
@@ -1089,7 +1089,7 @@ async function post(url, body) {
       body: JSON.stringify(body)
     });
   } catch (e) {
-    throw new Error("Couldn't reach the AI service. Check your connection, or your key may be restricted to a different website.");
+    throw new Error("Google refused that request. In Google Cloud, set the key's API restrictions to \u201CDon't restrict key\u201D, and set the website restriction to your domain with /* on the end \u2014 not a sub-folder.");
   }
   let data;
   try {
@@ -1867,7 +1867,7 @@ function Train() {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState("");
-  const [ready, setReady] = useState(!!aiKey() || !!AI_ENDPOINT);
+  const [ready, setReady] = useState(!!aiKey());
   const input = useRef(null);
   const bottom = useRef(null);
   useEffect(() => {
@@ -1926,7 +1926,6 @@ function Train() {
         text: e.message || "That didn't go through.",
         err: true
       }]));
-      if (/key/i.test(e.message || "")) setReady(false);
     }
     setBusy("");
     setFile(null);
