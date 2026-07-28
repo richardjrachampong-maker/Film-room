@@ -301,6 +301,59 @@ body { background: #070B0E; }
 /* --- library search --- */
 .fr-search { margin-bottom:16px; }
 .fr-search .fr-input { font-size:16px; padding:15px 17px; }
+
+/* --- coach chat --- */
+.fr-thread { display:flex; flex-direction:column; gap:14px; padding-bottom:12px; }
+.fr-you { align-self:flex-end; max-width:82%; text-align:right; }
+.fr-you p { margin:0; padding:11px 15px; border-radius:18px 18px 5px 18px;
+  background:var(--amber); color:var(--onAmber); font-size:15px; line-height:1.5;
+  display:inline-block; text-align:left; }
+.fr-clipchip { display:inline-block; margin-bottom:6px; padding:6px 12px;
+  border-radius:999px; background:var(--glass-2); border:1px solid var(--edge);
+  font-family:'Barlow Condensed',sans-serif; letter-spacing:.1em; text-transform:uppercase;
+  font-size:11px; color:var(--dim); }
+.fr-coach { padding:16px 18px; border-radius:18px 18px 18px 5px; align-self:flex-start; max-width:96%; }
+.fr-coach[data-err="1"] { border-left:2px solid var(--amber); }
+
+.fr-rich p { margin:0 0 10px; font-size:15px; line-height:1.6; }
+.fr-rich p:last-child { margin-bottom:0; }
+.fr-rich h5 { margin:16px 0 8px; font-family:'Barlow Condensed',sans-serif;
+  text-transform:uppercase; letter-spacing:.12em; font-size:13px; color:var(--amber); }
+.fr-rich h5:first-child { margin-top:0; }
+.fr-rich ul { margin:0 0 12px; padding-left:18px; }
+.fr-rich li { font-size:15px; line-height:1.55; margin-bottom:5px; }
+.fr-rich strong { color:var(--text); font-weight:600; }
+
+/* --- empty state --- */
+.fr-blank { min-height:calc(100vh - 56px); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:0 0 12vh; }
+.fr-greet { font-family:'Barlow Condensed',sans-serif; font-weight:700;
+  text-transform:uppercase; font-size:clamp(30px,7.5vw,52px); line-height:1;
+  text-align:center; margin:0 0 26px; letter-spacing:-.01em; }
+.fr-hint { text-align:center; color:var(--faint); font-size:13.5px; margin:14px 0 0; }
+
+/* --- the bar --- */
+.fr-bar { position:sticky; bottom:0; padding:12px 0 16px; margin-top:8px;
+  background:linear-gradient(to top, var(--bg) 60%, transparent); }
+.fr-bar[data-empty="1"] { position:static; background:none; padding:0; margin:0; }
+.fr-barin { display:flex; align-items:center; gap:8px; padding:7px 7px 7px 8px;
+  border-radius:999px; background:var(--glass); border:1px solid var(--edge);
+  backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
+  box-shadow:0 8px 32px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.10); }
+.fr-barin:focus-within { border-color:var(--edge-2); }
+.fr-field { flex:1; min-width:0; background:none; border:0; outline:none;
+  color:var(--text); font-family:'Barlow',sans-serif; font-size:16px; padding:0 4px; }
+.fr-field::placeholder { color:var(--faint); }
+.fr-plus, .fr-send { appearance:none; cursor:pointer; flex:0 0 auto;
+  width:40px; height:40px; border-radius:999px; display:grid; place-items:center;
+  line-height:1; transition:background .2s, color .2s, opacity .2s; }
+.fr-plus { background:var(--glass-2); border:1px solid var(--edge);
+  color:var(--text); font-size:24px; }
+.fr-plus:hover { border-color:var(--amber); }
+.fr-send { background:var(--amber); border:0; color:var(--onAmber); font-size:19px; font-weight:700; }
+.fr-send:disabled, .fr-plus:disabled { opacity:.4; cursor:default; }
+.fr-send:not(:disabled):hover { transform:translateY(-1px); }
+.fr-plus:focus-visible, .fr-send:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
 </style>
 </head>
 
@@ -977,6 +1030,31 @@ async function wikiPhotos(titles) {
   }
   return photoCache;
 }
+async function commonsPhoto(term) {
+  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*" + "&generator=search&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=400" + "&gsrsearch=" + encodeURIComponent(term);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = (data.query || {}).pages || {};
+    const first = pages[Object.keys(pages)[0]];
+    const info = first && first.imageinfo && first.imageinfo[0];
+    return info && (info.thumburl || info.url) || null;
+  } catch (e) {
+    return null;
+  }
+}
+async function fillGaps(items, onFound) {
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const key = it.wiki || it.n;
+    if (photoCache[key]) continue;
+    const url = await commonsPhoto(it.searchTerm || it.n + " basketball");
+    if (url) {
+      photoCache[key] = url;
+      if (onFound) onFound();
+    }
+  }
+}
 async function wikiBio(title) {
   if (title in bioCache) return bioCache[title];
   const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=extracts|pageimages&exintro=1&explaintext=1" + "&piprop=thumbnail&pithumbsize=600&titles=" + encodeURIComponent(title);
@@ -1001,7 +1079,46 @@ async function wikiBio(title) {
 
 /* ------------------------ AI ------------------------- */
 
-const AI_OFF = "Get better and My clip need an AI key. Open index.html, paste a free Gemini key into GEMINI_KEY near the top, and re-upload.";
+let storedKey = "";
+try {
+  storedKey = window.localStorage.getItem("fr-gemini-key") || "";
+} catch (e) {
+  storedKey = "";
+}
+function aiKey() {
+  return GEMINI_KEY || storedKey;
+}
+function saveKey(k) {
+  storedKey = (k || "").trim();
+  try {
+    window.localStorage.setItem("fr-gemini-key", storedKey);
+  } catch (e) {}
+}
+function hasAI() {
+  return !!aiKey() || !!AI_ENDPOINT;
+}
+const AI_OFF = "No AI key yet. Add one below \u2014 it's free and takes a minute.";
+async function post(url, body) {
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    throw new Error("Couldn't reach the AI service. Check your connection, or your key may be restricted to a different website.");
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("The AI service sent back something unreadable.");
+  }
+  return data;
+}
 async function aiGemini(turns, wantJSON) {
   const body = {
     contents: turns.map(t => ({
@@ -1013,20 +1130,13 @@ async function aiGemini(turns, wantJSON) {
     }
   };
   if (wantJSON) body.generationConfig.responseMimeType = "application/json";
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent?key=" + GEMINI_KEY;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent?key=" + aiKey();
+  const data = await post(url, body);
   if (data.error) {
     const m = data.error.message || "";
-    if (/not found|not supported/i.test(m)) throw new Error("That model name isn't available. Try changing GEMINI_MODEL to gemini-2.5-flash.");
+    if (/not found|not supported/i.test(m)) throw new Error("That model isn't available on your key. Try gemini-2.5-flash.");
     if (/quota|RESOURCE_EXHAUSTED/i.test(m)) throw new Error("Gemini's free daily limit is used up. It resets tomorrow.");
-    if (/API key|PERMISSION|API_KEY/i.test(m)) throw new Error("Gemini rejected the key. Check GEMINI_KEY and that the API is switched on.");
+    if (/API key|PERMISSION|API_KEY|INVALID_ARGUMENT/i.test(m)) throw new Error("Gemini rejected that key. Paste it again, and make sure the Generative Language API is switched on.");
     throw new Error(m);
   }
   const cand = (data.candidates || [])[0];
@@ -1048,23 +1158,16 @@ async function aiClaude(turns) {
       }
     })
   }));
-  const res = await fetch(AI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      messages: messages
-    })
+  const data = await post(AI_ENDPOINT, {
+    model: "claude-sonnet-4-6",
+    max_tokens: 1000,
+    messages: messages
   });
-  if (!res.ok) throw new Error(AI_OFF);
-  const data = await res.json();
+  if (data.error) throw new Error(AI_OFF);
   return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
 async function ai(turns, wantJSON) {
-  if (GEMINI_KEY) return aiGemini(turns, wantJSON);
+  if (aiKey()) return aiGemini(turns, wantJSON);
   if (AI_ENDPOINT) return aiClaude(turns);
   throw new Error(AI_OFF);
 }
@@ -1198,18 +1301,18 @@ function Landing({
 }) {
   const cards = [{
     ic: "\u25B6",
-    h: "Browse the film",
-    p: "Over eighty players plus twenty skills. Tap anyone for everything on them.",
-    to: "browse"
-  }, {
-    ic: "\u25CE",
-    h: "Analyze your clip",
-    p: "Upload a rep or a whole workout. Nothing to fill in \u2014 it works out what you're doing.",
-    to: "clip"
+    h: "Players",
+    p: "Search anyone, or browse the roster. Film study, highlights and college tape on each.",
+    to: "players"
   }, {
     ic: "\u25A4",
-    h: "Build the plan",
-    p: "Drills with real sets and reps, built around your position, level, and schedule.",
+    h: "Full games",
+    p: "Whole replays from the NBA, WNBA, college and international, not highlight reels.",
+    to: "games"
+  }, {
+    ic: "\u25CE",
+    h: "Train",
+    p: "Send a clip or just ask. It breaks down what you are doing and gives you the drills.",
     to: "train"
   }];
   return /*#__PURE__*/React.createElement("div", {
@@ -1226,15 +1329,15 @@ function Landing({
     className: "fr-cta"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-btn",
-    onClick: () => go("clip")
+    onClick: () => go("train")
   }, "Break down my film"), /*#__PURE__*/React.createElement("button", {
     className: "fr-btn",
     "data-ghost": "1",
-    onClick: () => go("browse")
+    onClick: () => go("players")
   }, "Browse players"))), /*#__PURE__*/React.createElement("div", {
     className: "fr-trio"
   }, cards.map(c => /*#__PURE__*/React.createElement("button", {
-    key: c.to,
+    key: c.h,
     className: "fr-glass fr-card",
     onClick: () => go(c.to)
   }, /*#__PURE__*/React.createElement("span", {
@@ -1246,51 +1349,129 @@ function Landing({
   }, c.ic), /*#__PURE__*/React.createElement("h3", null, c.h), /*#__PURE__*/React.createElement("p", null, c.p))))));
 }
 
-/* ---------------------- BROWSE ----------------------- */
+/* --------------------- LIBRARY ----------------------- */
 
-function Browse({
-  onPlayer,
-  onConcept
+const GAME_ITEMS = GAMES.map(g => ({
+  n: g.n,
+  t: g.t,
+  g: g.g,
+  q: g.q,
+  wiki: g.wiki,
+  kind: "game"
+}));
+const PLAYER_FILTERS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
+const GAME_FILTERS = ["All", "Pro", "College", "World"];
+function Library({
+  title,
+  blurb,
+  placeholder,
+  items,
+  filters,
+  onOpen,
+  onSearch
 }) {
-  const [group, setGroup] = useState("All");
+  const [filter, setFilter] = useState("All");
+  const [term, setTerm] = useState("");
   const [photos, setPhotos] = useState({});
   useEffect(() => {
-    wikiPhotos(ROSTER.map(r => r.wiki || r.n)).then(() => {
+    let alive = true;
+    const sync = () => {
+      if (!alive) return;
       const map = {};
-      ROSTER.forEach(r => {
+      items.forEach(r => {
         map[r.n] = photoCache[r.wiki || r.n];
       });
       setPhotos(map);
+    };
+    wikiPhotos(items.map(r => r.wiki || r.n)).then(() => {
+      sync();
+      return fillGaps(items, sync);
     }).catch(function () {});
-  }, []);
-  const list = group === "All" ? ROSTER : ROSTER.filter(r => r.g === group);
+    return () => {
+      alive = false;
+    };
+  }, [title]);
+  const q = term.trim().toLowerCase();
+  let list = filter === "All" ? items : items.filter(r => r.g === filter);
+  if (q) {
+    list = items.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Browse"), /*#__PURE__*/React.createElement("p", null, ROSTER.length, " players and skills. Tap a player for film study, highlights, full games, and their college tape.")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h2", null, title), /*#__PURE__*/React.createElement("p", null, blurb)), /*#__PURE__*/React.createElement("div", {
+    className: "fr-search"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    value: term,
+    type: "search",
+    placeholder: placeholder,
+    onChange: e => setTerm(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter" && !list.length && term.trim()) onSearch(term.trim());
+    }
+  })), !q && /*#__PURE__*/React.createElement("div", {
     className: "fr-pills"
-  }, GROUPS.map(g => /*#__PURE__*/React.createElement("button", {
+  }, filters.map(g => /*#__PURE__*/React.createElement("button", {
     key: g,
     className: "fr-pill",
-    "data-on": group === g ? "1" : "0",
-    onClick: () => setGroup(g)
-  }, g))), /*#__PURE__*/React.createElement("div", {
+    "data-on": filter === g ? "1" : "0",
+    onClick: () => setFilter(g)
+  }, g))), list.length > 0 ? /*#__PURE__*/React.createElement("div", {
     className: "fr-grid"
   }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
-    key: r.n,
+    key: r.n + r.g,
     item: r,
     photo: photos[r.n],
-    onClick: () => r.kind === "concept" ? onConcept(r.q) : onPlayer(r)
-  }))), /*#__PURE__*/React.createElement("p", {
+    onClick: () => onOpen(r)
+  }))) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel",
+    style: {
+      textAlign: "center",
+      padding: "32px 20px"
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-name"
+  }, "Nothing here by that name"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      marginBottom: 16
+    }
+  }, "Search YouTube for it instead \\u2014 works for any player at any level."), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    onClick: () => onSearch(term.trim())
+  }, "Search film for \"", term.trim(), "\"")), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
       marginTop: 22,
       fontSize: 12
     }
-  }, "Photos from Wikipedia. Club crests remain trademarks of their teams.")));
+  }, "Photos from Wikipedia and Wikimedia Commons. Club and school crests remain trademarks of their owners.")));
+}
+function Players(props) {
+  return /*#__PURE__*/React.createElement(Library, {
+    title: "Players",
+    blurb: ROSTER.length + " players, college programs and skills. Tap a player for film study, highlights, full games and their college tape.",
+    placeholder: "Search a player, school, or skill",
+    items: ROSTER,
+    filters: PLAYER_FILTERS,
+    onOpen: props.onOpen,
+    onSearch: props.onSearch
+  });
+}
+function GamesPage(props) {
+  return /*#__PURE__*/React.createElement(Library, {
+    title: "Full games",
+    blurb: "Whole replays, not highlights. Everything here is filtered to videos over 20 minutes.",
+    placeholder: "Search a team or competition",
+    items: GAME_ITEMS,
+    filters: GAME_FILTERS,
+    onOpen: props.onOpen,
+    onSearch: props.onSearch
+  });
 }
 
 /* ---------------------- PLAYER ----------------------- */
@@ -1429,46 +1610,6 @@ function Player({
   })));
 }
 
-/* ----------------------- GAMES ----------------------- */
-
-function Games({
-  onPick
-}) {
-  const [group, setGroup] = useState("All");
-  const [photos, setPhotos] = useState({});
-  useEffect(() => {
-    wikiPhotos(GAMES.map(g => g.wiki)).then(() => {
-      const map = {};
-      GAMES.forEach(g => {
-        map[g.n] = photoCache[g.wiki];
-      });
-      setPhotos(map);
-    }).catch(function () {});
-  }, []);
-  const list = group === "All" ? GAMES : GAMES.filter(r => r.g === group);
-  return /*#__PURE__*/React.createElement("div", {
-    className: "fr-page"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-wrap"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Full games"), /*#__PURE__*/React.createElement("p", null, "Whole replays, not highlights. Everything here is filtered to videos over 20 minutes.")), /*#__PURE__*/React.createElement("div", {
-    className: "fr-pills"
-  }, GAME_GROUPS.map(g => /*#__PURE__*/React.createElement("button", {
-    key: g,
-    className: "fr-pill",
-    "data-on": group === g ? "1" : "0",
-    onClick: () => setGroup(g)
-  }, g))), /*#__PURE__*/React.createElement("div", {
-    className: "fr-grid"
-  }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
-    key: r.n,
-    item: r,
-    photo: photos[r.n],
-    onClick: () => onPick(r.q, "long")
-  })))));
-}
-
 /* ----------------------- FILM ------------------------ */
 
 function Film({
@@ -1555,133 +1696,6 @@ function Film({
   }))));
 }
 
-/* ----------------------- TRAIN ----------------------- */
-
-function Train() {
-  const [goal, setGoal] = useState("");
-  const [pos, setPos] = useState("Guard");
-  const [lvl, setLvl] = useState("High school");
-  const [days, setDays] = useState("4");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [out, setOut] = useState(null);
-  async function run() {
-    if (!goal.trim()) return;
-    setBusy(true);
-    setErr("");
-    setOut(null);
-    try {
-      const text = await askJSON([T("You are a demanding but clear basketball skills coach.\n" + "Player: " + lvl + " " + pos + ". Trains " + days + " days a week. Goal: \"" + goal + "\".\n" + "Reply with ONLY this JSON:\n" + '{"read":"one blunt sentence naming the real limiting factor","keys":[{"point":"under 6 words","why":"under 20 words"}],"drills":[{"name":"","dose":"sets x reps or minutes","cue":"one coaching cue, under 12 words","progression":"under 14 words"}],"week":[{"day":"Mon","focus":"under 8 words","min":"30"}]}\n' + "Exactly 3 keys, 6 drills, and all 7 days in week including rest days.")]);
-      setOut(toJSON(text));
-    } catch (e) {
-      setErr(e.message || "Something went wrong.");
-    }
-    setBusy(false);
-  }
-  return /*#__PURE__*/React.createElement("div", {
-    className: "fr-page"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-wrap fr-narrow"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Get better"), /*#__PURE__*/React.createElement("p", null, "Tell it what keeps happening in games. It builds the week around that.")), /*#__PURE__*/React.createElement("div", {
-    className: "fr-row"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "fr-label",
-    htmlFor: "goal"
-  }, "What are you trying to fix?"), /*#__PURE__*/React.createElement("textarea", {
-    id: "goal",
-    className: "fr-area",
-    value: goal,
-    placeholder: "I am undersized and get blocked on my shots",
-    onChange: e => setGoal(e.target.value)
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "fr-row",
-    "data-cols": "2"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "fr-label",
-    htmlFor: "pos"
-  }, "Position"), /*#__PURE__*/React.createElement("select", {
-    id: "pos",
-    className: "fr-select",
-    value: pos,
-    onChange: e => setPos(e.target.value)
-  }, /*#__PURE__*/React.createElement("option", null, "Guard"), /*#__PURE__*/React.createElement("option", null, "Wing"), /*#__PURE__*/React.createElement("option", null, "Forward"), /*#__PURE__*/React.createElement("option", null, "Big"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "fr-label",
-    htmlFor: "lvl"
-  }, "Level"), /*#__PURE__*/React.createElement("select", {
-    id: "lvl",
-    className: "fr-select",
-    value: lvl,
-    onChange: e => setLvl(e.target.value)
-  }, /*#__PURE__*/React.createElement("option", null, "Middle school"), /*#__PURE__*/React.createElement("option", null, "High school"), /*#__PURE__*/React.createElement("option", null, "AAU / travel"), /*#__PURE__*/React.createElement("option", null, "College"), /*#__PURE__*/React.createElement("option", null, "Adult rec")))), /*#__PURE__*/React.createElement("div", {
-    className: "fr-row",
-    "data-cols": "2"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "fr-label",
-    htmlFor: "days"
-  }, "Days per week"), /*#__PURE__*/React.createElement("select", {
-    id: "days",
-    className: "fr-select",
-    value: days,
-    onChange: e => setDays(e.target.value)
-  }, /*#__PURE__*/React.createElement("option", null, "2"), /*#__PURE__*/React.createElement("option", null, "3"), /*#__PURE__*/React.createElement("option", null, "4"), /*#__PURE__*/React.createElement("option", null, "5"), /*#__PURE__*/React.createElement("option", null, "6")))), /*#__PURE__*/React.createElement("button", {
-    className: "fr-btn fr-full",
-    onClick: run,
-    disabled: busy || !goal.trim()
-  }, busy ? "Building" : "Build the plan"), busy && /*#__PURE__*/React.createElement("p", {
-    className: "fr-load"
-  }, "Working"), err && /*#__PURE__*/React.createElement("p", {
-    className: "fr-err"
-  }, err), out && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "The read"), /*#__PURE__*/React.createElement("p", {
-    className: "fr-read"
-  }, out.read), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Keys"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, (out.keys || []).map((k, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-item",
-    key: i
-  }, /*#__PURE__*/React.createElement(Mark, {
-    n: i + 1,
-    color: "cyan"
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-name"
-  }, k.point), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, k.why))))), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Drills"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, (out.drills || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-item",
-    key: i
-  }, /*#__PURE__*/React.createElement(Mark, {
-    n: i + 1
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "fr-name"
-  }, d.name), /*#__PURE__*/React.createElement("p", {
-    className: "fr-dose"
-  }, d.dose), /*#__PURE__*/React.createElement("p", {
-    className: "fr-cue"
-  }, "\u201C" + d.cue + "\u201D"), d.progression && /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, "Then: ", d.progression))))), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "The week"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-week"
-  }, (out.week || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-day",
-    key: i
-  }, /*#__PURE__*/React.createElement("b", null, d.day, d.min ? " \u00B7 " + d.min + " min" : ""), /*#__PURE__*/React.createElement("i", null, d.focus)))))));
-}
-
 /* ------------------------ CLIP ----------------------- */
 
 async function grabFrames(file, onProgress) {
@@ -1699,7 +1713,7 @@ async function grabFrames(file, onProgress) {
     });
     if (!video.videoWidth) throw new Error("That file has no video track.");
     const dur = video.duration && isFinite(video.duration) ? video.duration : 10;
-    const count = Math.max(8, Math.min(24, Math.round(dur / 1.5)));
+    const count = Math.max(8, Math.min(16, Math.round(dur / 2)));
     const canvas = document.createElement("canvas");
     const scale = 560 / video.videoWidth;
     canvas.width = 560;
@@ -1725,331 +1739,273 @@ async function grabFrames(file, onProgress) {
     URL.revokeObjectURL(url);
   }
 }
-function Clip() {
-  const [file, setFile] = useState(null);
-  const [meta, setMeta] = useState(null);
-  const [frames, setFrames] = useState([]);
-  const [busy, setBusy] = useState("");
-  const [err, setErr] = useState("");
-  const [scan, setScan] = useState(null);
-  const [diag, setDiag] = useState(null);
-  const [plan, setPlan] = useState(null);
-  const [thread, setThread] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [q, setQ] = useState("");
-  const [asking, setAsking] = useState(false);
-  const input = useRef(null);
-  function reset(f) {
-    setFile(f);
-    setFrames([]);
-    setMeta(null);
-    setScan(null);
-    setDiag(null);
-    setPlan(null);
-    setThread([]);
-    setHistory([]);
-    setErr("");
-  }
-  async function run() {
-    if (!file) return;
-    setErr("");
-    setScan(null);
-    setDiag(null);
-    setPlan(null);
-    setThread([]);
-    setFrames([]);
-    try {
-      setBusy("Pulling frames");
-      const got = await grabFrames(file, (i, n) => setBusy("Pulling frames " + i + "/" + n));
-      setFrames(got.frames);
-      setMeta({
-        duration: got.duration,
-        count: got.count
-      });
-      const shots = got.frames.map(IMG);
-      setBusy("Watching the film");
-      const parts1 = shots.concat([T("You are an elite basketball skills coach reviewing a player's film.\n" + "These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip, in order, frame 1 to " + got.count + ".\n" + "Nobody told you what this is. Work it out from the images.\n" + "Grade only categories you can actually see evidence for.\n" + "Reply with ONLY this JSON:\n" + '{"skill":"what they are doing, under 6 words","level":"best guess at level, under 5 words","grade":"overall letter grade like B-","read":"two blunt sentences on the overall picture","categories":[{"name":"e.g. Shooting mechanics, Footwork, Ball handling, Finishing, Defensive stance, Body control, Decision making, Effort","grade":"letter grade","note":"under 18 words"}]}\n' + "Between 4 and 8 categories. If the footage is too blurry or the angle hides things, say so in read.")]);
-      const raw1 = await askJSON(parts1);
-      const s = toJSON(raw1);
-      setScan(s);
-      setBusy("Breaking down the mechanics");
-      const parts2 = shots.concat([T("Same clip. You identified it as: " + (s.skill || "a rep") + ".\n" + "Break the mechanics down phase by phase and pin problems to specific frames (1 to " + got.count + ").\n" + "Reply with ONLY this JSON:\n" + '{"phases":[{"name":"phase of this specific move","status":"good|ok|fix","detail":"under 22 words"}],"working":["3 things holding up, under 14 words each"],"breaking":[{"frame":3,"issue":"under 18 words","cost":"what this costs in a game, under 12 words"}]}\n' + "Exactly 4 phases. Up to 4 breaking, worst first.")]);
-      const raw2 = await askJSON(parts2);
-      const d = toJSON(raw2);
-      setDiag(d);
-      setBusy("Writing the program");
-      const raw3 = await askJSON([T("A player filmed " + (s.skill || "a rep") + ". Level looks like " + (s.level || "unknown") + ".\n" + "Your film review found:\n" + JSON.stringify({
-        categories: s.categories,
-        phases: d.phases,
-        breaking: d.breaking
-      }) + "\n\n" + "Write a full program. Reply with ONLY this JSON:\n" + '{"priority":{"fix":"the one thing to fix first, under 8 words","why":"under 25 words"},"drills":[{"name":"","dose":"sets x reps","cue":"under 12 words","progression":"under 14 words","fixes":"which problem this attacks, under 8 words"}],"week":[{"day":"Mon","focus":"under 10 words","min":"40"}],"weeks":[{"label":"Week 1-2","focus":"under 12 words","check":"how they know it worked, under 12 words"}],"watch":{"query":"a YouTube search for a pro who does this right","why":"under 16 words"}}\n' + "Exactly 6 drills, all 7 days in week, 3 entries in weeks covering 6 weeks.")]);
-      setPlan(toJSON(raw3));
-      setHistory([{
-        role: "user",
-        parts: parts1
-      }, {
-        role: "model",
-        parts: [T(raw1)]
-      }]);
-    } catch (e) {
-      setErr(e.message || "Something went wrong.");
+function Rich({
+  text
+}) {
+  const lines = String(text || "").split("\n");
+  const out = [];
+  let bullets = [];
+  const flush = k => {
+    if (bullets.length) {
+      out.push(/*#__PURE__*/React.createElement("ul", {
+        key: "u" + k
+      }, bullets.map((b, i) => /*#__PURE__*/React.createElement("li", {
+        key: i
+      }, inline(b)))));
+      bullets = [];
     }
-    setBusy("");
+  };
+  function inline(t) {
+    const bits = String(t).split(/\*\*(.+?)\*\*/g);
+    return bits.map((b, i) => i % 2 ? /*#__PURE__*/React.createElement("strong", {
+      key: i
+    }, b) : b);
   }
-  async function askCoach() {
-    if (!q.trim() || asking) return;
-    const question = q.trim();
-    setQ("");
-    setAsking(true);
-    setThread(t => t.concat([{
+  lines.forEach((raw, i) => {
+    const l = raw.trim();
+    if (!l) {
+      flush(i);
+      return;
+    }
+    if (/^#{1,4}\s/.test(l)) {
+      flush(i);
+      out.push(/*#__PURE__*/React.createElement("h5", {
+        key: i
+      }, l.replace(/^#{1,4}\s/, "")));
+      return;
+    }
+    if (/^[-*\u2022]\s/.test(l)) {
+      bullets.push(l.replace(/^[-*\u2022]\s/, ""));
+      return;
+    }
+    flush(i);
+    out.push(/*#__PURE__*/React.createElement("p", {
+      key: i
+    }, inline(l)));
+  });
+  flush("end");
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-rich"
+  }, out);
+}
+function KeyGate({
+  onSaved
+}) {
+  const [k, setK] = useState("");
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel",
+    style: {
+      marginTop: 18
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-name"
+  }, "Add your AI key"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      marginBottom: 14
+    }
+  }, "Free from Google, no card needed. Get one at aistudio.google.com/apikey, paste it here, and it saves in this browser. You only do this once."), /*#__PURE__*/React.createElement("div", {
+    className: "fr-ask",
+    style: {
+      marginTop: 0
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    value: k,
+    type: "password",
+    placeholder: "Paste your Gemini key",
+    onChange: e => setK(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter" && k.trim()) {
+        saveKey(k);
+        onSaved();
+      }
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      marginTop: 0
+    },
+    disabled: !k.trim(),
+    onClick: () => {
+      saveKey(k);
+      onSaved();
+    }
+  }, "Save")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      fontSize: 12,
+      marginTop: 12
+    }
+  }, "Stored on this device only. It never goes to us or into your repo."));
+}
+function Train() {
+  const [msgs, setMsgs] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [text, setText] = useState("");
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [ready, setReady] = useState(!!aiKey() || !!AI_ENDPOINT);
+  const input = useRef(null);
+  const bottom = useRef(null);
+  useEffect(() => {
+    if (bottom.current && bottom.current.scrollIntoView) {
+      bottom.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+    }
+  }, [msgs.length, busy]);
+  function pick(f) {
+    if (!f) return;
+    setFile(f);
+    send(f, text);
+  }
+  async function send(f, note) {
+    if (busy) return;
+    const clip = f || null;
+    const said = (note || "").trim();
+    if (!clip && !said) return;
+    setText("");
+    setMsgs(m => m.concat([{
       who: "you",
-      text: question
+      text: said,
+      clip: clip ? clip.name : null
     }]));
     try {
-      const next = history.concat([{
+      let parts = [];
+      if (clip) {
+        setBusy("Watching your film");
+        const got = await grabFrames(clip, (i, n) => setBusy("Watching your film " + Math.round(i / n * 100) + "%"));
+        parts = got.frames.map(IMG);
+        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing. Under 500 words."));
+      } else if (history.length) {
+        parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
+      } else {
+        parts = [T("You are a blunt, expert basketball skills coach talking to a player courtside.\n\n" + "They said: \"" + said + "\"\n\n" + "Answer it properly. Be specific and practical \u2014 real drills with real sets and reps, real cues, " + "no filler. If film would get them a better answer, say so in one line at the end. " + "Plain text. Short ## headings and - bullets allowed. Under 300 words.")];
+      }
+      setBusy(clip ? "Breaking it down" : "Thinking");
+      const turns = history.concat([{
         role: "user",
-        parts: [T(question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)")]
+        parts: parts
       }]);
-      const reply = await ai(next, false);
-      setHistory(next.concat([{
+      const reply = await ai(turns, false);
+      setHistory(turns.concat([{
         role: "model",
         parts: [T(reply)]
       }]));
-      setThread(t => t.concat([{
+      setMsgs(m => m.concat([{
         who: "coach",
         text: reply
       }]));
     } catch (e) {
-      setThread(t => t.concat([{
+      setMsgs(m => m.concat([{
         who: "coach",
-        text: e.message || "That didn't go through."
+        text: e.message || "That didn't go through.",
+        err: true
       }]));
+      if (/key/i.test(e.message || "")) setReady(false);
     }
-    setAsking(false);
+    setBusy("");
+    setFile(null);
   }
-  const flagged = {};
-  (diag && diag.breaking || []).forEach(b => {
-    flagged[Number(b.frame)] = true;
-  });
+  const empty = !msgs.length && !busy;
+  const bar = /*#__PURE__*/React.createElement("div", {
+    className: "fr-bar",
+    "data-empty": empty ? "1" : "0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-barin"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-plus",
+    onClick: () => input.current.click(),
+    "aria-label": "Add a clip",
+    disabled: !!busy
+  }, "+"), /*#__PURE__*/React.createElement("input", {
+    className: "fr-field",
+    value: text,
+    placeholder: msgs.length ? "Ask anything about it" : "Analyze my film, or ask me anything",
+    onChange: e => setText(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") send(null, text);
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-send",
+    onClick: () => send(null, text),
+    disabled: !!busy || !text.trim(),
+    "aria-label": "Send"
+  }, "\u2191")));
+  if (empty) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-blank"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "fr-wrap fr-narrow",
+      style: {
+        width: "100%"
+      }
+    }, /*#__PURE__*/React.createElement("h2", {
+      className: "fr-greet"
+    }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
+      className: "fr-hint"
+    }, "Tap + to send a clip. Any length \\u2014 it works out what you're doing."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
+      onSaved: () => setReady(true)
+    })), /*#__PURE__*/React.createElement("input", {
+      ref: input,
+      type: "file",
+      accept: "video/*",
+      style: {
+        display: "none"
+      },
+      onChange: e => pick(e.target.files[0] || null)
+    }));
+  }
   return /*#__PURE__*/React.createElement("div", {
-    className: "fr-page"
+    className: "fr-page",
+    style: {
+      paddingTop: 16
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "My clip"), /*#__PURE__*/React.createElement("p", null, "Any length. Nothing to fill in \\u2014 upload it and it works out what you're doing.")), /*#__PURE__*/React.createElement("input", {
+  }, !ready && /*#__PURE__*/React.createElement(KeyGate, {
+    onSaved: () => setReady(true)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-thread"
+  }, msgs.map((m, i) => m.who === "you" ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-you",
+    key: i
+  }, m.clip && /*#__PURE__*/React.createElement("span", {
+    className: "fr-clipchip"
+  }, m.clip), m.text && /*#__PURE__*/React.createElement("p", null, m.text)) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-coach",
+    key: i,
+    "data-err": m.err ? "1" : "0"
+  }, /*#__PURE__*/React.createElement(Rich, {
+    text: m.text
+  }))), busy && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, busy), /*#__PURE__*/React.createElement("div", {
+    ref: bottom
+  })), /*#__PURE__*/React.createElement("input", {
     ref: input,
     type: "file",
     accept: "video/*",
     style: {
       display: "none"
     },
-    onChange: e => reset(e.target.files[0] || null)
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "fr-drop",
-    role: "button",
-    tabIndex: 0,
-    onClick: () => input.current.click(),
-    onKeyDown: e => (e.key === "Enter" || e.key === " ") && input.current.click()
-  }, /*#__PURE__*/React.createElement("b", null, file ? file.name : "Add a clip"), !file && /*#__PURE__*/React.createElement("span", null, "One rep or a whole workout. MP4 works best.")), /*#__PURE__*/React.createElement("button", {
-    className: "fr-btn fr-full",
-    onClick: run,
-    disabled: !!busy || !file
-  }, busy || "Analyze my film"), busy && /*#__PURE__*/React.createElement("p", {
-    className: "fr-load"
-  }, busy), err && /*#__PURE__*/React.createElement("p", {
-    className: "fr-err"
-  }, err), frames.length > 0 && meta && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, meta.count, " frames across ", clock(meta.duration)), /*#__PURE__*/React.createElement("div", {
-    className: "fr-frames"
-  }, frames.map((f, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-frame",
-    key: i,
-    "data-flag": flagged[i + 1] ? "1" : "0"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: "data:image/jpeg;base64," + f,
-    alt: "Frame " + (i + 1)
-  }), /*#__PURE__*/React.createElement("b", null, String(i + 1).padStart(2, "0")))))), scan && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "The read"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-grade"
-  }, /*#__PURE__*/React.createElement("b", null, scan.grade), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-name"
-  }, scan.skill), /*#__PURE__*/React.createElement("p", {
-    className: "fr-dose"
-  }, scan.level))), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note fr-solid",
-    style: {
-      marginTop: 12
-    }
-  }, scan.read), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Every category on show"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-cats"
-  }, (scan.categories || []).map((c, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-cat",
-    key: i
-  }, /*#__PURE__*/React.createElement("em", null, c.grade), /*#__PURE__*/React.createElement("h4", null, c.name), /*#__PURE__*/React.createElement("p", null, c.note))))), diag && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Phase by phase"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, (diag.phases || []).map((p, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-phase",
-    key: i
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "fr-pip",
-    style: {
-      background: PIP[p.status] || "var(--faint)"
-    }
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, p.name), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, p.detail))))), diag.working && diag.working.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Holding up"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, diag.working.map((w, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-item",
-    key: i
-  }, /*#__PURE__*/React.createElement(Mark, {
-    n: "\u2713",
-    color: "cyan"
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note fr-solid",
-    style: {
-      margin: 0
-    }
-  }, w))))), diag.breaking && diag.breaking.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Where it breaks down"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, diag.breaking.map((b, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-item",
-    key: i
-  }, /*#__PURE__*/React.createElement(Mark, {
-    n: b.frame
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-dose"
-  }, "Frame ", String(b.frame).padStart(2, "0")), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note fr-solid"
-  }, b.issue), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, "Costs you: ", b.cost))))))), plan && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Fix this first"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "fr-read",
-    style: {
-      color: "var(--amber)"
-    }
-  }, plan.priority && plan.priority.fix), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, plan.priority && plan.priority.why)), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Your drills"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, (plan.drills || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-item",
-    key: i
-  }, /*#__PURE__*/React.createElement(Mark, {
-    n: i + 1
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "fr-name"
-  }, d.name), /*#__PURE__*/React.createElement("p", {
-    className: "fr-dose"
-  }, d.dose, d.fixes ? " \u00B7 " + d.fixes : ""), /*#__PURE__*/React.createElement("p", {
-    className: "fr-cue"
-  }, "\u201C" + d.cue + "\u201D"), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, "Then: ", d.progression))))), plan.week && plan.week.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Your week"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-week"
-  }, plan.week.map((d, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-day",
-    key: i
-  }, /*#__PURE__*/React.createElement("b", null, d.day, d.min ? " \u00B7 " + d.min + " min" : ""), /*#__PURE__*/React.createElement("i", null, d.focus))))), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "The next six weeks"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-week"
-  }, (plan.weeks || []).map((w, i) => /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-day",
-    key: i
-  }, /*#__PURE__*/React.createElement("b", null, w.label), /*#__PURE__*/React.createElement("i", null, w.focus), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, "Check: ", w.check)))), plan.watch && plan.watch.query && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Go watch this"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-panel"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "fr-note fr-solid",
-    style: {
-      marginBottom: 12
-    }
-  }, plan.watch.why), /*#__PURE__*/React.createElement("a", {
-    className: "fr-pill",
-    style: {
-      textDecoration: "none"
-    },
-    target: "_blank",
-    rel: "noreferrer",
-    href: "https://www.youtube.com/results?search_query=" + encodeURIComponent(plan.watch.query)
-  }, plan.watch.query))), /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Ask the coach"), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note",
-    style: {
-      marginBottom: 14
-    }
-  }, "Still looking at your frames. Ask anything about this clip."), thread.map((m, i) => /*#__PURE__*/React.createElement("div", {
-    className: m.who === "you" ? "fr-msg" : "fr-glass fr-msg",
-    key: i,
-    "data-who": m.who
-  }, m.text)), asking && /*#__PURE__*/React.createElement("p", {
-    className: "fr-load"
-  }, "Thinking"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-ask"
-  }, /*#__PURE__*/React.createElement("input", {
-    className: "fr-input",
-    value: q,
-    placeholder: "Why does my elbow drift out?",
-    onChange: e => setQ(e.target.value),
-    onKeyDown: e => e.key === "Enter" && askCoach()
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "fr-btn",
-    style: {
-      marginTop: 0
-    },
-    onClick: askCoach,
-    disabled: asking || !q.trim()
-  }, "Ask")))));
+    onChange: e => pick(e.target.files[0] || null)
+  }), bar));
 }
 
 /* ------------------------ APP ------------------------ */
 
 const NAV = [{
-  id: "home",
-  label: "Home"
-}, {
-  id: "browse",
-  label: "Browse"
+  id: "players",
+  label: "Players"
 }, {
   id: "games",
   label: "Games"
 }, {
-  id: "film",
-  label: "Pull film"
-}, {
   id: "train",
-  label: "Get better"
-}, {
-  id: "clip",
-  label: "My clip"
+  label: "Train"
 }];
 function App() {
   const [stack, setStack] = useState([{
@@ -2090,6 +2046,14 @@ function App() {
     window.scrollTo({
       top: 0,
       behavior: "smooth"
+    });
+  }
+  function openItem(item) {
+    if (item.kind === "concept") return openFilm(item.q, "any");
+    if (item.kind === "game") return openFilm(item.q, "long");
+    push({
+      page: "player",
+      player: item
     });
   }
   function openFilm(query, duration) {
@@ -2135,20 +2099,18 @@ function App() {
     "aria-label": "Switch theme"
   }, theme === "dark" ? "\u2600" : "\u263E"))), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
     go: go
-  }), top.page === "browse" && /*#__PURE__*/React.createElement(Browse, {
-    onPlayer: p => push({
-      page: "player",
-      player: p
-    }),
-    onConcept: query => openFilm(query, "any")
+  }), top.page === "players" && /*#__PURE__*/React.createElement(Players, {
+    onOpen: openItem,
+    onSearch: query => openFilm(query, "any")
+  }), top.page === "games" && /*#__PURE__*/React.createElement(GamesPage, {
+    onOpen: openItem,
+    onSearch: query => openFilm(query, "long")
   }), top.page === "player" && /*#__PURE__*/React.createElement(Player, {
     player: top.player
-  }), top.page === "games" && /*#__PURE__*/React.createElement(Games, {
-    onPick: openFilm
   }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
     clearSeed: () => setSeed(null)
-  }), top.page === "train" && /*#__PURE__*/React.createElement(Train, null), top.page === "clip" && /*#__PURE__*/React.createElement(Clip, null)));
+  }), top.page === "train" && /*#__PURE__*/React.createElement(Train, null)));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
   } catch (err) {
