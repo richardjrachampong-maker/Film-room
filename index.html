@@ -103,7 +103,7 @@ body { background: #070B0E; }
 .fr-full { width:100%; margin-top:6px; }
 
 .fr-trio { display:grid; gap:14px; margin-top:12vh; }
-@media (min-width:720px){ .fr-trio { grid-template-columns:repeat(3,1fr);} }
+@media (min-width:720px){ .fr-trio { grid-template-columns:repeat(auto-fit,minmax(260px,1fr));} }
 .fr-card { padding:22px; cursor:pointer; text-align:left; width:100%;
   transition:transform .25s cubic-bezier(.2,.7,.3,1), border-color .25s, background .25s; }
 .fr-card:hover { transform:translateY(-4px); border-color:var(--edge-2); background:var(--glass-2); }
@@ -284,6 +284,23 @@ body { background: #070B0E; }
   letter-spacing:.07em; font-size:15px; }
 .fr-cat p { margin:5px 0 0; color:var(--dim); font-size:13.5px; line-height:1.5; }
 
+
+/* --- player profile --- */
+.fr-profile { display:flex; gap:18px; align-items:center; }
+.fr-avatar { width:92px; height:92px; flex:0 0 92px; border-radius:20px;
+  object-fit:cover; object-position:center 18%; border:1px solid var(--edge);
+  background:var(--glass); }
+.fr-avatar-blank { display:grid; place-items:center;
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:32px;
+  color:var(--faint); }
+.fr-pname { font-family:'Barlow Condensed',sans-serif; font-weight:700;
+  text-transform:uppercase; font-size:clamp(26px,7vw,42px); line-height:.98;
+  margin:0; letter-spacing:-.005em; }
+
+
+/* --- library search --- */
+.fr-search { margin-bottom:16px; }
+.fr-search .fr-input { font-size:16px; padding:15px 17px; }
 </style>
 </head>
 
@@ -618,269 +635,265 @@ const {
    ============================================================ */
 
 const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
+
+// Paste a free Gemini key here to switch on Get better and My clip.
+// No credit card needed: aistudio.google.com/apikey
+const GEMINI_KEY = "";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
 
 /* ============================================================ */
 
-const ROSTER = [{
-  n: "Stephen Curry",
-  t: "Off-ball movement",
-  g: "Guards",
-  q: "Stephen Curry off ball movement breakdown"
-}, {
-  n: "Kyrie Irving",
-  t: "Handle & finishing",
-  g: "Guards",
-  q: "Kyrie Irving handle and finishing breakdown"
-}, {
-  n: "Chris Paul",
-  t: "Pace & midrange",
-  g: "Guards",
-  q: "Chris Paul pace midrange film study"
-}, {
-  n: "Jalen Brunson",
-  t: "Footwork",
-  g: "Guards",
-  q: "Jalen Brunson footwork breakdown"
-}, {
-  n: "Damian Lillard",
-  t: "Screen usage",
-  g: "Guards",
-  q: "Damian Lillard pick and roll screen usage"
-}, {
-  n: "Caitlin Clark",
-  t: "Deep pull-up",
-  g: "Guards",
-  q: "Caitlin Clark pull up shooting breakdown"
-}, {
-  n: "Sabrina Ionescu",
-  t: "Shooting off movement",
-  g: "Guards",
-  q: "Sabrina Ionescu shooting mechanics breakdown"
-}, {
-  n: "Kevin Durant",
-  t: "Shooting mechanics",
-  g: "Wings",
-  q: "Kevin Durant shooting form breakdown"
-}, {
-  n: "Kawhi Leonard",
-  t: "Two-way footwork",
-  g: "Wings",
-  q: "Kawhi Leonard footwork breakdown"
-}, {
-  n: "Jayson Tatum",
-  t: "Shot creation",
-  g: "Wings",
-  q: "Jayson Tatum shot creation film study"
-}, {
-  n: "Jimmy Butler",
-  t: "Drawing fouls",
-  g: "Wings",
-  q: "Jimmy Butler drawing fouls breakdown"
-}, {
-  n: "Breanna Stewart",
-  t: "Length & versatility",
-  g: "Wings",
-  q: "Breanna Stewart scoring breakdown"
-}, {
-  n: "Paul George",
-  t: "Closeout defense",
-  g: "Wings",
-  q: "Paul George defensive film study"
-}, {
-  n: "Nikola Jokic",
-  t: "Post reads & passing",
-  g: "Bigs",
-  q: "Nikola Jokic post passing breakdown",
-  wiki: "Nikola Jokić"
-}, {
-  n: "A'ja Wilson",
-  t: "Post scoring",
-  g: "Bigs",
-  q: "A'ja Wilson post moves breakdown"
-}, {
-  n: "Hakeem Olajuwon",
-  t: "Post footwork",
-  g: "Bigs",
-  q: "Hakeem Olajuwon post footwork breakdown"
-}, {
-  n: "Bam Adebayo",
-  t: "Switch defense",
-  g: "Bigs",
-  q: "Bam Adebayo switch defense film study"
-}, {
-  n: "Draymond Green",
-  t: "Help defense",
-  g: "Bigs",
-  q: "Draymond Green help defense breakdown"
-}, {
-  n: "Tim Duncan",
-  t: "Fundamentals",
-  g: "Bigs",
-  q: "Tim Duncan fundamentals footwork breakdown"
-}, {
-  n: "Michael Jordan",
-  t: "Midrange craft",
-  g: "Legends",
-  q: "Michael Jordan midrange footwork breakdown"
-}, {
-  n: "Kobe Bryant",
-  t: "Footwork",
-  g: "Legends",
-  q: "Kobe Bryant footwork breakdown"
-}, {
-  n: "Manu Ginobili",
-  t: "Euro step",
-  g: "Legends",
-  q: "Manu Ginobili euro step breakdown",
-  wiki: "Manu Ginóbili"
-}, {
-  n: "Diana Taurasi",
-  t: "Shot making",
-  g: "Legends",
-  q: "Diana Taurasi shot making film study"
-}, {
-  n: "Closeouts",
-  t: "Concept",
+const P = (n, t, g, wiki) => ({
+  n: n,
+  t: t,
+  g: g,
+  wiki: wiki,
+  kind: "player"
+});
+const C = (n, t, q, wiki) => ({
+  n: n,
+  t: t,
   g: "Skills",
-  q: "how to close out properly basketball defense drill"
-}, {
-  n: "Euro Step",
-  t: "Concept",
-  g: "Skills",
-  q: "euro step tutorial breakdown basketball"
-}, {
-  n: "Floater",
-  t: "Concept",
-  g: "Skills",
-  q: "floater package tutorial basketball"
-}, {
-  n: "P&R Reads",
-  t: "Concept",
-  g: "Skills",
-  q: "pick and roll reads tutorial basketball"
-}, {
-  n: "Boxing Out",
-  t: "Concept",
-  g: "Skills",
-  q: "rebounding box out technique basketball"
-}, {
-  n: "Off-ball Screens",
-  t: "Concept",
-  g: "Skills",
-  q: "using off ball screens basketball tutorial"
-}, {
-  n: "Transition D",
-  t: "Concept",
-  g: "Skills",
-  q: "transition defense fundamentals basketball"
-}, {
-  n: "Change of Pace",
-  t: "Concept",
-  g: "Skills",
-  q: "change of pace dribbling basketball tutorial"
-}];
-const GROUPS = ["All", "Guards", "Wings", "Bigs", "Legends", "Skills"];
+  q: q,
+  wiki: wiki,
+  kind: "concept"
+});
+const ROSTER = [P("Stephen Curry", "Off-ball movement", "Guards"), P("Kyrie Irving", "Handle & finishing", "Guards"), P("Shai Gilgeous-Alexander", "Deceleration", "Guards"), P("Luka Doncic", "Pace & step-back", "Guards", "Luka Don\u010di\u0107"), P("Tyrese Haliburton", "Passing reads", "Guards"), P("Ja Morant", "Explosive finishing", "Guards"), P("Damian Lillard", "Screen usage", "Guards"), P("Jalen Brunson", "Footwork", "Guards"), P("Trae Young", "Pick and roll", "Guards"), P("Anthony Edwards", "Downhill scoring", "Guards"), P("Donovan Mitchell", "Shot creation", "Guards"), P("De'Aaron Fox", "Speed with control", "Guards"), P("Chris Paul", "Pace & midrange", "Guards"), P("Jrue Holiday", "On-ball defense", "Guards"), P("Derrick White", "Two-way guard play", "Guards"), P("Cade Cunningham", "Size at guard", "Guards"), P("LaMelo Ball", "Vision & passing", "Guards"), P("Darius Garland", "Change of pace", "Guards"), P("Caitlin Clark", "Deep pull-up", "Guards"), P("Sabrina Ionescu", "Shooting off movement", "Guards"), P("Paige Bueckers", "Shot creation", "Guards"), P("Kelsey Plum", "Off-ball scoring", "Guards"), P("Arike Ogunbowale", "Shot making", "Guards"), P("Jewell Loyd", "Midrange craft", "Guards"), P("Chelsea Gray", "Point guard reads", "Guards"), P("LeBron James", "Reading defenses", "Wings"), P("Kevin Durant", "Shooting mechanics", "Wings"), P("Jayson Tatum", "Shot creation", "Wings"), P("Kawhi Leonard", "Two-way footwork", "Wings"), P("Jimmy Butler", "Drawing fouls", "Wings"), P("Devin Booker", "Midrange scoring", "Wings"), P("Jaylen Brown", "Downhill attacking", "Wings"), P("Paul George", "Closeout defense", "Wings"), P("Mikal Bridges", "Wing defense", "Wings"), P("OG Anunoby", "Point of attack D", "Wings"), P("Franz Wagner", "Craft & finishing", "Wings"), P("Scottie Barnes", "Versatility", "Wings"), P("Brandon Ingram", "Length & pull-up", "Wings"), P("DeMar DeRozan", "Midrange footwork", "Wings"), P("Zion Williamson", "Power finishing", "Wings"), P("Breanna Stewart", "Length & versatility", "Wings"), P("Napheesa Collier", "Two-way forward", "Wings"), P("Satou Sabally", "Positional size", "Wings"), P("Kahleah Copper", "Slashing", "Wings"), P("Nneka Ogwumike", "Efficient scoring", "Wings"), P("Angel Reese", "Rebounding motor", "Wings"), P("Nikola Jokic", "Post reads & passing", "Bigs", "Nikola Joki\u0107"), P("Giannis Antetokounmpo", "Downhill force", "Bigs"), P("Joel Embiid", "Face-up game", "Bigs"), P("Victor Wembanyama", "Length everywhere", "Bigs"), P("Anthony Davis", "Two-way big", "Bigs"), P("Bam Adebayo", "Switch defense", "Bigs"), P("Draymond Green", "Help defense", "Bigs"), P("Rudy Gobert", "Rim protection", "Bigs"), P("Domantas Sabonis", "Rebounding & passing", "Bigs"), P("Alperen Sengun", "Post craft", "Bigs", "Alperen \u015Eeng\u00FCn"), P("Chet Holmgren", "Stretch & block", "Bigs"), P("Evan Mobley", "Mobile defense", "Bigs"), P("Karl-Anthony Towns", "Shooting big", "Bigs"), P("Jarrett Allen", "Vertical spacing", "Bigs"), P("A'ja Wilson", "Post scoring", "Bigs"), P("Aliyah Boston", "Post positioning", "Bigs"), P("Alyssa Thomas", "Playmaking forward", "Bigs"), P("Brittney Griner", "Rim finishing", "Bigs"), P("Michael Jordan", "Midrange craft", "Legends"), P("Kobe Bryant", "Footwork", "Legends"), P("Hakeem Olajuwon", "Post footwork", "Legends"), P("Tim Duncan", "Fundamentals", "Legends"), P("Magic Johnson", "Open court passing", "Legends"), P("Larry Bird", "Reading the game", "Legends"), P("Shaquille O'Neal", "Post power", "Legends"), P("Kareem Abdul-Jabbar", "The skyhook", "Legends"), P("Allen Iverson", "Handle & crossover", "Legends"), P("Steve Nash", "Pick and roll mastery", "Legends"), P("Dirk Nowitzki", "One-leg fadeaway", "Legends"), P("Manu Ginobili", "Euro step", "Legends", "Manu Gin\u00F3bili"), P("Dwyane Wade", "Body control", "Legends"), P("Tracy McGrady", "Shot creation", "Legends"), P("Ray Allen", "Shooting form", "Legends"), P("Reggie Miller", "Off-ball movement", "Legends"), P("Bill Russell", "Defensive timing", "Legends"), P("Diana Taurasi", "Shot making", "Legends"), P("Lisa Leslie", "Post dominance", "Legends"), P("Maya Moore", "Complete scoring", "Legends"), P("Sue Bird", "Running an offense", "Legends"), P("Tamika Catchings", "Two-way motor", "Legends"), C("Jump Shot", "Shooting", "basketball jump shot form tutorial", "Jump shot (basketball)"), C("Free Throw", "Shooting", "free throw shooting technique tutorial", "Free throw"), C("Three Pointer", "Shooting", "three point shooting form tutorial basketball", "Three-point field goal"), C("Layup", "Finishing", "layup technique tutorial basketball", "Layup"), C("Floater", "Finishing", "floater package tutorial basketball", "Layup"), C("Euro Step", "Finishing", "euro step tutorial breakdown basketball", "Euro step"), C("Slam Dunk", "Finishing", "how to dunk tutorial basketball", "Slam dunk"), C("Crossover", "Handle", "crossover dribble tutorial basketball", "Crossover dribble"), C("Dribbling", "Handle", "ball handling drills basketball tutorial", "Dribbling"), C("Change of Pace", "Handle", "change of pace dribbling basketball tutorial", "Dribbling"), C("Post Up", "Inside", "post up moves tutorial basketball", "Post (basketball)"), C("Boxing Out", "Inside", "rebounding box out technique basketball", "Rebound (basketball)"), C("Pick and Roll", "Team", "pick and roll reads tutorial basketball", "Pick and roll"), C("Off-ball Screens", "Team", "using off ball screens basketball tutorial", "Screen (basketball)"), C("Fast Break", "Team", "fast break fundamentals basketball", "Fast break"), C("Closeouts", "Defense", "how to close out properly basketball defense drill", "Basketball"), C("Man Defense", "Defense", "man to man defense fundamentals basketball", "Man-to-man defense"), C("Zone Defense", "Defense", "zone defense basketball tutorial", "Zone defense"), C("Steals", "Defense", "how to get steals basketball defense tutorial", "Steal (basketball)"), C("Blocking", "Defense", "shot blocking technique basketball", "Block (basketball)")];
+
+/* Where each player came from, for the "Before the pros" tab. */
+const PRE = {
+  "Stephen Curry": "Davidson",
+  "Kyrie Irving": "Duke",
+  "Shai Gilgeous-Alexander": "Kentucky",
+  "Luka Doncic": "Real Madrid youth",
+  "Tyrese Haliburton": "Iowa State",
+  "Ja Morant": "Murray State",
+  "Damian Lillard": "Weber State",
+  "Jalen Brunson": "Villanova",
+  "Trae Young": "Oklahoma",
+  "Anthony Edwards": "Georgia",
+  "Donovan Mitchell": "Louisville",
+  "De'Aaron Fox": "Kentucky",
+  "Chris Paul": "Wake Forest",
+  "Jrue Holiday": "UCLA",
+  "Derrick White": "Colorado",
+  "Cade Cunningham": "Oklahoma State",
+  "LaMelo Ball": "Illawarra Hawks",
+  "Darius Garland": "Vanderbilt",
+  "Caitlin Clark": "Iowa",
+  "Sabrina Ionescu": "Oregon",
+  "Paige Bueckers": "UConn",
+  "Kelsey Plum": "Washington",
+  "Arike Ogunbowale": "Notre Dame",
+  "Jewell Loyd": "Notre Dame",
+  "Chelsea Gray": "Duke",
+  "LeBron James": "St. Vincent-St. Mary high school",
+  "Kevin Durant": "Texas",
+  "Jayson Tatum": "Duke",
+  "Kawhi Leonard": "San Diego State",
+  "Jimmy Butler": "Marquette",
+  "Devin Booker": "Kentucky",
+  "Jaylen Brown": "California",
+  "Paul George": "Fresno State",
+  "Mikal Bridges": "Villanova",
+  "OG Anunoby": "Indiana",
+  "Franz Wagner": "Michigan",
+  "Scottie Barnes": "Florida State",
+  "Brandon Ingram": "Duke",
+  "DeMar DeRozan": "USC",
+  "Zion Williamson": "Duke",
+  "Breanna Stewart": "UConn",
+  "Napheesa Collier": "UConn",
+  "Satou Sabally": "Oregon",
+  "Kahleah Copper": "Rutgers",
+  "Nneka Ogwumike": "Stanford",
+  "Angel Reese": "LSU",
+  "Nikola Jokic": "Mega Basket",
+  "Giannis Antetokounmpo": "Filathlitikos",
+  "Joel Embiid": "Kansas",
+  "Victor Wembanyama": "Metropolitans 92",
+  "Anthony Davis": "Kentucky",
+  "Bam Adebayo": "Kentucky",
+  "Draymond Green": "Michigan State",
+  "Rudy Gobert": "Cholet",
+  "Domantas Sabonis": "Gonzaga",
+  "Alperen Sengun": "Besiktas",
+  "Chet Holmgren": "Gonzaga",
+  "Evan Mobley": "USC",
+  "Karl-Anthony Towns": "Kentucky",
+  "Jarrett Allen": "Texas",
+  "A'ja Wilson": "South Carolina",
+  "Aliyah Boston": "South Carolina",
+  "Alyssa Thomas": "Maryland",
+  "Brittney Griner": "Baylor",
+  "Michael Jordan": "North Carolina",
+  "Kobe Bryant": "Lower Merion high school",
+  "Hakeem Olajuwon": "Houston",
+  "Tim Duncan": "Wake Forest",
+  "Magic Johnson": "Michigan State",
+  "Larry Bird": "Indiana State",
+  "Shaquille O'Neal": "LSU",
+  "Kareem Abdul-Jabbar": "UCLA",
+  "Allen Iverson": "Georgetown",
+  "Steve Nash": "Santa Clara",
+  "Dirk Nowitzki": "Wurzburg",
+  "Manu Ginobili": "Argentina",
+  "Dwyane Wade": "Marquette",
+  "Tracy McGrady": "Mount Zion high school",
+  "Ray Allen": "UConn",
+  "Reggie Miller": "UCLA",
+  "Bill Russell": "San Francisco",
+  "Diana Taurasi": "UConn",
+  "Lisa Leslie": "USC",
+  "Maya Moore": "UConn",
+  "Sue Bird": "UConn",
+  "Tamika Catchings": "Tennessee"
+};
+const G = (n, t, wiki) => ({
+  n: n,
+  t: t,
+  g: "College",
+  wiki: wiki,
+  kind: "program"
+});
+const PROGRAMS = [G("Duke", "Men's program", "Duke Blue Devils men's basketball"), G("Kentucky", "Men's program", "Kentucky Wildcats men's basketball"), G("North Carolina", "Men's program", "North Carolina Tar Heels men's basketball"), G("Kansas", "Men's program", "Kansas Jayhawks men's basketball"), G("UCLA", "Men's program", "UCLA Bruins men's basketball"), G("Gonzaga", "Men's program", "Gonzaga Bulldogs men's basketball"), G("Houston", "Men's program", "Houston Cougars men's basketball"), G("Purdue", "Men's program", "Purdue Boilermakers men's basketball"), G("Arizona", "Men's program", "Arizona Wildcats men's basketball"), G("Michigan State", "Men's program", "Michigan State Spartans men's basketball"), G("Villanova", "Men's program", "Villanova Wildcats men's basketball"), G("Alabama", "Men's program", "Alabama Crimson Tide men's basketball"), G("Auburn", "Men's program", "Auburn Tigers men's basketball"), G("Baylor", "Men's program", "Baylor Bears men's basketball"), G("UConn Women", "Women's program", "UConn Huskies women's basketball"), G("South Carolina Women", "Women's program", "South Carolina Gamecocks women's basketball"), G("Iowa Women", "Women's program", "Iowa Hawkeyes women's basketball"), G("LSU Women", "Women's program", "LSU Lady Tigers basketball"), G("Stanford Women", "Women's program", "Stanford Cardinal women's basketball"), G("Tennessee Women", "Women's program", "Tennessee Lady Volunteers basketball"), G("Notre Dame Women", "Women's program", "Notre Dame Fighting Irish women's basketball"), G("Texas Women", "Women's program", "Texas Longhorns women's basketball"), G("UCLA Women", "Women's program", "UCLA Bruins women's basketball"), G("Maryland Women", "Women's program", "Maryland Terrapins women's basketball")];
+ROSTER.push.apply(ROSTER, PROGRAMS);
+const GROUPS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
 const GAMES = [{
   n: "NBA Finals",
   t: "Championship",
   g: "Pro",
-  q: "NBA Finals full game replay"
+  q: "NBA Finals full game replay",
+  wiki: "NBA Finals"
 }, {
   n: "NBA Playoffs",
   t: "Postseason",
   g: "Pro",
-  q: "NBA playoffs full game replay"
+  q: "NBA playoffs full game replay",
+  wiki: "NBA playoffs"
 }, {
   n: "WNBA Finals",
   t: "Championship",
   g: "Pro",
-  q: "WNBA Finals full game replay"
+  q: "WNBA Finals full game replay",
+  wiki: "WNBA Finals"
 }, {
   n: "WNBA",
   t: "Regular season",
   g: "Pro",
-  q: "WNBA full game replay"
+  q: "WNBA full game replay",
+  wiki: "Women's National Basketball Association"
 }, {
   n: "Lakers",
   t: "Full games",
   g: "Pro",
-  q: "Lakers full game replay"
+  q: "Lakers full game replay",
+  wiki: "Los Angeles Lakers"
 }, {
   n: "Celtics",
   t: "Full games",
   g: "Pro",
-  q: "Celtics full game replay"
+  q: "Celtics full game replay",
+  wiki: "Boston Celtics"
 }, {
   n: "Warriors",
   t: "Full games",
   g: "Pro",
-  q: "Warriors full game replay"
+  q: "Warriors full game replay",
+  wiki: "Golden State Warriors"
 }, {
   n: "Knicks",
   t: "Full games",
   g: "Pro",
-  q: "Knicks full game replay"
+  q: "Knicks full game replay",
+  wiki: "New York Knicks"
 }, {
   n: "Nuggets",
   t: "Full games",
   g: "Pro",
-  q: "Nuggets full game replay"
+  q: "Nuggets full game replay",
+  wiki: "Denver Nuggets"
 }, {
   n: "Thunder",
   t: "Full games",
   g: "Pro",
-  q: "Thunder full game replay"
+  q: "Thunder full game replay",
+  wiki: "Oklahoma City Thunder"
+}, {
+  n: "Bucks",
+  t: "Full games",
+  g: "Pro",
+  q: "Bucks full game replay",
+  wiki: "Milwaukee Bucks"
+}, {
+  n: "Heat",
+  t: "Full games",
+  g: "Pro",
+  q: "Heat full game replay",
+  wiki: "Miami Heat"
 }, {
   n: "March Madness",
   t: "Tournament",
   g: "College",
-  q: "March Madness full game replay"
+  q: "March Madness full game replay",
+  wiki: "NCAA Division I men's basketball tournament"
 }, {
   n: "NCAA Men",
   t: "Full games",
   g: "College",
-  q: "NCAA mens basketball full game replay"
+  q: "NCAA mens basketball full game replay",
+  wiki: "NCAA Division I men's basketball"
 }, {
   n: "NCAA Women",
   t: "Full games",
   g: "College",
-  q: "NCAA womens basketball full game replay"
+  q: "NCAA womens basketball full game replay",
+  wiki: "NCAA Division I women's basketball"
 }, {
   n: "Final Four",
   t: "Tournament",
   g: "College",
-  q: "Final Four full game replay basketball"
+  q: "Final Four full game replay basketball",
+  wiki: "Final Four"
 }, {
   n: "UConn",
   t: "Full games",
   g: "College",
-  q: "UConn basketball full game replay"
+  q: "UConn basketball full game replay",
+  wiki: "UConn Huskies"
 }, {
   n: "Duke",
   t: "Full games",
   g: "College",
-  q: "Duke basketball full game replay"
+  q: "Duke basketball full game replay",
+  wiki: "Duke Blue Devils men's basketball"
 }, {
   n: "EuroLeague",
   t: "Full games",
   g: "World",
-  q: "EuroLeague basketball full game replay"
+  q: "EuroLeague basketball full game replay",
+  wiki: "EuroLeague"
 }, {
   n: "Olympics",
   t: "Full games",
   g: "World",
-  q: "Olympic basketball full game replay"
+  q: "Olympic basketball full game replay",
+  wiki: "Basketball at the Summer Olympics"
 }, {
   n: "FIBA World Cup",
   t: "Full games",
   g: "World",
-  q: "FIBA World Cup full game replay"
+  q: "FIBA World Cup full game replay",
+  wiki: "FIBA Basketball World Cup"
 }, {
   n: "Classic Games",
   t: "Archive",
   g: "World",
-  q: "classic NBA full game replay"
+  q: "classic NBA full game replay",
+  wiki: "National Basketball Association"
 }];
 const GAME_GROUPS = ["All", "Pro", "College", "World"];
 
@@ -897,7 +910,7 @@ async function ytSearch(q, opts) {
   const key = q + "|" + (opts.duration || "any");
   if (ytCache[key]) return ytCache[key];
   let url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&maxResults=" + (opts.max || 12) + "&q=" + encodeURIComponent(q) + "&key=" + YT_KEY;
-  if (opts.duration) url += "&videoDuration=" + opts.duration;
+  if (opts.duration && opts.duration !== "any") url += "&videoDuration=" + opts.duration;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) {
@@ -916,43 +929,125 @@ async function ytSearch(q, opts) {
   return out;
 }
 
-/* --------------------- Wikipedia photos --------------------- */
+/* --------------------- Wikipedia --------------------- */
 
 const photoCache = {};
+const bioCache = {};
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 async function wikiPhotos(titles) {
-  const need = titles.filter(t => !(t in photoCache));
+  const need = titles.filter(t => t && !(t in photoCache));
   if (!need.length) return photoCache;
-  const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=400" + "&titles=" + encodeURIComponent(need.join("|"));
-  const res = await fetch(url);
-  const data = await res.json();
-  const q = data.query || {};
-  const alias = {};
-  (q.normalized || []).forEach(n => {
-    alias[n.from] = n.to;
-  });
-  (q.redirects || []).forEach(r => {
-    alias[r.from] = r.to;
-  });
-  const resolve = t => {
-    let cur = t,
-      i = 0;
-    while (alias[cur] && i++ < 5) cur = alias[cur];
-    return cur;
-  };
-  const byTitle = {};
-  Object.keys(q.pages || {}).forEach(k => {
-    const p = q.pages[k];
-    if (p && p.thumbnail && p.thumbnail.source) byTitle[p.title] = p.thumbnail.source;
-  });
-  need.forEach(t => {
-    photoCache[t] = byTitle[resolve(t)] || null;
-  });
+  const batches = chunk(need, 40);
+  for (let b = 0; b < batches.length; b++) {
+    const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=400" + "&titles=" + encodeURIComponent(batches[b].join("|"));
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const q = data.query || {};
+      const alias = {};
+      (q.normalized || []).forEach(n => {
+        alias[n.from] = n.to;
+      });
+      (q.redirects || []).forEach(r => {
+        alias[r.from] = r.to;
+      });
+      const resolve = t => {
+        let cur = t,
+          i = 0;
+        while (alias[cur] && i++ < 5) cur = alias[cur];
+        return cur;
+      };
+      const byTitle = {};
+      Object.keys(q.pages || {}).forEach(k => {
+        const p = q.pages[k];
+        if (p && p.thumbnail && p.thumbnail.source) byTitle[p.title] = p.thumbnail.source;
+      });
+      batches[b].forEach(t => {
+        photoCache[t] = byTitle[resolve(t)] || null;
+      });
+    } catch (e) {
+      batches[b].forEach(t => {
+        photoCache[t] = null;
+      });
+    }
+  }
   return photoCache;
+}
+async function wikiBio(title) {
+  if (title in bioCache) return bioCache[title];
+  const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=extracts|pageimages&exintro=1&explaintext=1" + "&piprop=thumbnail&pithumbsize=600&titles=" + encodeURIComponent(title);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = (data.query || {}).pages || {};
+    const first = pages[Object.keys(pages)[0]] || {};
+    const text = (first.extract || "").split("\n")[0];
+    bioCache[title] = {
+      text: text.length > 430 ? text.slice(0, 430).replace(/\s+\S*$/, "") + "\u2026" : text,
+      photo: first.thumbnail ? first.thumbnail.source : null
+    };
+  } catch (e) {
+    bioCache[title] = {
+      text: "",
+      photo: null
+    };
+  }
+  return bioCache[title];
 }
 
 /* ------------------------ AI ------------------------- */
 
-async function send(messages) {
+const AI_OFF = "Get better and My clip need an AI key. Open index.html, paste a free Gemini key into GEMINI_KEY near the top, and re-upload.";
+async function aiGemini(turns, wantJSON) {
+  const body = {
+    contents: turns.map(t => ({
+      role: t.role === "model" ? "model" : "user",
+      parts: t.parts
+    })),
+    generationConfig: {
+      maxOutputTokens: 3000
+    }
+  };
+  if (wantJSON) body.generationConfig.responseMimeType = "application/json";
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent?key=" + GEMINI_KEY;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) {
+    const m = data.error.message || "";
+    if (/not found|not supported/i.test(m)) throw new Error("That model name isn't available. Try changing GEMINI_MODEL to gemini-2.5-flash.");
+    if (/quota|RESOURCE_EXHAUSTED/i.test(m)) throw new Error("Gemini's free daily limit is used up. It resets tomorrow.");
+    if (/API key|PERMISSION|API_KEY/i.test(m)) throw new Error("Gemini rejected the key. Check GEMINI_KEY and that the API is switched on.");
+    throw new Error(m);
+  }
+  const cand = (data.candidates || [])[0];
+  if (!cand) throw new Error("Gemini sent nothing back. Try again.");
+  return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
+}
+async function aiClaude(turns) {
+  const messages = turns.map(t => ({
+    role: t.role === "model" ? "assistant" : "user",
+    content: t.parts.map(p => p.text !== undefined ? {
+      type: "text",
+      text: p.text
+    } : {
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: p.inline_data.mime_type,
+        data: p.inline_data.data
+      }
+    })
+  }));
   const res = await fetch(AI_ENDPOINT, {
     method: "POST",
     headers: {
@@ -961,17 +1056,31 @@ async function send(messages) {
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 1000,
-      messages
+      messages: messages
     })
   });
-  if (!res.ok) throw new Error("The breakdown service isn't reachable from this site yet.");
+  if (!res.ok) throw new Error(AI_OFF);
   const data = await res.json();
   return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
-const ask = content => send([{
+async function ai(turns, wantJSON) {
+  if (GEMINI_KEY) return aiGemini(turns, wantJSON);
+  if (AI_ENDPOINT) return aiClaude(turns);
+  throw new Error(AI_OFF);
+}
+const askJSON = parts => ai([{
   role: "user",
-  content
-}]);
+  parts: parts
+}], true);
+const T = s => ({
+  text: s
+});
+const IMG = b64 => ({
+  inline_data: {
+    mime_type: "image/jpeg",
+    data: b64
+  }
+});
 function toJSON(text) {
   const clean = String(text).replace(/```json/g, "").replace(/```/g, "").trim();
   const a = clean.indexOf("{"),
@@ -1015,9 +1124,72 @@ const PIP = {
 const initials = s => s.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 const clock = s => {
   s = Math.round(s);
-  const m = Math.floor(s / 60);
-  return m + ":" + String(s % 60).padStart(2, "0");
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 };
+function Tile({
+  item,
+  photo,
+  onClick
+}) {
+  return /*#__PURE__*/React.createElement("button", {
+    className: "fr-glass fr-tile",
+    "data-photo": photo ? "1" : "0",
+    onClick: onClick
+  }, photo ? /*#__PURE__*/React.createElement("img", {
+    className: "fr-face",
+    src: photo,
+    alt: "",
+    loading: "lazy"
+  }) : /*#__PURE__*/React.createElement("u", {
+    "aria-hidden": "true"
+  }, initials(item.n)), /*#__PURE__*/React.createElement("span", {
+    className: "fr-scrim"
+  }), /*#__PURE__*/React.createElement("b", null, item.n), /*#__PURE__*/React.createElement("s", null, item.t));
+}
+function VideoList({
+  vids,
+  active,
+  setActive
+}) {
+  if (!vids || !vids.length) return null;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("iframe", {
+    className: "fr-player",
+    title: active.title,
+    src: "https://www.youtube-nocookie.com/embed/" + active.id,
+    allow: "accelerometer; encrypted-media; picture-in-picture",
+    allowFullScreen: true
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      marginTop: 10
+    }
+  }, active.title), /*#__PURE__*/React.createElement("a", {
+    className: "fr-link",
+    target: "_blank",
+    rel: "noreferrer",
+    href: "https://www.youtube.com/watch?v=" + active.id
+  }, "Open on YouTube")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-vids",
+    style: {
+      marginTop: 16
+    }
+  }, vids.map(v => /*#__PURE__*/React.createElement("button", {
+    key: v.id,
+    className: "fr-glass fr-vid",
+    "data-on": active && active.id === v.id ? "1" : "0",
+    onClick: () => {
+      setActive(v);
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: v.thumb,
+    alt: "",
+    loading: "lazy"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, v.title), /*#__PURE__*/React.createElement("p", null, v.channel))))));
+}
 
 /* --------------------- LANDING ----------------------- */
 
@@ -1025,17 +1197,17 @@ function Landing({
   go
 }) {
   const cards = [{
-    ic: "▶",
+    ic: "\u25B6",
     h: "Browse the film",
-    p: "Players, concepts, and full game replays. Tap anyone to pull their tape.",
+    p: "Over eighty players plus twenty skills. Tap anyone for everything on them.",
     to: "browse"
   }, {
-    ic: "◎",
+    ic: "\u25CE",
     h: "Analyze your clip",
-    p: "Upload a rep or a whole workout. Nothing to fill in — it works out what you're doing.",
+    p: "Upload a rep or a whole workout. Nothing to fill in \u2014 it works out what you're doing.",
     to: "clip"
   }, {
-    ic: "▤",
+    ic: "\u25A4",
     h: "Build the plan",
     p: "Drills with real sets and reps, built around your position, level, and schedule.",
     to: "train"
@@ -1050,7 +1222,7 @@ function Landing({
     className: "fr-eyeb"
   }, "Film Room"), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
     className: "fr-lede"
-  }, "Pull tape on any player, concept, or full game. Send your own clip and get it graded across every skill in it. Then get the drills that actually fix it."), /*#__PURE__*/React.createElement("div", {
+  }, "Pull tape on any player, skill, or full game. Send your own clip and get it graded across every category in it. Then get the drills that actually fix it."), /*#__PURE__*/React.createElement("div", {
     className: "fr-cta"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-btn",
@@ -1077,20 +1249,19 @@ function Landing({
 /* ---------------------- BROWSE ----------------------- */
 
 function Browse({
-  onPick
+  onPlayer,
+  onConcept
 }) {
   const [group, setGroup] = useState("All");
   const [photos, setPhotos] = useState({});
   useEffect(() => {
-    const people = ROSTER.filter(r => r.g !== "Skills");
-    const titles = people.map(r => r.wiki || r.n);
-    wikiPhotos(titles).then(() => {
+    wikiPhotos(ROSTER.map(r => r.wiki || r.n)).then(() => {
       const map = {};
-      people.forEach(r => {
+      ROSTER.forEach(r => {
         map[r.n] = photoCache[r.wiki || r.n];
       });
       setPhotos(map);
-    }).catch(() => {});
+    }).catch(function () {});
   }, []);
   const list = group === "All" ? ROSTER : ROSTER.filter(r => r.g === group);
   return /*#__PURE__*/React.createElement("div", {
@@ -1099,7 +1270,7 @@ function Browse({
     className: "fr-wrap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Browse"), /*#__PURE__*/React.createElement("p", null, "Tap anyone to pull their film. Every search runs live, so the tape stays current.")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Browse"), /*#__PURE__*/React.createElement("p", null, ROSTER.length, " players and skills. Tap a player for film study, highlights, full games, and their college tape.")), /*#__PURE__*/React.createElement("div", {
     className: "fr-pills"
   }, GROUPS.map(g => /*#__PURE__*/React.createElement("button", {
     key: g,
@@ -1108,27 +1279,154 @@ function Browse({
     onClick: () => setGroup(g)
   }, g))), /*#__PURE__*/React.createElement("div", {
     className: "fr-grid"
-  }, list.map(r => /*#__PURE__*/React.createElement("button", {
+  }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
     key: r.n,
-    className: "fr-glass fr-tile",
-    "data-photo": photos[r.n] ? "1" : "0",
-    onClick: () => onPick(r.q)
-  }, photos[r.n] ? /*#__PURE__*/React.createElement("img", {
-    className: "fr-face",
-    src: photos[r.n],
-    alt: "",
-    loading: "lazy"
-  }) : /*#__PURE__*/React.createElement("u", {
-    "aria-hidden": "true"
-  }, initials(r.n)), /*#__PURE__*/React.createElement("span", {
-    className: "fr-scrim"
-  }), /*#__PURE__*/React.createElement("b", null, r.n), /*#__PURE__*/React.createElement("s", null, r.t)))), /*#__PURE__*/React.createElement("p", {
+    item: r,
+    photo: photos[r.n],
+    onClick: () => r.kind === "concept" ? onConcept(r.q) : onPlayer(r)
+  }))), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
-      marginTop: 20,
+      marginTop: 22,
       fontSize: 12
     }
-  }, "Player photos from Wikipedia.")));
+  }, "Photos from Wikipedia. Club crests remain trademarks of their teams.")));
+}
+
+/* ---------------------- PLAYER ----------------------- */
+
+function tabsFor(item) {
+  if (item.kind === "program") {
+    return [{
+      id: "highlights",
+      label: "Highlights",
+      q: item.n + " basketball highlights",
+      dur: "any"
+    }, {
+      id: "games",
+      label: "Full games",
+      q: item.n + " basketball full game",
+      dur: "long"
+    }, {
+      id: "players",
+      label: "Top players",
+      q: item.n + " basketball best players",
+      dur: "any"
+    }];
+  }
+  const tabs = [{
+    id: "study",
+    label: "Film study",
+    q: item.n + " film study breakdown",
+    dur: "any"
+  }, {
+    id: "highlights",
+    label: "Highlights",
+    q: item.n + " highlights",
+    dur: "any"
+  }, {
+    id: "games",
+    label: "Full games",
+    q: item.n + " full game",
+    dur: "long"
+  }];
+  const pre = PRE[item.n];
+  if (pre) tabs.push({
+    id: "pre",
+    label: "Before the pros",
+    q: item.n + " " + pre + " highlights",
+    dur: "any"
+  });
+  return tabs;
+}
+function Player({
+  player
+}) {
+  const PT = tabsFor(player);
+  const [bio, setBio] = useState(null);
+  const [tab, setTab] = useState("study");
+  const [byTab, setByTab] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [active, setActive] = useState(null);
+  async function load(id, cache) {
+    setTab(id);
+    const have = cache || byTab;
+    if (have[id]) {
+      setActive(have[id][0] || null);
+      return;
+    }
+    const t = PT.filter(x => x.id === id)[0];
+    setBusy(true);
+    setErr("");
+    try {
+      const list = await ytSearch(t.q, {
+        duration: t.dur,
+        max: 9
+      });
+      setByTab(m => {
+        const n = {};
+        for (const k in m) n[k] = m[k];
+        n[id] = list;
+        return n;
+      });
+      setActive(list[0] || null);
+      if (!list.length) setErr("No " + t.label.toLowerCase() + " came back for " + player.n + ".");
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
+    setBusy(false);
+  }
+  useEffect(() => {
+    setBio(null);
+    setByTab({});
+    setActive(null);
+    setTab(PT[0].id);
+    setErr("");
+    wikiBio(player.wiki || player.n).then(setBio).catch(function () {});
+    load(PT[0].id, {});
+  }, [player.n]);
+  const photo = bio && bio.photo || photoCache[player.wiki || player.n];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap fr-narrow"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-profile"
+  }, photo ? /*#__PURE__*/React.createElement("img", {
+    src: photo,
+    alt: "",
+    className: "fr-avatar"
+  }) : /*#__PURE__*/React.createElement("span", {
+    className: "fr-avatar fr-avatar-blank"
+  }, initials(player.n)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "fr-pname"
+  }, player.n), /*#__PURE__*/React.createElement("p", {
+    className: "fr-dose"
+  }, player.t, player.g ? " \u00B7 " + player.g : "", PRE[player.n] ? " \u00B7 " + PRE[player.n] : ""))), bio && bio.text && /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      marginTop: 18
+    }
+  }, bio.text), /*#__PURE__*/React.createElement("div", {
+    className: "fr-pills",
+    style: {
+      marginTop: 22
+    }
+  }, PT.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    className: "fr-pill",
+    "data-on": tab === t.id ? "1" : "0",
+    onClick: () => load(t.id)
+  }, t.label))), busy && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, "Pulling film"), err && /*#__PURE__*/React.createElement("p", {
+    className: "fr-err"
+  }, err), /*#__PURE__*/React.createElement(VideoList, {
+    vids: byTab[tab],
+    active: active,
+    setActive: setActive
+  })));
 }
 
 /* ----------------------- GAMES ----------------------- */
@@ -1137,6 +1435,16 @@ function Games({
   onPick
 }) {
   const [group, setGroup] = useState("All");
+  const [photos, setPhotos] = useState({});
+  useEffect(() => {
+    wikiPhotos(GAMES.map(g => g.wiki)).then(() => {
+      const map = {};
+      GAMES.forEach(g => {
+        map[g.n] = photoCache[g.wiki];
+      });
+      setPhotos(map);
+    }).catch(function () {});
+  }, []);
   const list = group === "All" ? GAMES : GAMES.filter(r => r.g === group);
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
@@ -1153,13 +1461,12 @@ function Games({
     onClick: () => setGroup(g)
   }, g))), /*#__PURE__*/React.createElement("div", {
     className: "fr-grid"
-  }, list.map(r => /*#__PURE__*/React.createElement("button", {
+  }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
     key: r.n,
-    className: "fr-glass fr-tile",
+    item: r,
+    photo: photos[r.n],
     onClick: () => onPick(r.q, "long")
-  }, /*#__PURE__*/React.createElement("u", {
-    "aria-hidden": "true"
-  }, initials(r.n)), /*#__PURE__*/React.createElement("b", null, r.n), /*#__PURE__*/React.createElement("s", null, r.t))))));
+  })))));
 }
 
 /* ----------------------- FILM ------------------------ */
@@ -1184,7 +1491,7 @@ function Film({
     setActive(null);
     try {
       const list = await ytSearch(query, {
-        duration: dur === "any" ? null : dur
+        duration: dur
       });
       if (!list.length) setErr("Nothing came back for that. Try different words.");
       setVids(list);
@@ -1208,7 +1515,7 @@ function Film({
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Pull film"), /*#__PURE__*/React.createElement("p", null, "A player, a team, a concept — anything you want to see done right.")), /*#__PURE__*/React.createElement("label", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Pull film"), /*#__PURE__*/React.createElement("p", null, "A player, a team, a concept \\u2014 anything you want to see done right.")), /*#__PURE__*/React.createElement("label", {
     className: "fr-label",
     htmlFor: "q"
   }, "Search"), /*#__PURE__*/React.createElement("input", {
@@ -1224,7 +1531,7 @@ function Film({
       marginTop: 12,
       marginBottom: 0
     }
-  }, [["any", "Anything"], ["short", "Under 4 min"], ["medium", "4–20 min"], ["long", "Full games"]].map(m => /*#__PURE__*/React.createElement("button", {
+  }, [["any", "Anything"], ["short", "Under 4 min"], ["medium", "4\u201320 min"], ["long", "Full games"]].map(m => /*#__PURE__*/React.createElement("button", {
     key: m[0],
     className: "fr-pill",
     "data-on": mode === m[0] ? "1" : "0",
@@ -1237,44 +1544,15 @@ function Film({
     className: "fr-load"
   }, "Searching"), err && /*#__PURE__*/React.createElement("p", {
     className: "fr-err"
-  }, err), active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, "Now playing"), /*#__PURE__*/React.createElement("iframe", {
-    className: "fr-player",
-    title: active.title,
-    src: "https://www.youtube-nocookie.com/embed/" + active.id,
-    allow: "accelerometer; encrypted-media; picture-in-picture",
-    allowFullScreen: true
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note fr-solid",
+  }, err), vids && /*#__PURE__*/React.createElement("div", {
     style: {
-      marginTop: 10
+      marginTop: 24
     }
-  }, active.title), /*#__PURE__*/React.createElement("a", {
-    className: "fr-link",
-    target: "_blank",
-    rel: "noreferrer",
-    href: "https://www.youtube.com/watch?v=" + active.id
-  }, "Open on YouTube")), vids && vids.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
-    className: "fr-eyebrow"
-  }, vids.length, " clips"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-vids"
-  }, vids.map(v => /*#__PURE__*/React.createElement("button", {
-    key: v.id,
-    className: "fr-glass fr-vid",
-    "data-on": active && active.id === v.id ? "1" : "0",
-    onClick: () => {
-      setActive(v);
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-    }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: v.thumb,
-    alt: "",
-    loading: "lazy"
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, v.title), /*#__PURE__*/React.createElement("p", null, v.channel))))))));
+  }, /*#__PURE__*/React.createElement(VideoList, {
+    vids: vids,
+    active: active,
+    setActive: setActive
+  }))));
 }
 
 /* ----------------------- TRAIN ----------------------- */
@@ -1293,7 +1571,7 @@ function Train() {
     setErr("");
     setOut(null);
     try {
-      const text = await ask("You are a demanding but clear basketball skills coach.\n" + "Player: " + lvl + " " + pos + ". Trains " + days + " days a week. Goal: \"" + goal + "\".\n" + "Reply with ONLY this JSON, no markdown:\n" + '{"read":"one blunt sentence naming the real limiting factor","keys":[{"point":"under 6 words","why":"under 20 words"}],"drills":[{"name":"","dose":"sets x reps or minutes","cue":"one coaching cue, under 12 words"}],"week":[{"day":"Mon","focus":"under 8 words","min":"30"}]}\n' + "Exactly 3 keys, 4 drills, and " + days + " training days plus rest days to fill 7.");
+      const text = await askJSON([T("You are a demanding but clear basketball skills coach.\n" + "Player: " + lvl + " " + pos + ". Trains " + days + " days a week. Goal: \"" + goal + "\".\n" + "Reply with ONLY this JSON:\n" + '{"read":"one blunt sentence naming the real limiting factor","keys":[{"point":"under 6 words","why":"under 20 words"}],"drills":[{"name":"","dose":"sets x reps or minutes","cue":"one coaching cue, under 12 words","progression":"under 14 words"}],"week":[{"day":"Mon","focus":"under 8 words","min":"30"}]}\n' + "Exactly 3 keys, 6 drills, and all 7 days in week including rest days.")]);
       setOut(toJSON(text));
     } catch (e) {
       setErr(e.message || "Something went wrong.");
@@ -1315,7 +1593,7 @@ function Train() {
     id: "goal",
     className: "fr-area",
     value: goal,
-    placeholder: "I get blown by on closeouts and foul a lot",
+    placeholder: "I am undersized and get blocked on my shots",
     onChange: e => setGoal(e.target.value)
   }))), /*#__PURE__*/React.createElement("div", {
     className: "fr-row",
@@ -1392,7 +1670,9 @@ function Train() {
     className: "fr-dose"
   }, d.dose), /*#__PURE__*/React.createElement("p", {
     className: "fr-cue"
-  }, "\u201C" + d.cue + "\u201D"))))), /*#__PURE__*/React.createElement("p", {
+  }, "\u201C" + d.cue + "\u201D"), d.progression && /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "Then: ", d.progression))))), /*#__PURE__*/React.createElement("p", {
     className: "fr-eyebrow"
   }, "The week"), /*#__PURE__*/React.createElement("div", {
     className: "fr-week"
@@ -1419,7 +1699,6 @@ async function grabFrames(file, onProgress) {
     });
     if (!video.videoWidth) throw new Error("That file has no video track.");
     const dur = video.duration && isFinite(video.duration) ? video.duration : 10;
-    // one frame roughly every 1.5s, never fewer than 8, never more than 24
     const count = Math.max(8, Math.min(24, Math.round(dur / 1.5)));
     const canvas = document.createElement("canvas");
     const scale = 560 / video.videoWidth;
@@ -1487,55 +1766,30 @@ function Clip() {
         duration: got.duration,
         count: got.count
       });
-      const shots = got.frames.map(data => ({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: "image/jpeg",
-          data
-        }
-      }));
-
-      /* pass 1 — identify and grade every category on show */
+      const shots = got.frames.map(IMG);
       setBusy("Watching the film");
-      const seed1 = shots.concat([{
-        type: "text",
-        text: "You are an elite basketball skills coach reviewing a player's film.\n" + "These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip, in order, frame 1 to " + got.count + ".\n" + "Nobody told you what this is. Work it out from the images.\n" + "Grade only the categories you can actually see evidence for. Do not invent a category you cannot judge.\n" + "Reply with ONLY this JSON, no markdown:\n" + '{"skill":"what they are doing, under 6 words","level":"your best guess at level, under 5 words","grade":"overall letter grade like B-","read":"two blunt sentences on the overall picture","categories":[{"name":"e.g. Shooting mechanics, Footwork, Ball handling, Finishing, Defensive stance, Body control, Decision making, Effort","grade":"letter grade","note":"under 18 words"}]}\n' + "Between 4 and 8 categories. If the footage is too blurry or the angle hides things, say so in read."
-      }]);
-      const raw1 = await send([{
-        role: "user",
-        content: seed1
-      }]);
+      const parts1 = shots.concat([T("You are an elite basketball skills coach reviewing a player's film.\n" + "These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip, in order, frame 1 to " + got.count + ".\n" + "Nobody told you what this is. Work it out from the images.\n" + "Grade only categories you can actually see evidence for.\n" + "Reply with ONLY this JSON:\n" + '{"skill":"what they are doing, under 6 words","level":"best guess at level, under 5 words","grade":"overall letter grade like B-","read":"two blunt sentences on the overall picture","categories":[{"name":"e.g. Shooting mechanics, Footwork, Ball handling, Finishing, Defensive stance, Body control, Decision making, Effort","grade":"letter grade","note":"under 18 words"}]}\n' + "Between 4 and 8 categories. If the footage is too blurry or the angle hides things, say so in read.")]);
+      const raw1 = await askJSON(parts1);
       const s = toJSON(raw1);
       setScan(s);
-
-      /* pass 2 — mechanical breakdown tied to frames */
       setBusy("Breaking down the mechanics");
-      const seed2 = shots.concat([{
-        type: "text",
-        text: "Same clip. You already identified it as: " + (s.skill || "a rep") + ".\n" + "Now break the mechanics down phase by phase and pin the problems to specific frames (1 to " + got.count + ").\n" + "Reply with ONLY this JSON, no markdown:\n" + '{"phases":[{"name":"phase of this specific move","status":"good|ok|fix","detail":"under 22 words"}],"working":["3 things holding up, under 14 words each"],"breaking":[{"frame":3,"issue":"under 18 words","cost":"what this costs in a game, under 12 words"}]}\n' + "Exactly 4 phases. Up to 4 breaking, ordered worst first."
-      }]);
-      const raw2 = await send([{
-        role: "user",
-        content: seed2
-      }]);
+      const parts2 = shots.concat([T("Same clip. You identified it as: " + (s.skill || "a rep") + ".\n" + "Break the mechanics down phase by phase and pin problems to specific frames (1 to " + got.count + ").\n" + "Reply with ONLY this JSON:\n" + '{"phases":[{"name":"phase of this specific move","status":"good|ok|fix","detail":"under 22 words"}],"working":["3 things holding up, under 14 words each"],"breaking":[{"frame":3,"issue":"under 18 words","cost":"what this costs in a game, under 12 words"}]}\n' + "Exactly 4 phases. Up to 4 breaking, worst first.")]);
+      const raw2 = await askJSON(parts2);
       const d = toJSON(raw2);
       setDiag(d);
-
-      /* pass 3 — the full program */
       setBusy("Writing the program");
-      const raw3 = await ask("A player filmed " + (s.skill || "a rep") + ". Level looks like " + (s.level || "unknown") + ".\n" + "Your film review found:\n" + JSON.stringify({
+      const raw3 = await askJSON([T("A player filmed " + (s.skill || "a rep") + ". Level looks like " + (s.level || "unknown") + ".\n" + "Your film review found:\n" + JSON.stringify({
         categories: s.categories,
         phases: d.phases,
         breaking: d.breaking
-      }) + "\n\n" + "Write them a full program. Reply with ONLY this JSON, no markdown:\n" + '{"priority":{"fix":"the one thing to fix first, under 8 words","why":"under 25 words"},"drills":[{"name":"","dose":"sets x reps","cue":"under 12 words","progression":"how it gets harder, under 14 words","fixes":"which problem this attacks, under 8 words"}],"week":[{"day":"Mon","focus":"under 10 words","min":"40"}],"weeks":[{"label":"Week 1-2","focus":"under 12 words","check":"how they know it worked, under 12 words"}],"watch":{"query":"a YouTube search for a pro who does this right","why":"under 16 words"}}\n' + "Exactly 6 drills, all 7 days in week, and 3 entries in weeks covering 6 weeks total.");
+      }) + "\n\n" + "Write a full program. Reply with ONLY this JSON:\n" + '{"priority":{"fix":"the one thing to fix first, under 8 words","why":"under 25 words"},"drills":[{"name":"","dose":"sets x reps","cue":"under 12 words","progression":"under 14 words","fixes":"which problem this attacks, under 8 words"}],"week":[{"day":"Mon","focus":"under 10 words","min":"40"}],"weeks":[{"label":"Week 1-2","focus":"under 12 words","check":"how they know it worked, under 12 words"}],"watch":{"query":"a YouTube search for a pro who does this right","why":"under 16 words"}}\n' + "Exactly 6 drills, all 7 days in week, 3 entries in weeks covering 6 weeks.")]);
       setPlan(toJSON(raw3));
       setHistory([{
         role: "user",
-        content: seed1
+        parts: parts1
       }, {
-        role: "assistant",
-        content: raw1
+        role: "model",
+        parts: [T(raw1)]
       }]);
     } catch (e) {
       setErr(e.message || "Something went wrong.");
@@ -1554,12 +1808,12 @@ function Clip() {
     try {
       const next = history.concat([{
         role: "user",
-        content: question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)"
+        parts: [T(question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)")]
       }]);
-      const reply = await send(next);
+      const reply = await ai(next, false);
       setHistory(next.concat([{
-        role: "assistant",
-        content: reply
+        role: "model",
+        parts: [T(reply)]
       }]));
       setThread(t => t.concat([{
         who: "coach",
@@ -1568,7 +1822,7 @@ function Clip() {
     } catch (e) {
       setThread(t => t.concat([{
         who: "coach",
-        text: e.message || "That didn't go through. Ask again."
+        text: e.message || "That didn't go through."
       }]));
     }
     setAsking(false);
@@ -1583,7 +1837,7 @@ function Clip() {
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "My clip"), /*#__PURE__*/React.createElement("p", null, "Any length. Nothing to fill in — upload it and it works out what you're doing.")), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("h2", null, "My clip"), /*#__PURE__*/React.createElement("p", null, "Any length. Nothing to fill in \\u2014 upload it and it works out what you're doing.")), /*#__PURE__*/React.createElement("input", {
     ref: input,
     type: "file",
     accept: "video/*",
@@ -1779,6 +2033,9 @@ function Clip() {
 /* ------------------------ APP ------------------------ */
 
 const NAV = [{
+  id: "home",
+  label: "Home"
+}, {
   id: "browse",
   label: "Browse"
 }, {
@@ -1795,19 +2052,37 @@ const NAV = [{
   label: "My clip"
 }];
 function App() {
-  const [stack, setStack] = useState(["home"]);
+  const [stack, setStack] = useState([{
+    page: "home"
+  }]);
   const [theme, setTheme] = useState("dark");
   const [seed, setSeed] = useState(null);
-  const page = stack[stack.length - 1];
+  const top = stack[stack.length - 1];
   useEffect(() => {
     const m = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)");
     if (m && m.matches) setTheme("light");
   }, []);
-  function go(to) {
-    setStack(s => s[s.length - 1] === to ? s : s.concat([to]));
+  function push(entry) {
+    setStack(s => s.concat([entry]));
     window.scrollTo({
       top: 0,
       behavior: "smooth"
+    });
+  }
+  function go(page) {
+    if (top.page === page) return;
+    if (page === "home") {
+      setStack([{
+        page: "home"
+      }]);
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+      return;
+    }
+    push({
+      page: page
     });
   }
   function back() {
@@ -1817,12 +2092,14 @@ function App() {
       behavior: "smooth"
     });
   }
-  function pickFilm(query, duration) {
+  function openFilm(query, duration) {
     setSeed({
       q: query,
       duration: duration || "any"
     });
-    go("film");
+    push({
+      page: "film"
+    });
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr",
@@ -1850,22 +2127,28 @@ function App() {
   }, NAV.map(n => /*#__PURE__*/React.createElement("button", {
     key: n.id,
     className: "fr-link",
-    "data-on": page === n.id ? "1" : "0",
+    "data-on": top.page === n.id ? "1" : "0",
     onClick: () => go(n.id)
   }, n.label))), /*#__PURE__*/React.createElement("button", {
     className: "fr-sun",
     onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
     "aria-label": "Switch theme"
-  }, theme === "dark" ? "\u2600" : "\u263E"))), page === "home" && /*#__PURE__*/React.createElement(Landing, {
+  }, theme === "dark" ? "\u2600" : "\u263E"))), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
     go: go
-  }), page === "browse" && /*#__PURE__*/React.createElement(Browse, {
-    onPick: pickFilm
-  }), page === "games" && /*#__PURE__*/React.createElement(Games, {
-    onPick: pickFilm
-  }), page === "film" && /*#__PURE__*/React.createElement(Film, {
+  }), top.page === "browse" && /*#__PURE__*/React.createElement(Browse, {
+    onPlayer: p => push({
+      page: "player",
+      player: p
+    }),
+    onConcept: query => openFilm(query, "any")
+  }), top.page === "player" && /*#__PURE__*/React.createElement(Player, {
+    player: top.player
+  }), top.page === "games" && /*#__PURE__*/React.createElement(Games, {
+    onPick: openFilm
+  }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
     clearSeed: () => setSeed(null)
-  }), page === "train" && /*#__PURE__*/React.createElement(Train, null), page === "clip" && /*#__PURE__*/React.createElement(Clip, null)));
+  }), top.page === "train" && /*#__PURE__*/React.createElement(Train, null), top.page === "clip" && /*#__PURE__*/React.createElement(Clip, null)));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
   } catch (err) {
