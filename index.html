@@ -10,7 +10,6 @@
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&display=swap');
@@ -260,10 +259,24 @@ body { background: #070B0E; }
 </head>
 
 <body>
-<div id="root"></div>
+<div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
-<script type="text/babel" data-presets="react">
-const { useState, useRef, useEffect } = React;
+<script>
+(function () {
+  var boot = document.getElementById("boot");
+  function fail(msg) { if (boot) boot.textContent = msg; }
+
+  if (!window.React || !window.ReactDOM) {
+    fail("Couldn't load React. Check your connection, or a content blocker may be stopping unpkg.com.");
+    return;
+  }
+
+  try {
+const {
+  useState,
+  useRef,
+  useEffect
+} = React;
 
 /* ============================================================
    SETTINGS — the only two lines you'll ever need to change
@@ -279,55 +292,175 @@ const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
 
 /* ============================================================ */
 
-const ROSTER = [
-  { n:"Stephen Curry", t:"Off-ball movement", g:"Guards", q:"Stephen Curry off ball movement breakdown" },
-  { n:"Kyrie Irving", t:"Handle & finishing", g:"Guards", q:"Kyrie Irving handle and finishing breakdown" },
-  { n:"Chris Paul", t:"Pace & midrange", g:"Guards", q:"Chris Paul pace midrange film study" },
-  { n:"Jalen Brunson", t:"Footwork", g:"Guards", q:"Jalen Brunson footwork breakdown" },
-  { n:"Damian Lillard", t:"Screen usage", g:"Guards", q:"Damian Lillard pick and roll screen usage" },
-  { n:"Caitlin Clark", t:"Deep pull-up", g:"Guards", q:"Caitlin Clark pull up shooting breakdown" },
-  { n:"Sabrina Ionescu", t:"Shooting off movement", g:"Guards", q:"Sabrina Ionescu shooting mechanics breakdown" },
-  { n:"Kevin Durant", t:"Shooting mechanics", g:"Wings", q:"Kevin Durant shooting form breakdown" },
-  { n:"Kawhi Leonard", t:"Two-way footwork", g:"Wings", q:"Kawhi Leonard footwork breakdown" },
-  { n:"Jayson Tatum", t:"Shot creation", g:"Wings", q:"Jayson Tatum shot creation film study" },
-  { n:"Jimmy Butler", t:"Drawing fouls", g:"Wings", q:"Jimmy Butler drawing fouls breakdown" },
-  { n:"Breanna Stewart", t:"Length & versatility", g:"Wings", q:"Breanna Stewart scoring breakdown" },
-  { n:"Paul George", t:"Closeout defense", g:"Wings", q:"Paul George defensive film study" },
-  { n:"Nikola Jokic", t:"Post reads & passing", g:"Bigs", q:"Nikola Jokic post passing breakdown" },
-  { n:"A'ja Wilson", t:"Post scoring", g:"Bigs", q:"A'ja Wilson post moves breakdown" },
-  { n:"Hakeem Olajuwon", t:"Post footwork", g:"Bigs", q:"Hakeem Olajuwon post footwork breakdown" },
-  { n:"Bam Adebayo", t:"Switch defense", g:"Bigs", q:"Bam Adebayo switch defense film study" },
-  { n:"Draymond Green", t:"Help defense", g:"Bigs", q:"Draymond Green help defense breakdown" },
-  { n:"Tim Duncan", t:"Fundamentals", g:"Bigs", q:"Tim Duncan fundamentals footwork breakdown" },
-  { n:"Michael Jordan", t:"Midrange craft", g:"Legends", q:"Michael Jordan midrange footwork breakdown" },
-  { n:"Kobe Bryant", t:"Footwork", g:"Legends", q:"Kobe Bryant footwork breakdown" },
-  { n:"Manu Ginobili", t:"Euro step", g:"Legends", q:"Manu Ginobili euro step breakdown" },
-  { n:"Diana Taurasi", t:"Shot making", g:"Legends", q:"Diana Taurasi shot making film study" },
-  { n:"Closeouts", t:"Concept", g:"Skills", q:"how to close out properly basketball defense drill" },
-  { n:"Euro Step", t:"Concept", g:"Skills", q:"euro step tutorial breakdown basketball" },
-  { n:"Floater", t:"Concept", g:"Skills", q:"floater package tutorial basketball" },
-  { n:"P&R Reads", t:"Concept", g:"Skills", q:"pick and roll reads tutorial basketball" },
-  { n:"Boxing Out", t:"Concept", g:"Skills", q:"rebounding box out technique basketball" },
-  { n:"Off-ball Screens", t:"Concept", g:"Skills", q:"using off ball screens basketball tutorial" },
-  { n:"Transition D", t:"Concept", g:"Skills", q:"transition defense fundamentals basketball" },
-  { n:"Change of Pace", t:"Concept", g:"Skills", q:"change of pace dribbling basketball tutorial" },
-];
-const GROUPS = ["All","Guards","Wings","Bigs","Legends","Skills"];
+const ROSTER = [{
+  n: "Stephen Curry",
+  t: "Off-ball movement",
+  g: "Guards",
+  q: "Stephen Curry off ball movement breakdown"
+}, {
+  n: "Kyrie Irving",
+  t: "Handle & finishing",
+  g: "Guards",
+  q: "Kyrie Irving handle and finishing breakdown"
+}, {
+  n: "Chris Paul",
+  t: "Pace & midrange",
+  g: "Guards",
+  q: "Chris Paul pace midrange film study"
+}, {
+  n: "Jalen Brunson",
+  t: "Footwork",
+  g: "Guards",
+  q: "Jalen Brunson footwork breakdown"
+}, {
+  n: "Damian Lillard",
+  t: "Screen usage",
+  g: "Guards",
+  q: "Damian Lillard pick and roll screen usage"
+}, {
+  n: "Caitlin Clark",
+  t: "Deep pull-up",
+  g: "Guards",
+  q: "Caitlin Clark pull up shooting breakdown"
+}, {
+  n: "Sabrina Ionescu",
+  t: "Shooting off movement",
+  g: "Guards",
+  q: "Sabrina Ionescu shooting mechanics breakdown"
+}, {
+  n: "Kevin Durant",
+  t: "Shooting mechanics",
+  g: "Wings",
+  q: "Kevin Durant shooting form breakdown"
+}, {
+  n: "Kawhi Leonard",
+  t: "Two-way footwork",
+  g: "Wings",
+  q: "Kawhi Leonard footwork breakdown"
+}, {
+  n: "Jayson Tatum",
+  t: "Shot creation",
+  g: "Wings",
+  q: "Jayson Tatum shot creation film study"
+}, {
+  n: "Jimmy Butler",
+  t: "Drawing fouls",
+  g: "Wings",
+  q: "Jimmy Butler drawing fouls breakdown"
+}, {
+  n: "Breanna Stewart",
+  t: "Length & versatility",
+  g: "Wings",
+  q: "Breanna Stewart scoring breakdown"
+}, {
+  n: "Paul George",
+  t: "Closeout defense",
+  g: "Wings",
+  q: "Paul George defensive film study"
+}, {
+  n: "Nikola Jokic",
+  t: "Post reads & passing",
+  g: "Bigs",
+  q: "Nikola Jokic post passing breakdown"
+}, {
+  n: "A'ja Wilson",
+  t: "Post scoring",
+  g: "Bigs",
+  q: "A'ja Wilson post moves breakdown"
+}, {
+  n: "Hakeem Olajuwon",
+  t: "Post footwork",
+  g: "Bigs",
+  q: "Hakeem Olajuwon post footwork breakdown"
+}, {
+  n: "Bam Adebayo",
+  t: "Switch defense",
+  g: "Bigs",
+  q: "Bam Adebayo switch defense film study"
+}, {
+  n: "Draymond Green",
+  t: "Help defense",
+  g: "Bigs",
+  q: "Draymond Green help defense breakdown"
+}, {
+  n: "Tim Duncan",
+  t: "Fundamentals",
+  g: "Bigs",
+  q: "Tim Duncan fundamentals footwork breakdown"
+}, {
+  n: "Michael Jordan",
+  t: "Midrange craft",
+  g: "Legends",
+  q: "Michael Jordan midrange footwork breakdown"
+}, {
+  n: "Kobe Bryant",
+  t: "Footwork",
+  g: "Legends",
+  q: "Kobe Bryant footwork breakdown"
+}, {
+  n: "Manu Ginobili",
+  t: "Euro step",
+  g: "Legends",
+  q: "Manu Ginobili euro step breakdown"
+}, {
+  n: "Diana Taurasi",
+  t: "Shot making",
+  g: "Legends",
+  q: "Diana Taurasi shot making film study"
+}, {
+  n: "Closeouts",
+  t: "Concept",
+  g: "Skills",
+  q: "how to close out properly basketball defense drill"
+}, {
+  n: "Euro Step",
+  t: "Concept",
+  g: "Skills",
+  q: "euro step tutorial breakdown basketball"
+}, {
+  n: "Floater",
+  t: "Concept",
+  g: "Skills",
+  q: "floater package tutorial basketball"
+}, {
+  n: "P&R Reads",
+  t: "Concept",
+  g: "Skills",
+  q: "pick and roll reads tutorial basketball"
+}, {
+  n: "Boxing Out",
+  t: "Concept",
+  g: "Skills",
+  q: "rebounding box out technique basketball"
+}, {
+  n: "Off-ball Screens",
+  t: "Concept",
+  g: "Skills",
+  q: "using off ball screens basketball tutorial"
+}, {
+  n: "Transition D",
+  t: "Concept",
+  g: "Skills",
+  q: "transition defense fundamentals basketball"
+}, {
+  n: "Change of Pace",
+  t: "Concept",
+  g: "Skills",
+  q: "change of pace dribbling basketball tutorial"
+}];
+const GROUPS = ["All", "Guards", "Wings", "Bigs", "Legends", "Skills"];
 
 /* ---------------------- YouTube ---------------------- */
 
-const ytCache = {};          // saves quota: same search twice costs nothing
-const unescapeHTML = (s) => {
+const ytCache = {}; // saves quota: same search twice costs nothing
+const unescapeHTML = s => {
   const el = document.createElement("textarea");
   el.innerHTML = s || "";
   return el.value;
 };
-
 async function ytSearch(q, max = 10) {
   if (ytCache[q]) return ytCache[q];
-  const url = "https://www.googleapis.com/youtube/v3/search"
-    + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate"
-    + "&maxResults=" + max + "&q=" + encodeURIComponent(q) + "&key=" + YT_KEY;
+  const url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&maxResults=" + max + "&q=" + encodeURIComponent(q) + "&key=" + YT_KEY;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) {
@@ -336,12 +469,12 @@ async function ytSearch(q, max = 10) {
     if (/referer|referrer|blocked|API_KEY/i.test(m)) throw new Error("This key isn't allowed on this address. Check the website restriction in Google Cloud.");
     throw new Error(m || "YouTube search failed.");
   }
-  const out = (data.items || []).map((it) => ({
+  const out = (data.items || []).map(it => ({
     id: it.id.videoId,
     title: unescapeHTML(it.snippet.title),
     channel: unescapeHTML(it.snippet.channelTitle),
-    thumb: (it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default) || {}).url,
-  })).filter((v) => v.id);
+    thumb: (it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default) || {}).url
+  })).filter(v => v.id);
   ytCache[q] = out;
   return out;
 }
@@ -351,181 +484,248 @@ async function ytSearch(q, max = 10) {
 async function send(messages) {
   const res = await fetch(AI_ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }),
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages
+    })
   });
   if (!res.ok) throw new Error("The breakdown service isn't reachable from this site yet.");
   const data = await res.json();
-  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
-const ask = (content) => send([{ role: "user", content }]);
-
+const ask = content => send([{
+  role: "user",
+  content
+}]);
 function toJSON(text) {
   const clean = String(text).replace(/```json/g, "").replace(/```/g, "").trim();
-  const a = clean.indexOf("{"), b = clean.lastIndexOf("}");
+  const a = clean.indexOf("{"),
+    b = clean.lastIndexOf("}");
   if (a === -1 || b === -1) throw new Error("Couldn't read the breakdown. Try again.");
   return JSON.parse(clean.slice(a, b + 1));
 }
 
 /* --------------------- bits -------------------------- */
 
-function Mark({ n, color }) {
+function Mark({
+  n,
+  color
+}) {
   const c = color === "cyan" ? "var(--cyan)" : "var(--amber)";
-  return (
-    <i className="fr-mark" aria-hidden="true">
-      <svg viewBox="0 0 30 30">
-        <ellipse cx="15" cy="15" rx="13" ry="11.5" transform="rotate(-12 15 15)" style={{ stroke: c }} />
-      </svg>
-      <span style={{ color: c }}>{n}</span>
-    </i>
-  );
+  return /*#__PURE__*/React.createElement("i", {
+    className: "fr-mark",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 30 30"
+  }, /*#__PURE__*/React.createElement("ellipse", {
+    cx: "15",
+    cy: "15",
+    rx: "13",
+    ry: "11.5",
+    transform: "rotate(-12 15 15)",
+    style: {
+      stroke: c
+    }
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: c
+    }
+  }, n));
 }
-const PIP = { good:"var(--cyan)", ok:"var(--faint)", fix:"var(--amber)" };
-const initials = (s) => s.split(" ").map((w) => w[0]).join("").slice(0,2).toUpperCase();
+const PIP = {
+  good: "var(--cyan)",
+  ok: "var(--faint)",
+  fix: "var(--amber)"
+};
+const initials = s => s.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
 /* --------------------- LANDING ----------------------- */
 
-function Landing({ go }) {
-  const cards = [
-    { ic:"▶", h:"Browse the film", p:"Curated tape on the players who do your skill best, plus concept breakdowns.", to:"browse" },
-    { ic:"◎", h:"Analyze your clip", p:"Upload a rep. Get a grade, a phase-by-phase read, and the frame where it falls apart.", to:"clip" },
-    { ic:"▤", h:"Build the plan", p:"Drills with real sets and reps, built around your position, level, and schedule.", to:"train" },
-  ];
-  return (
-    <div className="fr-page">
-      <div className="fr-wrap">
-        <section className="fr-hero">
-          <p className="fr-eyeb">Film Room</p>
-          <h1>Film<br/>doesn't<br/><em>lie.</em></h1>
-          <p className="fr-lede">
-            Pull tape on any player or concept. Send your own clip and get it broken
-            down frame by frame. Then get the drills that actually fix it.
-          </p>
-          <div className="fr-cta">
-            <button className="fr-btn" onClick={() => go("clip")}>Break down my film</button>
-            <button className="fr-btn" data-ghost="1" onClick={() => go("browse")}>Browse players</button>
-          </div>
-        </section>
-        <div className="fr-trio">
-          {cards.map((c) => (
-            <button key={c.to} className="fr-glass fr-card" onClick={() => go(c.to)}>
-              <span style={{ color:"var(--amber)", fontSize:20, lineHeight:1 }}>{c.ic}</span>
-              <h3>{c.h}</h3>
-              <p>{c.p}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function Landing({
+  go
+}) {
+  const cards = [{
+    ic: "▶",
+    h: "Browse the film",
+    p: "Curated tape on the players who do your skill best, plus concept breakdowns.",
+    to: "browse"
+  }, {
+    ic: "◎",
+    h: "Analyze your clip",
+    p: "Upload a rep. Get a grade, a phase-by-phase read, and the frame where it falls apart.",
+    to: "clip"
+  }, {
+    ic: "▤",
+    h: "Build the plan",
+    p: "Drills with real sets and reps, built around your position, level, and schedule.",
+    to: "train"
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "fr-hero"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyeb"
+  }, "Film Room"), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-lede"
+  }, "Pull tape on any player or concept. Send your own clip and get it broken down frame by frame. Then get the drills that actually fix it."), /*#__PURE__*/React.createElement("div", {
+    className: "fr-cta"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    onClick: () => go("clip")
+  }, "Break down my film"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    "data-ghost": "1",
+    onClick: () => go("browse")
+  }, "Browse players"))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-trio"
+  }, cards.map(c => /*#__PURE__*/React.createElement("button", {
+    key: c.to,
+    className: "fr-glass fr-card",
+    onClick: () => go(c.to)
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--amber)",
+      fontSize: 20,
+      lineHeight: 1
+    }
+  }, c.ic), /*#__PURE__*/React.createElement("h3", null, c.h), /*#__PURE__*/React.createElement("p", null, c.p))))));
 }
 
 /* ---------------------- BROWSE ----------------------- */
 
-function Browse({ onPick }) {
+function Browse({
+  onPick
+}) {
   const [group, setGroup] = useState("All");
-  const list = group === "All" ? ROSTER : ROSTER.filter((r) => r.g === group);
-  return (
-    <div className="fr-page">
-      <div className="fr-wrap">
-        <div className="fr-head">
-          <h2>Browse</h2>
-          <p>Tap anyone to pull their film. Every search runs live, so the tape stays current.</p>
-        </div>
-        <div className="fr-pills">
-          {GROUPS.map((g) => (
-            <button key={g} className="fr-pill" data-on={group===g?"1":"0"} onClick={() => setGroup(g)}>{g}</button>
-          ))}
-        </div>
-        <div className="fr-grid">
-          {list.map((r) => (
-            <button key={r.n} className="fr-glass fr-tile" onClick={() => onPick(r.q)}>
-              <u aria-hidden="true">{initials(r.n)}</u>
-              <b>{r.n}</b>
-              <s>{r.t}</s>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  const list = group === "All" ? ROSTER : ROSTER.filter(r => r.g === group);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-head"
+  }, /*#__PURE__*/React.createElement("h2", null, "Browse"), /*#__PURE__*/React.createElement("p", null, "Tap anyone to pull their film. Every search runs live, so the tape stays current.")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-pills"
+  }, GROUPS.map(g => /*#__PURE__*/React.createElement("button", {
+    key: g,
+    className: "fr-pill",
+    "data-on": group === g ? "1" : "0",
+    onClick: () => setGroup(g)
+  }, g))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-grid"
+  }, list.map(r => /*#__PURE__*/React.createElement("button", {
+    key: r.n,
+    className: "fr-glass fr-tile",
+    onClick: () => onPick(r.q)
+  }, /*#__PURE__*/React.createElement("u", {
+    "aria-hidden": "true"
+  }, initials(r.n)), /*#__PURE__*/React.createElement("b", null, r.n), /*#__PURE__*/React.createElement("s", null, r.t))))));
 }
 
 /* ----------------------- FILM ------------------------ */
 
-function Film({ seed, clearSeed }) {
+function Film({
+  seed,
+  clearSeed
+}) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [vids, setVids] = useState(null);
   const [active, setActive] = useState(null);
-
   async function run(term) {
     const query = (term !== undefined ? term : q).trim();
     if (!query) return;
-    setBusy(true); setErr(""); setVids(null); setActive(null);
+    setBusy(true);
+    setErr("");
+    setVids(null);
+    setActive(null);
     try {
       const list = await ytSearch(query);
       if (!list.length) setErr("Nothing came back for that. Try different words.");
       setVids(list);
       setActive(list[0] || null);
-    } catch (e) { setErr(e.message || "Something went wrong."); }
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
     setBusy(false);
   }
-
   useEffect(() => {
-    if (seed) { setQ(seed); run(seed); clearSeed(); }
+    if (seed) {
+      setQ(seed);
+      run(seed);
+      clearSeed();
+    }
   }, [seed]);
-
-  return (
-    <div className="fr-page">
-      <div className="fr-wrap fr-narrow">
-        <div className="fr-head">
-          <h2>Pull film</h2>
-          <p>A player, a team, a concept — anything you want to see done right.</p>
-        </div>
-
-        <label className="fr-label" htmlFor="q">Search</label>
-        <input id="q" className="fr-input" value={q} placeholder="Jalen Brunson footwork"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && run()} />
-        <button className="fr-btn fr-full" onClick={() => run()} disabled={busy || !q.trim()}>
-          {busy ? "Pulling film" : "Pull the film"}
-        </button>
-
-        {busy && <p className="fr-load">Searching</p>}
-        {err && <p className="fr-err">{err}</p>}
-
-        {active && (
-          <>
-            <p className="fr-eyebrow">Now playing</p>
-            <iframe className="fr-player" title={active.title}
-              src={"https://www.youtube-nocookie.com/embed/" + active.id}
-              allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
-            <p className="fr-note fr-solid" style={{ marginTop:10 }}>{active.title}</p>
-            <a className="fr-link" target="_blank" rel="noreferrer"
-              href={"https://www.youtube.com/watch?v=" + active.id}>Open on YouTube</a>
-          </>
-        )}
-
-        {vids && vids.length > 0 && (
-          <>
-            <p className="fr-eyebrow">{vids.length} clips</p>
-            <div className="fr-vids">
-              {vids.map((v) => (
-                <button key={v.id} className="fr-glass fr-vid"
-                  data-on={active && active.id === v.id ? "1" : "0"}
-                  onClick={() => { setActive(v); window.scrollTo({ top:0, behavior:"smooth" }); }}>
-                  <img src={v.thumb} alt="" loading="lazy" />
-                  <div><h4>{v.title}</h4><p>{v.channel}</p></div>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap fr-narrow"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-head"
+  }, /*#__PURE__*/React.createElement("h2", null, "Pull film"), /*#__PURE__*/React.createElement("p", null, "A player, a team, a concept — anything you want to see done right.")), /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "q"
+  }, "Search"), /*#__PURE__*/React.createElement("input", {
+    id: "q",
+    className: "fr-input",
+    value: q,
+    placeholder: "Jalen Brunson footwork",
+    onChange: e => setQ(e.target.value),
+    onKeyDown: e => e.key === "Enter" && run()
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-full",
+    onClick: () => run(),
+    disabled: busy || !q.trim()
+  }, busy ? "Pulling film" : "Pull the film"), busy && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, "Searching"), err && /*#__PURE__*/React.createElement("p", {
+    className: "fr-err"
+  }, err), active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Now playing"), /*#__PURE__*/React.createElement("iframe", {
+    className: "fr-player",
+    title: active.title,
+    src: "https://www.youtube-nocookie.com/embed/" + active.id,
+    allow: "accelerometer; encrypted-media; picture-in-picture",
+    allowFullScreen: true
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      marginTop: 10
+    }
+  }, active.title), /*#__PURE__*/React.createElement("a", {
+    className: "fr-link",
+    target: "_blank",
+    rel: "noreferrer",
+    href: "https://www.youtube.com/watch?v=" + active.id
+  }, "Open on YouTube")), vids && vids.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, vids.length, " clips"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-vids"
+  }, vids.map(v => /*#__PURE__*/React.createElement("button", {
+    key: v.id,
+    className: "fr-glass fr-vid",
+    "data-on": active && active.id === v.id ? "1" : "0",
+    onClick: () => {
+      setActive(v);
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: v.thumb,
+    alt: "",
+    loading: "lazy"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, v.title), /*#__PURE__*/React.createElement("p", null, v.channel))))))));
 }
 
 /* ----------------------- TRAIN ----------------------- */
@@ -538,111 +738,123 @@ function Train() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [out, setOut] = useState(null);
-
   async function run() {
     if (!goal.trim()) return;
-    setBusy(true); setErr(""); setOut(null);
+    setBusy(true);
+    setErr("");
+    setOut(null);
     try {
-      const text = await ask(
-`You are a demanding but clear basketball skills coach.
+      const text = await ask(`You are a demanding but clear basketball skills coach.
 Player: ${lvl} ${pos}. Trains ${days} days a week. Goal: "${goal}".
 Reply with ONLY this JSON, no markdown:
 {"read":"one blunt sentence naming the real limiting factor","keys":[{"point":"under 6 words","why":"under 20 words"}],"drills":[{"name":"","dose":"sets x reps or minutes","cue":"one coaching cue, under 12 words"}],"week":[{"day":"Mon","focus":"under 8 words","min":"30"}]}
 Exactly 3 keys, 4 drills, and ${days} training days plus rest days to fill 7.`);
       setOut(toJSON(text));
-    } catch (e) { setErr(e.message || "Something went wrong."); }
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
     setBusy(false);
   }
-
-  return (
-    <div className="fr-page">
-      <div className="fr-wrap fr-narrow">
-        <div className="fr-head">
-          <h2>Get better</h2>
-          <p>Tell it what keeps happening in games. It builds the week around that.</p>
-        </div>
-
-        <div className="fr-row">
-          <div>
-            <label className="fr-label" htmlFor="goal">What are you trying to fix?</label>
-            <textarea id="goal" className="fr-area" value={goal}
-              placeholder="I get blown by on closeouts and foul a lot"
-              onChange={(e) => setGoal(e.target.value)} />
-          </div>
-        </div>
-        <div className="fr-row" data-cols="2">
-          <div>
-            <label className="fr-label" htmlFor="pos">Position</label>
-            <select id="pos" className="fr-select" value={pos} onChange={(e) => setPos(e.target.value)}>
-              <option>Guard</option><option>Wing</option><option>Forward</option><option>Big</option>
-            </select>
-          </div>
-          <div>
-            <label className="fr-label" htmlFor="lvl">Level</label>
-            <select id="lvl" className="fr-select" value={lvl} onChange={(e) => setLvl(e.target.value)}>
-              <option>Middle school</option><option>High school</option>
-              <option>AAU / travel</option><option>College</option><option>Adult rec</option>
-            </select>
-          </div>
-        </div>
-        <div className="fr-row" data-cols="2">
-          <div>
-            <label className="fr-label" htmlFor="days">Days per week</label>
-            <select id="days" className="fr-select" value={days} onChange={(e) => setDays(e.target.value)}>
-              <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
-            </select>
-          </div>
-        </div>
-        <button className="fr-btn fr-full" onClick={run} disabled={busy || !goal.trim()}>
-          {busy ? "Building" : "Build the plan"}
-        </button>
-
-        {busy && <p className="fr-load">Working</p>}
-        {err && <p className="fr-err">{err}</p>}
-
-        {out && (
-          <>
-            <p className="fr-eyebrow">The read</p>
-            <p className="fr-read">{out.read}</p>
-
-            <p className="fr-eyebrow">Keys</p>
-            <div className="fr-glass fr-panel">
-              {(out.keys||[]).map((k,i) => (
-                <div className="fr-item" key={i}>
-                  <Mark n={i+1} color="cyan" />
-                  <div><p className="fr-name">{k.point}</p><p className="fr-note">{k.why}</p></div>
-                </div>
-              ))}
-            </div>
-
-            <p className="fr-eyebrow">Drills</p>
-            <div className="fr-glass fr-panel">
-              {(out.drills||[]).map((d,i) => (
-                <div className="fr-item" key={i}>
-                  <Mark n={i+1} />
-                  <div style={{ flex:1 }}>
-                    <p className="fr-name">{d.name}</p>
-                    <p className="fr-dose">{d.dose}</p>
-                    <p className="fr-cue">“{d.cue}”</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="fr-eyebrow">The week</p>
-            <div className="fr-week">
-              {(out.week||[]).map((d,i) => (
-                <div className="fr-glass fr-day" key={i}>
-                  <b>{d.day}{d.min ? " · " + d.min + " min" : ""}</b>
-                  <i>{d.focus}</i>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap fr-narrow"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-head"
+  }, /*#__PURE__*/React.createElement("h2", null, "Get better"), /*#__PURE__*/React.createElement("p", null, "Tell it what keeps happening in games. It builds the week around that.")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-row"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "goal"
+  }, "What are you trying to fix?"), /*#__PURE__*/React.createElement("textarea", {
+    id: "goal",
+    className: "fr-area",
+    value: goal,
+    placeholder: "I get blown by on closeouts and foul a lot",
+    onChange: e => setGoal(e.target.value)
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-row",
+    "data-cols": "2"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "pos"
+  }, "Position"), /*#__PURE__*/React.createElement("select", {
+    id: "pos",
+    className: "fr-select",
+    value: pos,
+    onChange: e => setPos(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "Guard"), /*#__PURE__*/React.createElement("option", null, "Wing"), /*#__PURE__*/React.createElement("option", null, "Forward"), /*#__PURE__*/React.createElement("option", null, "Big"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "lvl"
+  }, "Level"), /*#__PURE__*/React.createElement("select", {
+    id: "lvl",
+    className: "fr-select",
+    value: lvl,
+    onChange: e => setLvl(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "Middle school"), /*#__PURE__*/React.createElement("option", null, "High school"), /*#__PURE__*/React.createElement("option", null, "AAU / travel"), /*#__PURE__*/React.createElement("option", null, "College"), /*#__PURE__*/React.createElement("option", null, "Adult rec")))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-row",
+    "data-cols": "2"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "days"
+  }, "Days per week"), /*#__PURE__*/React.createElement("select", {
+    id: "days",
+    className: "fr-select",
+    value: days,
+    onChange: e => setDays(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "2"), /*#__PURE__*/React.createElement("option", null, "3"), /*#__PURE__*/React.createElement("option", null, "4"), /*#__PURE__*/React.createElement("option", null, "5"), /*#__PURE__*/React.createElement("option", null, "6")))), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-full",
+    onClick: run,
+    disabled: busy || !goal.trim()
+  }, busy ? "Building" : "Build the plan"), busy && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, "Working"), err && /*#__PURE__*/React.createElement("p", {
+    className: "fr-err"
+  }, err), out && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "The read"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-read"
+  }, out.read), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Keys"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, (out.keys || []).map((k, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-item",
+    key: i
+  }, /*#__PURE__*/React.createElement(Mark, {
+    n: i + 1,
+    color: "cyan"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-name"
+  }, k.point), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, k.why))))), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Drills"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, (out.drills || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-item",
+    key: i
+  }, /*#__PURE__*/React.createElement(Mark, {
+    n: i + 1
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-name"
+  }, d.name), /*#__PURE__*/React.createElement("p", {
+    className: "fr-dose"
+  }, d.dose), /*#__PURE__*/React.createElement("p", {
+    className: "fr-cue"
+  }, "“", d.cue, "”"))))), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "The week"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-week"
+  }, (out.week || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-day",
+    key: i
+  }, /*#__PURE__*/React.createElement("b", null, d.day, d.min ? " · " + d.min + " min" : ""), /*#__PURE__*/React.createElement("i", null, d.focus)))))));
 }
 
 /* ------------------------ CLIP ----------------------- */
@@ -651,7 +863,10 @@ async function grabFrames(file, count) {
   count = count || 8;
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
-  video.src = url; video.muted = true; video.playsInline = true; video.preload = "auto";
+  video.src = url;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
   try {
     await new Promise((resolve, reject) => {
       video.onloadeddata = resolve;
@@ -661,20 +876,25 @@ async function grabFrames(file, count) {
     if (!video.videoWidth) throw new Error("That file has no video track.");
     const canvas = document.createElement("canvas");
     const scale = 560 / video.videoWidth;
-    canvas.width = 560; canvas.height = Math.round(video.videoHeight * scale);
+    canvas.width = 560;
+    canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
     const dur = video.duration || 1;
     const frames = [];
     for (let i = 0; i < count; i++) {
       const t = Math.min(dur * ((i + 0.5) / count), Math.max(dur - 0.05, 0));
-      await new Promise((resolve) => { video.onseeked = resolve; video.currentTime = t; });
+      await new Promise(resolve => {
+        video.onseeked = resolve;
+        video.currentTime = t;
+      });
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       frames.push(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
     }
     return frames;
-  } finally { URL.revokeObjectURL(url); }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
-
 function Clip() {
   const [file, setFile] = useState(null);
   const [what, setWhat] = useState("");
@@ -690,303 +910,396 @@ function Clip() {
   const [q, setQ] = useState("");
   const [asking, setAsking] = useState(false);
   const input = useRef(null);
-
   function reset(f) {
-    setFile(f); setFrames([]); setDiag(null); setPlan(null);
-    setThread([]); setHistory([]); setErr("");
+    setFile(f);
+    setFrames([]);
+    setDiag(null);
+    setPlan(null);
+    setThread([]);
+    setHistory([]);
+    setErr("");
   }
-
   async function run() {
     if (!file) return;
-    setErr(""); setDiag(null); setPlan(null); setThread([]); setFrames([]);
+    setErr("");
+    setDiag(null);
+    setPlan(null);
+    setThread([]);
+    setFrames([]);
     try {
       setBusy("Pulling frames");
       const f = await grabFrames(file);
       setFrames(f);
-
       setBusy("Reading the tape");
-      const seed = f.map((data) => ({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data } }));
-      seed.push({ type:"text", text:
-`You are a sharp, blunt basketball skills coach breaking down one player's clip.
+      const seed = f.map(data => ({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data
+        }
+      }));
+      seed.push({
+        type: "text",
+        text: `You are a sharp, blunt basketball skills coach breaking down one player's clip.
 These 8 stills are evenly spaced through the clip, in order, frame 1 to 8.
 Player: ${lvl} ${pos}. They say the clip is: "${what || "unspecified"}".
 Judge only what the stills actually show. If the angle or blur hides the mechanics, say that plainly in "read" rather than guessing.
 Reply with ONLY this JSON, no markdown:
 {"read":"two sentences on the overall picture","grade":"letter grade like B-","phases":[{"name":"phase of the move","status":"good|ok|fix","detail":"under 22 words"}],"working":["2 things holding up, under 14 words each"],"breaking":[{"frame":3,"issue":"under 18 words","cost":"what this costs in a game, under 12 words"}]}
-Exactly 4 phases named for this specific move. Max 3 breaking.` });
-
-      const raw1 = await send([{ role:"user", content: seed }]);
+Exactly 4 phases named for this specific move. Max 3 breaking.`
+      });
+      const raw1 = await send([{
+        role: "user",
+        content: seed
+      }]);
       const d = toJSON(raw1);
       setDiag(d);
-
       setBusy("Writing the plan");
-      const raw2 = await ask(
-`A ${lvl} ${pos} filmed "${what || "a rep"}". Your film breakdown found:
+      const raw2 = await ask(`A ${lvl} ${pos} filmed "${what || "a rep"}". Your film breakdown found:
 ${JSON.stringify(d)}
 
 Now give them the work. Reply with ONLY this JSON, no markdown:
 {"priority":{"fix":"the one thing to fix first, under 8 words","why":"under 25 words"},"drills":[{"name":"","dose":"sets x reps","cue":"under 12 words","progression":"how it gets harder, under 14 words"}],"weeks":[{"label":"Week 1","focus":"under 12 words","check":"how they know it worked, under 12 words"}],"watch":{"query":"a YouTube search for a pro who does this right","why":"under 16 words"}}
 Exactly 3 drills and 2 weeks.`);
       setPlan(toJSON(raw2));
-      setHistory([{ role:"user", content: seed }, { role:"assistant", content: raw1 }]);
-    } catch (e) { setErr(e.message || "Something went wrong."); }
+      setHistory([{
+        role: "user",
+        content: seed
+      }, {
+        role: "assistant",
+        content: raw1
+      }]);
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
     setBusy("");
   }
-
   async function askCoach() {
     if (!q.trim() || asking) return;
     const question = q.trim();
-    setQ(""); setAsking(true);
-    setThread((t) => t.concat([{ who:"you", text:question }]));
+    setQ("");
+    setAsking(true);
+    setThread(t => t.concat([{
+      who: "you",
+      text: question
+    }]));
     try {
-      const next = history.concat([{ role:"user",
-        content: question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)" }]);
+      const next = history.concat([{
+        role: "user",
+        content: question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)"
+      }]);
       const reply = await send(next);
-      setHistory(next.concat([{ role:"assistant", content: reply }]));
-      setThread((t) => t.concat([{ who:"coach", text:reply }]));
+      setHistory(next.concat([{
+        role: "assistant",
+        content: reply
+      }]));
+      setThread(t => t.concat([{
+        who: "coach",
+        text: reply
+      }]));
     } catch (e) {
-      setThread((t) => t.concat([{ who:"coach", text: e.message || "That didn't go through. Ask again." }]));
+      setThread(t => t.concat([{
+        who: "coach",
+        text: e.message || "That didn't go through. Ask again."
+      }]));
     }
     setAsking(false);
   }
-
   const flagged = {};
-  ((diag && diag.breaking) || []).forEach((b) => { flagged[Number(b.frame)] = true; });
-
-  return (
-    <div className="fr-page">
-      <div className="fr-wrap fr-narrow">
-        <div className="fr-head">
-          <h2>My clip</h2>
-          <p>Five to fifteen seconds, one rep, filmed from the side. That's all it needs.</p>
-        </div>
-
-        <input ref={input} type="file" accept="video/*" style={{ display:"none" }}
-          onChange={(e) => reset(e.target.files[0] || null)} />
-        <div className="fr-drop" role="button" tabIndex={0}
-          onClick={() => input.current.click()}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current.click()}>
-          <b>{file ? file.name : "Add a clip"}</b>
-          {!file && <span>MP4 works best</span>}
-        </div>
-
-        <div style={{ marginTop:16 }}>
-          <label className="fr-label" htmlFor="what">What's in the clip?</label>
-          <input id="what" className="fr-input" value={what}
-            placeholder="Catch and shoot from the left wing"
-            onChange={(e) => setWhat(e.target.value)} />
-        </div>
-
-        <div className="fr-row" data-cols="2" style={{ marginTop:14 }}>
-          <div>
-            <label className="fr-label" htmlFor="cpos">Position</label>
-            <select id="cpos" className="fr-select" value={pos} onChange={(e) => setPos(e.target.value)}>
-              <option>Guard</option><option>Wing</option><option>Forward</option><option>Big</option>
-            </select>
-          </div>
-          <div>
-            <label className="fr-label" htmlFor="clvl">Level</label>
-            <select id="clvl" className="fr-select" value={lvl} onChange={(e) => setLvl(e.target.value)}>
-              <option>Middle school</option><option>High school</option>
-              <option>AAU / travel</option><option>College</option><option>Adult rec</option>
-            </select>
-          </div>
-        </div>
-
-        <button className="fr-btn fr-full" onClick={run} disabled={!!busy || !file}>
-          {busy || "Analyze my film"}
-        </button>
-
-        {busy && <p className="fr-load">{busy}</p>}
-        {err && <p className="fr-err">{err}</p>}
-
-        {frames.length > 0 && (
-          <>
-            <p className="fr-eyebrow">The frames</p>
-            <div className="fr-frames">
-              {frames.map((f,i) => (
-                <div className="fr-frame" key={i} data-flag={flagged[i+1] ? "1" : "0"}>
-                  <img src={"data:image/jpeg;base64," + f} alt={"Frame " + (i+1)} />
-                  <b>{String(i+1).padStart(2,"0")}</b>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {diag && (
-          <>
-            <p className="fr-eyebrow">The read</p>
-            <div className="fr-glass fr-grade">
-              <b>{diag.grade}</b>
-              <p className="fr-note fr-solid" style={{ margin:0 }}>{diag.read}</p>
-            </div>
-
-            <p className="fr-eyebrow">Phase by phase</p>
-            <div className="fr-glass fr-panel">
-              {(diag.phases||[]).map((p,i) => (
-                <div className="fr-phase" key={i}>
-                  <span className="fr-pip" style={{ background: PIP[p.status] || "var(--faint)" }} />
-                  <div><h4>{p.name}</h4><p className="fr-note">{p.detail}</p></div>
-                </div>
-              ))}
-            </div>
-
-            {diag.working && diag.working.length > 0 && (
-              <>
-                <p className="fr-eyebrow">Holding up</p>
-                <div className="fr-glass fr-panel">
-                  {diag.working.map((w,i) => (
-                    <div className="fr-item" key={i}>
-                      <Mark n="✓" color="cyan" />
-                      <p className="fr-note fr-solid" style={{ margin:0 }}>{w}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {diag.breaking && diag.breaking.length > 0 && (
-              <>
-                <p className="fr-eyebrow">Where it breaks down</p>
-                <div className="fr-glass fr-panel">
-                  {diag.breaking.map((b,i) => (
-                    <div className="fr-item" key={i}>
-                      <Mark n={b.frame} />
-                      <div>
-                        <p className="fr-dose">Frame {String(b.frame).padStart(2,"0")}</p>
-                        <p className="fr-note fr-solid">{b.issue}</p>
-                        <p className="fr-note">Costs you: {b.cost}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        {plan && (
-          <>
-            <p className="fr-eyebrow">Fix this first</p>
-            <div className="fr-glass fr-panel">
-              <p className="fr-read" style={{ color:"var(--amber)" }}>{plan.priority && plan.priority.fix}</p>
-              <p className="fr-note">{plan.priority && plan.priority.why}</p>
-            </div>
-
-            <p className="fr-eyebrow">Your drills</p>
-            <div className="fr-glass fr-panel">
-              {(plan.drills||[]).map((d,i) => (
-                <div className="fr-item" key={i}>
-                  <Mark n={i+1} />
-                  <div style={{ flex:1 }}>
-                    <p className="fr-name">{d.name}</p>
-                    <p className="fr-dose">{d.dose}</p>
-                    <p className="fr-cue">“{d.cue}”</p>
-                    <p className="fr-note">Then: {d.progression}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="fr-eyebrow">Next two weeks</p>
-            <div className="fr-week">
-              {(plan.weeks||[]).map((w,i) => (
-                <div className="fr-glass fr-day" key={i}>
-                  <b>{w.label}</b><i>{w.focus}</i>
-                  <p className="fr-note">Check: {w.check}</p>
-                </div>
-              ))}
-            </div>
-
-            {plan.watch && plan.watch.query && (
-              <>
-                <p className="fr-eyebrow">Go watch this</p>
-                <div className="fr-glass fr-panel">
-                  <p className="fr-note fr-solid" style={{ marginBottom:12 }}>{plan.watch.why}</p>
-                  <a className="fr-pill" style={{ textDecoration:"none" }} target="_blank" rel="noreferrer"
-                    href={"https://www.youtube.com/results?search_query=" + encodeURIComponent(plan.watch.query)}>
-                    {plan.watch.query}
-                  </a>
-                </div>
-              </>
-            )}
-
-            <p className="fr-eyebrow">Ask the coach</p>
-            <p className="fr-note" style={{ marginBottom:14 }}>
-              Still looking at your frames. Ask anything about this clip.
-            </p>
-            {thread.map((m,i) => (
-              <div className={m.who === "you" ? "fr-msg" : "fr-glass fr-msg"} key={i} data-who={m.who}>{m.text}</div>
-            ))}
-            {asking && <p className="fr-load">Thinking</p>}
-            <div className="fr-ask">
-              <input className="fr-input" value={q} placeholder="Why does my elbow drift out?"
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && askCoach()} />
-              <button className="fr-btn" style={{ marginTop:0 }} onClick={askCoach}
-                disabled={asking || !q.trim()}>Ask</button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  (diag && diag.breaking || []).forEach(b => {
+    flagged[Number(b.frame)] = true;
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-page"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap fr-narrow"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-head"
+  }, /*#__PURE__*/React.createElement("h2", null, "My clip"), /*#__PURE__*/React.createElement("p", null, "Five to fifteen seconds, one rep, filmed from the side. That's all it needs.")), /*#__PURE__*/React.createElement("input", {
+    ref: input,
+    type: "file",
+    accept: "video/*",
+    style: {
+      display: "none"
+    },
+    onChange: e => reset(e.target.files[0] || null)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-drop",
+    role: "button",
+    tabIndex: 0,
+    onClick: () => input.current.click(),
+    onKeyDown: e => (e.key === "Enter" || e.key === " ") && input.current.click()
+  }, /*#__PURE__*/React.createElement("b", null, file ? file.name : "Add a clip"), !file && /*#__PURE__*/React.createElement("span", null, "MP4 works best")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "what"
+  }, "What's in the clip?"), /*#__PURE__*/React.createElement("input", {
+    id: "what",
+    className: "fr-input",
+    value: what,
+    placeholder: "Catch and shoot from the left wing",
+    onChange: e => setWhat(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fr-row",
+    "data-cols": "2",
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "cpos"
+  }, "Position"), /*#__PURE__*/React.createElement("select", {
+    id: "cpos",
+    className: "fr-select",
+    value: pos,
+    onChange: e => setPos(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "Guard"), /*#__PURE__*/React.createElement("option", null, "Wing"), /*#__PURE__*/React.createElement("option", null, "Forward"), /*#__PURE__*/React.createElement("option", null, "Big"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "clvl"
+  }, "Level"), /*#__PURE__*/React.createElement("select", {
+    id: "clvl",
+    className: "fr-select",
+    value: lvl,
+    onChange: e => setLvl(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", null, "Middle school"), /*#__PURE__*/React.createElement("option", null, "High school"), /*#__PURE__*/React.createElement("option", null, "AAU / travel"), /*#__PURE__*/React.createElement("option", null, "College"), /*#__PURE__*/React.createElement("option", null, "Adult rec")))), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-full",
+    onClick: run,
+    disabled: !!busy || !file
+  }, busy || "Analyze my film"), busy && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, busy), err && /*#__PURE__*/React.createElement("p", {
+    className: "fr-err"
+  }, err), frames.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "The frames"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-frames"
+  }, frames.map((f, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-frame",
+    key: i,
+    "data-flag": flagged[i + 1] ? "1" : "0"
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "data:image/jpeg;base64," + f,
+    alt: "Frame " + (i + 1)
+  }), /*#__PURE__*/React.createElement("b", null, String(i + 1).padStart(2, "0")))))), diag && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "The read"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-grade"
+  }, /*#__PURE__*/React.createElement("b", null, diag.grade), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      margin: 0
+    }
+  }, diag.read)), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Phase by phase"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, (diag.phases || []).map((p, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-phase",
+    key: i
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-pip",
+    style: {
+      background: PIP[p.status] || "var(--faint)"
+    }
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, p.name), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, p.detail))))), diag.working && diag.working.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Holding up"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, diag.working.map((w, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-item",
+    key: i
+  }, /*#__PURE__*/React.createElement(Mark, {
+    n: "✓",
+    color: "cyan"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      margin: 0
+    }
+  }, w))))), diag.breaking && diag.breaking.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Where it breaks down"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, diag.breaking.map((b, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-item",
+    key: i
+  }, /*#__PURE__*/React.createElement(Mark, {
+    n: b.frame
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-dose"
+  }, "Frame ", String(b.frame).padStart(2, "0")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid"
+  }, b.issue), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "Costs you: ", b.cost))))))), plan && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Fix this first"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-read",
+    style: {
+      color: "var(--amber)"
+    }
+  }, plan.priority && plan.priority.fix), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, plan.priority && plan.priority.why)), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Your drills"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, (plan.drills || []).map((d, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-item",
+    key: i
+  }, /*#__PURE__*/React.createElement(Mark, {
+    n: i + 1
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-name"
+  }, d.name), /*#__PURE__*/React.createElement("p", {
+    className: "fr-dose"
+  }, d.dose), /*#__PURE__*/React.createElement("p", {
+    className: "fr-cue"
+  }, "“", d.cue, "”"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "Then: ", d.progression))))), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Next two weeks"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-week"
+  }, (plan.weeks || []).map((w, i) => /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-day",
+    key: i
+  }, /*#__PURE__*/React.createElement("b", null, w.label), /*#__PURE__*/React.createElement("i", null, w.focus), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "Check: ", w.check)))), plan.watch && plan.watch.query && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Go watch this"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-panel"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-note fr-solid",
+    style: {
+      marginBottom: 12
+    }
+  }, plan.watch.why), /*#__PURE__*/React.createElement("a", {
+    className: "fr-pill",
+    style: {
+      textDecoration: "none"
+    },
+    target: "_blank",
+    rel: "noreferrer",
+    href: "https://www.youtube.com/results?search_query=" + encodeURIComponent(plan.watch.query)
+  }, plan.watch.query))), /*#__PURE__*/React.createElement("p", {
+    className: "fr-eyebrow"
+  }, "Ask the coach"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      marginBottom: 14
+    }
+  }, "Still looking at your frames. Ask anything about this clip."), thread.map((m, i) => /*#__PURE__*/React.createElement("div", {
+    className: m.who === "you" ? "fr-msg" : "fr-glass fr-msg",
+    key: i,
+    "data-who": m.who
+  }, m.text)), asking && /*#__PURE__*/React.createElement("p", {
+    className: "fr-load"
+  }, "Thinking"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-ask"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    value: q,
+    placeholder: "Why does my elbow drift out?",
+    onChange: e => setQ(e.target.value),
+    onKeyDown: e => e.key === "Enter" && askCoach()
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      marginTop: 0
+    },
+    onClick: askCoach,
+    disabled: asking || !q.trim()
+  }, "Ask")))));
 }
 
 /* ------------------------ APP ------------------------ */
 
-const NAV = [
-  { id:"browse", label:"Browse" },
-  { id:"film", label:"Pull film" },
-  { id:"train", label:"Get better" },
-  { id:"clip", label:"My clip" },
-];
-
+const NAV = [{
+  id: "browse",
+  label: "Browse"
+}, {
+  id: "film",
+  label: "Pull film"
+}, {
+  id: "train",
+  label: "Get better"
+}, {
+  id: "clip",
+  label: "My clip"
+}];
 function App() {
   const [page, setPage] = useState("home");
   const [theme, setTheme] = useState("dark");
   const [seed, setSeed] = useState("");
-
   useEffect(() => {
     const m = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)");
     if (m && m.matches) setTheme("light");
   }, []);
-
   function go(to) {
     setPage(to);
-    window.scrollTo({ top:0, behavior:"smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   }
-
-  return (
-    <div className="fr" data-theme={theme}>
-      <div className="fr-amb" aria-hidden="true"><i /><i /><i /></div>
-      <div className="fr-shell">
-        <nav className="fr-nav">
-          <div className="fr-navin">
-            <button className="fr-brand" onClick={() => go("home")}><i />Film Room</button>
-            <div className="fr-links">
-              {NAV.map((n) => (
-                <button key={n.id} className="fr-link" data-on={page===n.id?"1":"0"}
-                  onClick={() => go(n.id)}>{n.label}</button>
-              ))}
-            </div>
-            <button className="fr-sun" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Switch theme">{theme === "dark" ? "☀" : "☾"}</button>
-          </div>
-        </nav>
-
-        {page === "home"   && <Landing go={go} />}
-        {page === "browse" && <Browse onPick={(query) => { setSeed(query); go("film"); }} />}
-        {page === "film"   && <Film seed={seed} clearSeed={() => setSeed("")} />}
-        {page === "train"  && <Train />}
-        {page === "clip"   && <Clip />}
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr",
+    "data-theme": theme
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-amb",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null), /*#__PURE__*/React.createElement("i", null)), /*#__PURE__*/React.createElement("div", {
+    className: "fr-shell"
+  }, /*#__PURE__*/React.createElement("nav", {
+    className: "fr-nav"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-navin"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-brand",
+    onClick: () => go("home")
+  }, /*#__PURE__*/React.createElement("i", null), "Film Room"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-links"
+  }, NAV.map(n => /*#__PURE__*/React.createElement("button", {
+    key: n.id,
+    className: "fr-link",
+    "data-on": page === n.id ? "1" : "0",
+    onClick: () => go(n.id)
+  }, n.label))), /*#__PURE__*/React.createElement("button", {
+    className: "fr-sun",
+    onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
+    "aria-label": "Switch theme"
+  }, theme === "dark" ? "☀" : "☾"))), page === "home" && /*#__PURE__*/React.createElement(Landing, {
+    go: go
+  }), page === "browse" && /*#__PURE__*/React.createElement(Browse, {
+    onPick: query => {
+      setSeed(query);
+      go("film");
+    }
+  }), page === "film" && /*#__PURE__*/React.createElement(Film, {
+    seed: seed,
+    clearSeed: () => setSeed("")
+  }), page === "train" && /*#__PURE__*/React.createElement(Train, null), page === "clip" && /*#__PURE__*/React.createElement(Clip, null)));
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+  } catch (err) {
+    fail("Film Room hit an error while starting: " + (err && err.message ? err.message : err));
+    if (window.console) console.error(err);
+  }
+})();
 </script>
 </body>
 </html>
