@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Film Room — see what you're actually doing</title>
+<meta name="description" content="Pull film on any player or concept, break down your own clip frame by frame, and get the drills that fix it." />
+<meta name="theme-color" content="#070B0E" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+html, body, #root { height: 100%; margin: 0; }
+body { background: #070B0E; }
+
+.fr[data-theme="dark"] {
+  --bg:#070B0E; --text:#EEF3F4; --dim:rgba(238,243,244,.56); --faint:rgba(238,243,244,.30);
+  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.09);
+  --edge:rgba(255,255,255,.12); --edge-2:rgba(255,255,255,.20);
+  --amber:#FFB627; --cyan:#4ED9E8; --onAmber:#0A1013;
+  --blobA:#0E5F70; --blobB:#8A5406; --blobC:#1B2E63; --blobO:.55;
+}
+.fr[data-theme="light"] {
+  --bg:#EDF0F2; --text:#0B1215; --dim:rgba(11,18,21,.60); --faint:rgba(11,18,21,.32);
+  --glass:rgba(255,255,255,.60); --glass-2:rgba(255,255,255,.78);
+  --edge:rgba(11,18,21,.10); --edge-2:rgba(11,18,21,.18);
+  --amber:#B06E00; --cyan:#0A6C7A; --onAmber:#FFFFFF;
+  --blobA:#8FD3DE; --blobB:#F3CE8E; --blobC:#AFC0E8; --blobO:.70;
+}
+
+.fr { position:relative; min-height:100%; background:var(--bg); color:var(--text);
+  font-family:'Barlow',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden; transition:background .35s ease,color .35s ease; }
+.fr *, .fr *::before, .fr *::after { box-sizing:border-box; }
+
+.fr-amb { position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.fr-amb i { position:absolute; display:block; border-radius:50%; filter:blur(90px); opacity:var(--blobO); }
+.fr-amb i:nth-child(1){ width:62vw;height:62vw;background:var(--blobA);top:-18vw;left:-14vw;animation:dA 34s ease-in-out infinite alternate; }
+.fr-amb i:nth-child(2){ width:54vw;height:54vw;background:var(--blobB);top:28vh;right:-18vw;animation:dB 42s ease-in-out infinite alternate; }
+.fr-amb i:nth-child(3){ width:48vw;height:48vw;background:var(--blobC);bottom:-16vw;left:18vw;animation:dC 38s ease-in-out infinite alternate; }
+@keyframes dA { to { transform:translate3d(8vw,6vh,0) scale(1.12);} }
+@keyframes dB { to { transform:translate3d(-10vw,-8vh,0) scale(1.08);} }
+@keyframes dC { to { transform:translate3d(6vw,-6vh,0) scale(1.15);} }
+
+.fr-shell { position:relative; z-index:1; }
+.fr-wrap { max-width:940px; margin:0 auto; padding:0 20px; }
+.fr-narrow { max-width:660px; }
+
+.fr-glass { background:var(--glass); border:1px solid var(--edge); border-radius:18px;
+  backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
+  box-shadow:0 8px 32px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.10); }
+
+.fr-nav { position:sticky; top:0; z-index:40; background:var(--glass);
+  backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border-bottom:1px solid var(--edge); }
+.fr-navin { max-width:940px; margin:0 auto; padding:11px 20px; display:flex; align-items:center; gap:14px; }
+.fr-brand { appearance:none; background:none; border:0; padding:0; cursor:pointer; color:var(--text);
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:.2em; text-transform:uppercase; white-space:nowrap; }
+.fr-brand i { display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:var(--amber); margin-right:8px; vertical-align:2px; }
+.fr-links { display:flex; gap:4px; margin-left:auto; overflow-x:auto; scrollbar-width:none; }
+.fr-links::-webkit-scrollbar { display:none; }
+.fr-link { appearance:none; background:transparent; border:0; cursor:pointer; color:var(--dim);
+  border-radius:999px; white-space:nowrap; font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+  padding:7px 13px; transition:background .2s,color .2s; }
+.fr-link:hover { color:var(--text); background:var(--glass-2); }
+.fr-link[data-on="1"] { color:var(--onAmber); background:var(--amber); }
+.fr-link:focus-visible,.fr-brand:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+.fr-sun { appearance:none; cursor:pointer; flex:0 0 auto; background:var(--glass-2);
+  border:1px solid var(--edge); color:var(--dim); width:32px; height:32px; border-radius:999px;
+  font-size:14px; line-height:1; display:grid; place-items:center; transition:color .2s,border-color .2s; }
+.fr-sun:hover { color:var(--text); border-color:var(--edge-2); }
+.fr-sun:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+.fr-page { animation:rise .45s cubic-bezier(.2,.7,.3,1) both; padding:26px 0 90px; }
+@keyframes rise { from { opacity:0; transform:translate3d(0,14px,0);} }
+
+.fr-hero { padding:8vh 0 4vh; }
+.fr-eyeb { font-family:'Barlow Condensed',sans-serif; font-size:12px; letter-spacing:.28em;
+  text-transform:uppercase; color:var(--amber); margin:0 0 18px; }
+.fr-hero h1 { font-family:'Barlow Condensed',sans-serif; font-weight:700; text-transform:uppercase;
+  font-size:clamp(52px,13vw,116px); line-height:.84; letter-spacing:-.015em; margin:0; }
+.fr-hero h1 em { font-style:normal; color:var(--amber); }
+.fr-lede { font-size:clamp(16px,2.3vw,19px); line-height:1.55; color:var(--dim); max-width:46ch; margin:22px 0 0; }
+.fr-cta { display:flex; flex-wrap:wrap; gap:10px; margin-top:30px; }
+
+.fr-btn { appearance:none; border:0; cursor:pointer; border-radius:999px;
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:.12em; text-transform:uppercase; padding:14px 26px;
+  background:var(--amber); color:var(--onAmber); box-shadow:0 6px 22px rgba(0,0,0,.18);
+  transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .2s; }
+.fr-btn:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(0,0,0,.24); }
+.fr-btn[data-ghost="1"] { background:var(--glass); color:var(--text); border:1px solid var(--edge);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); box-shadow:none; }
+.fr-btn[data-ghost="1"]:hover { border-color:var(--edge-2); }
+.fr-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+.fr-btn:disabled { background:var(--glass-2); color:var(--faint); cursor:default; transform:none; box-shadow:none; }
+.fr-full { width:100%; margin-top:6px; }
+
+.fr-trio { display:grid; gap:14px; margin-top:12vh; }
+@media (min-width:720px){ .fr-trio { grid-template-columns:repeat(3,1fr);} }
+.fr-card { padding:22px; cursor:pointer; text-align:left; width:100%;
+  transition:transform .25s cubic-bezier(.2,.7,.3,1), border-color .25s, background .25s; }
+.fr-card:hover { transform:translateY(-4px); border-color:var(--edge-2); background:var(--glass-2); }
+.fr-card:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+.fr-card h3 { font-family:'Barlow Condensed',sans-serif; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; font-size:20px; margin:12px 0 6px; }
+.fr-card p { color:var(--dim); font-size:14.5px; line-height:1.55; margin:0; }
+
+.fr-head { margin-bottom:20px; }
+.fr-head h2 { font-family:'Barlow Condensed',sans-serif; font-weight:700; text-transform:uppercase;
+  font-size:clamp(28px,6vw,40px); line-height:1; margin:0; }
+.fr-head p { color:var(--dim); font-size:15px; margin:8px 0 0; max-width:52ch; }
+.fr-eyebrow { font-family:'Barlow Condensed',sans-serif; font-size:12px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--faint); margin:30px 0 12px; }
+
+.fr-pills { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; margin-bottom:20px; }
+.fr-pills::-webkit-scrollbar { display:none; }
+.fr-pill { appearance:none; cursor:pointer; white-space:nowrap; border-radius:999px;
+  background:var(--glass); border:1px solid var(--edge); color:var(--dim);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.1em; text-transform:uppercase; padding:8px 15px;
+  transition:color .2s,border-color .2s,background .2s; }
+.fr-pill:hover { color:var(--text); border-color:var(--edge-2); }
+.fr-pill[data-on="1"] { background:var(--amber); color:var(--onAmber); border-color:transparent; }
+.fr-pill:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+.fr-grid { display:grid; gap:12px; grid-template-columns:repeat(2,1fr); }
+@media (min-width:640px){ .fr-grid { grid-template-columns:repeat(3,1fr);} }
+@media (min-width:900px){ .fr-grid { grid-template-columns:repeat(4,1fr);} }
+.fr-tile { position:relative; overflow:hidden; cursor:pointer; text-align:left; padding:16px 14px 14px;
+  min-height:132px; width:100%; display:flex; flex-direction:column; justify-content:flex-end;
+  transition:transform .25s cubic-bezier(.2,.7,.3,1), border-color .25s, background .25s; }
+.fr-tile:hover { transform:translateY(-4px); border-color:var(--edge-2); background:var(--glass-2); }
+.fr-tile:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+.fr-tile u { position:absolute; top:-14px; right:-6px; text-decoration:none;
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:76px; line-height:1;
+  color:var(--text); opacity:.07; letter-spacing:-.04em; pointer-events:none; }
+.fr-tile b { font-family:'Barlow Condensed',sans-serif; font-weight:600; text-transform:uppercase;
+  letter-spacing:.04em; font-size:17px; line-height:1.05; position:relative; }
+.fr-tile s { text-decoration:none; color:var(--cyan); position:relative;
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; letter-spacing:.12em;
+  text-transform:uppercase; margin-top:5px; }
+
+.fr-label { display:block; font-family:'Barlow Condensed',sans-serif; font-size:12px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:0 0 7px; }
+.fr-input,.fr-select,.fr-area { width:100%; color:var(--text); border-radius:12px;
+  background:var(--glass); border:1px solid var(--edge);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  padding:13px 15px; font-family:'Barlow',sans-serif; font-size:15.5px;
+  transition:border-color .2s,background .2s; }
+.fr-area { resize:vertical; min-height:82px; }
+.fr-input::placeholder,.fr-area::placeholder { color:var(--faint); }
+.fr-input:focus,.fr-select:focus,.fr-area:focus { outline:none; border-color:var(--amber); background:var(--glass-2); }
+.fr-row { display:grid; gap:12px; margin-bottom:14px; }
+@media (min-width:560px){ .fr-row[data-cols="2"] { grid-template-columns:1fr 1fr;} }
+
+.fr-drop { border:1px dashed var(--edge-2); border-radius:16px; background:var(--glass);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  padding:34px 18px; text-align:center; color:var(--dim); cursor:pointer;
+  transition:border-color .2s,color .2s,background .2s; }
+.fr-drop:hover { border-color:var(--amber); color:var(--text); background:var(--glass-2); }
+.fr-drop b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em; font-size:16px; color:var(--text); margin-bottom:5px; }
+
+.fr-panel { padding:18px; margin-bottom:12px; }
+.fr-read { font-family:'Barlow Condensed',sans-serif; font-weight:600;
+  font-size:clamp(21px,5vw,28px); line-height:1.12; margin:0; text-transform:uppercase; }
+.fr-note { color:var(--dim); font-size:14.5px; line-height:1.55; margin:5px 0 0; }
+.fr-solid { color:var(--text); }
+.fr-name { font-family:'Barlow Condensed',sans-serif; font-weight:600; text-transform:uppercase;
+  letter-spacing:.04em; font-size:18px; margin:0; }
+.fr-dose { font-family:'Barlow Condensed',sans-serif; letter-spacing:.1em; font-size:13px;
+  color:var(--cyan); text-transform:uppercase; font-variant-numeric:tabular-nums; margin:3px 0 0; }
+.fr-cue { font-style:italic; font-size:14.5px; margin:9px 0 0; }
+.fr-item { display:flex; gap:13px; align-items:flex-start; }
+.fr-item + .fr-item { margin-top:15px; padding-top:15px; border-top:1px solid var(--edge); }
+
+.fr-grade { display:flex; gap:18px; align-items:center; padding:20px; }
+.fr-grade b { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:52px;
+  line-height:.78; color:var(--amber); font-variant-numeric:tabular-nums; }
+
+.fr-phase { display:flex; gap:13px; align-items:flex-start; }
+.fr-phase + .fr-phase { margin-top:13px; padding-top:13px; border-top:1px solid var(--edge); }
+.fr-pip { flex:0 0 9px; height:9px; border-radius:50%; margin-top:7px; }
+.fr-phase h4 { font-family:'Barlow Condensed',sans-serif; text-transform:uppercase;
+  letter-spacing:.08em; font-size:15px; margin:0; }
+
+.fr-week { display:grid; gap:10px; }
+.fr-day { padding:14px 16px; }
+.fr-day b { font-family:'Barlow Condensed',sans-serif; letter-spacing:.14em;
+  text-transform:uppercase; font-size:12px; color:var(--amber); }
+.fr-day i { font-style:normal; display:block; font-size:15px; margin-top:4px; }
+
+.fr-frames { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.fr-frame { position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--edge); transition:border-color .3s; }
+.fr-frame img { width:100%; display:block; }
+.fr-frame b { position:absolute; top:6px; left:6px; border-radius:999px;
+  font-family:'Barlow Condensed',sans-serif; font-size:11px; letter-spacing:.1em;
+  color:var(--text); background:var(--glass-2); padding:2px 7px;
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+.fr-frame[data-flag="1"] { border-color:var(--amber); box-shadow:0 0 0 1px var(--amber); }
+.fr-frame[data-flag="1"] b { color:var(--amber); }
+
+.fr-mark { position:relative; display:inline-flex; width:30px; height:30px;
+  align-items:center; justify-content:center; flex:0 0 30px; }
+.fr-mark span { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px;
+  position:relative; z-index:1; }
+.fr-mark svg { position:absolute; inset:0; overflow:visible; }
+.fr-mark ellipse { fill:none; stroke-width:2; stroke-linecap:round;
+  stroke-dasharray:92; stroke-dashoffset:92; animation:draw .6s ease forwards; }
+@keyframes draw { to { stroke-dashoffset:0; } }
+
+/* video results */
+.fr-player { width:100%; aspect-ratio:16/9; border:0; display:block; border-radius:16px; background:#000; }
+.fr-vids { display:grid; gap:10px; grid-template-columns:1fr; }
+@media (min-width:560px){ .fr-vids { grid-template-columns:1fr 1fr; } }
+.fr-vid { display:flex; gap:12px; padding:10px; cursor:pointer; text-align:left; width:100%;
+  align-items:flex-start; transition:border-color .2s,background .2s,transform .2s; }
+.fr-vid:hover { border-color:var(--edge-2); background:var(--glass-2); transform:translateY(-2px); }
+.fr-vid:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+.fr-vid[data-on="1"] { border-color:var(--amber); }
+.fr-vid img { width:104px; flex:0 0 104px; border-radius:9px; display:block; aspect-ratio:16/9; object-fit:cover; }
+.fr-vid div { min-width:0; }
+.fr-vid h4 { margin:0; font-size:14.5px; line-height:1.35; font-weight:500;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.fr-vid p { margin:5px 0 0; font-size:12px; color:var(--dim);
+  font-family:'Barlow Condensed',sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+.fr-link { color:var(--cyan); font-size:13.5px; text-decoration:none; border-bottom:1px solid var(--edge); }
+.fr-link:hover { border-color:var(--cyan); }
+.fr-chips { display:flex; flex-wrap:wrap; gap:8px; }
+
+.fr-msg { padding:14px 16px; font-size:15px; line-height:1.6; white-space:pre-wrap; margin-bottom:10px; }
+.fr-msg[data-who="you"] { background:transparent; border:0; box-shadow:none; backdrop-filter:none;
+  -webkit-backdrop-filter:none; border-left:2px solid var(--amber); border-radius:0;
+  padding:4px 0 4px 14px; color:var(--dim); }
+.fr-ask { display:flex; gap:8px; margin-top:12px; }
+.fr-ask .fr-input { flex:1; }
+
+.fr-err { border-left:2px solid var(--amber); padding-left:14px; font-size:14.5px; margin-top:20px; }
+.fr-load { color:var(--dim); font-family:'Barlow Condensed',sans-serif; letter-spacing:.18em;
+  text-transform:uppercase; font-size:13px; margin-top:20px; }
+.fr-load::after { content:'_'; animation:blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-amb i, .fr-mark ellipse, .fr-load::after, .fr-page { animation:none; }
+  .fr-mark ellipse { stroke-dashoffset:0; }
+  .fr-card:hover,.fr-tile:hover,.fr-btn:hover,.fr-vid:hover { transform:none; }
+}
+</style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+/* ============================================================
+   SETTINGS — the only two lines you'll ever need to change
+   ============================================================ */
+
+// Your YouTube Data API v3 key. Powers Browse and Pull film.
+const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
+
+// Where the AI features (Get better / My clip) send their requests.
+// This default only works inside Claude's preview.
+// For your live site you need your own proxy — see the notes I sent.
+const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
+
+/* ============================================================ */
+
+const ROSTER = [
+  { n:"Stephen Curry", t:"Off-ball movement", g:"Guards", q:"Stephen Curry off ball movement breakdown" },
+  { n:"Kyrie Irving", t:"Handle & finishing", g:"Guards", q:"Kyrie Irving handle and finishing breakdown" },
+  { n:"Chris Paul", t:"Pace & midrange", g:"Guards", q:"Chris Paul pace midrange film study" },
+  { n:"Jalen Brunson", t:"Footwork", g:"Guards", q:"Jalen Brunson footwork breakdown" },
+  { n:"Damian Lillard", t:"Screen usage", g:"Guards", q:"Damian Lillard pick and roll screen usage" },
+  { n:"Caitlin Clark", t:"Deep pull-up", g:"Guards", q:"Caitlin Clark pull up shooting breakdown" },
+  { n:"Sabrina Ionescu", t:"Shooting off movement", g:"Guards", q:"Sabrina Ionescu shooting mechanics breakdown" },
+  { n:"Kevin Durant", t:"Shooting mechanics", g:"Wings", q:"Kevin Durant shooting form breakdown" },
+  { n:"Kawhi Leonard", t:"Two-way footwork", g:"Wings", q:"Kawhi Leonard footwork breakdown" },
+  { n:"Jayson Tatum", t:"Shot creation", g:"Wings", q:"Jayson Tatum shot creation film study" },
+  { n:"Jimmy Butler", t:"Drawing fouls", g:"Wings", q:"Jimmy Butler drawing fouls breakdown" },
+  { n:"Breanna Stewart", t:"Length & versatility", g:"Wings", q:"Breanna Stewart scoring breakdown" },
+  { n:"Paul George", t:"Closeout defense", g:"Wings", q:"Paul George defensive film study" },
+  { n:"Nikola Jokic", t:"Post reads & passing", g:"Bigs", q:"Nikola Jokic post passing breakdown" },
+  { n:"A'ja Wilson", t:"Post scoring", g:"Bigs", q:"A'ja Wilson post moves breakdown" },
+  { n:"Hakeem Olajuwon", t:"Post footwork", g:"Bigs", q:"Hakeem Olajuwon post footwork breakdown" },
+  { n:"Bam Adebayo", t:"Switch defense", g:"Bigs", q:"Bam Adebayo switch defense film study" },
+  { n:"Draymond Green", t:"Help defense", g:"Bigs", q:"Draymond Green help defense breakdown" },
+  { n:"Tim Duncan", t:"Fundamentals", g:"Bigs", q:"Tim Duncan fundamentals footwork breakdown" },
+  { n:"Michael Jordan", t:"Midrange craft", g:"Legends", q:"Michael Jordan midrange footwork breakdown" },
+  { n:"Kobe Bryant", t:"Footwork", g:"Legends", q:"Kobe Bryant footwork breakdown" },
+  { n:"Manu Ginobili", t:"Euro step", g:"Legends", q:"Manu Ginobili euro step breakdown" },
+  { n:"Diana Taurasi", t:"Shot making", g:"Legends", q:"Diana Taurasi shot making film study" },
+  { n:"Closeouts", t:"Concept", g:"Skills", q:"how to close out properly basketball defense drill" },
+  { n:"Euro Step", t:"Concept", g:"Skills", q:"euro step tutorial breakdown basketball" },
+  { n:"Floater", t:"Concept", g:"Skills", q:"floater package tutorial basketball" },
+  { n:"P&R Reads", t:"Concept", g:"Skills", q:"pick and roll reads tutorial basketball" },
+  { n:"Boxing Out", t:"Concept", g:"Skills", q:"rebounding box out technique basketball" },
+  { n:"Off-ball Screens", t:"Concept", g:"Skills", q:"using off ball screens basketball tutorial" },
+  { n:"Transition D", t:"Concept", g:"Skills", q:"transition defense fundamentals basketball" },
+  { n:"Change of Pace", t:"Concept", g:"Skills", q:"change of pace dribbling basketball tutorial" },
+];
+const GROUPS = ["All","Guards","Wings","Bigs","Legends","Skills"];
+
+/* ---------------------- YouTube ---------------------- */
+
+const ytCache = {};          // saves quota: same search twice costs nothing
+const unescapeHTML = (s) => {
+  const el = document.createElement("textarea");
+  el.innerHTML = s || "";
+  return el.value;
+};
+
+async function ytSearch(q, max = 10) {
+  if (ytCache[q]) return ytCache[q];
+  const url = "https://www.googleapis.com/youtube/v3/search"
+    + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate"
+    + "&maxResults=" + max + "&q=" + encodeURIComponent(q) + "&key=" + YT_KEY;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) {
+    const m = data.error.message || "";
+    if (/quota/i.test(m)) throw new Error("Out of YouTube searches for today. Resets at midnight Pacific.");
+    if (/referer|referrer|blocked|API_KEY/i.test(m)) throw new Error("This key isn't allowed on this address. Check the website restriction in Google Cloud.");
+    throw new Error(m || "YouTube search failed.");
+  }
+  const out = (data.items || []).map((it) => ({
+    id: it.id.videoId,
+    title: unescapeHTML(it.snippet.title),
+    channel: unescapeHTML(it.snippet.channelTitle),
+    thumb: (it.snippet.thumbnails && (it.snippet.thumbnails.medium || it.snippet.thumbnails.default) || {}).url,
+  })).filter((v) => v.id);
+  ytCache[q] = out;
+  return out;
+}
+
+/* ------------------------ AI ------------------------- */
+
+async function send(messages) {
+  const res = await fetch(AI_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages }),
+  });
+  if (!res.ok) throw new Error("The breakdown service isn't reachable from this site yet.");
+  const data = await res.json();
+  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+}
+const ask = (content) => send([{ role: "user", content }]);
+
+function toJSON(text) {
+  const clean = String(text).replace(/```json/g, "").replace(/```/g, "").trim();
+  const a = clean.indexOf("{"), b = clean.lastIndexOf("}");
+  if (a === -1 || b === -1) throw new Error("Couldn't read the breakdown. Try again.");
+  return JSON.parse(clean.slice(a, b + 1));
+}
+
+/* --------------------- bits -------------------------- */
+
+function Mark({ n, color }) {
+  const c = color === "cyan" ? "var(--cyan)" : "var(--amber)";
+  return (
+    <i className="fr-mark" aria-hidden="true">
+      <svg viewBox="0 0 30 30">
+        <ellipse cx="15" cy="15" rx="13" ry="11.5" transform="rotate(-12 15 15)" style={{ stroke: c }} />
+      </svg>
+      <span style={{ color: c }}>{n}</span>
+    </i>
+  );
+}
+const PIP = { good:"var(--cyan)", ok:"var(--faint)", fix:"var(--amber)" };
+const initials = (s) => s.split(" ").map((w) => w[0]).join("").slice(0,2).toUpperCase();
+
+/* --------------------- LANDING ----------------------- */
+
+function Landing({ go }) {
+  const cards = [
+    { ic:"▶", h:"Browse the film", p:"Curated tape on the players who do your skill best, plus concept breakdowns.", to:"browse" },
+    { ic:"◎", h:"Analyze your clip", p:"Upload a rep. Get a grade, a phase-by-phase read, and the frame where it falls apart.", to:"clip" },
+    { ic:"▤", h:"Build the plan", p:"Drills with real sets and reps, built around your position, level, and schedule.", to:"train" },
+  ];
+  return (
+    <div className="fr-page">
+      <div className="fr-wrap">
+        <section className="fr-hero">
+          <p className="fr-eyeb">Film Room</p>
+          <h1>Film<br/>doesn't<br/><em>lie.</em></h1>
+          <p className="fr-lede">
+            Pull tape on any player or concept. Send your own clip and get it broken
+            down frame by frame. Then get the drills that actually fix it.
+          </p>
+          <div className="fr-cta">
+            <button className="fr-btn" onClick={() => go("clip")}>Break down my film</button>
+            <button className="fr-btn" data-ghost="1" onClick={() => go("browse")}>Browse players</button>
+          </div>
+        </section>
+        <div className="fr-trio">
+          {cards.map((c) => (
+            <button key={c.to} className="fr-glass fr-card" onClick={() => go(c.to)}>
+              <span style={{ color:"var(--amber)", fontSize:20, lineHeight:1 }}>{c.ic}</span>
+              <h3>{c.h}</h3>
+              <p>{c.p}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------- BROWSE ----------------------- */
+
+function Browse({ onPick }) {
+  const [group, setGroup] = useState("All");
+  const list = group === "All" ? ROSTER : ROSTER.filter((r) => r.g === group);
+  return (
+    <div className="fr-page">
+      <div className="fr-wrap">
+        <div className="fr-head">
+          <h2>Browse</h2>
+          <p>Tap anyone to pull their film. Every search runs live, so the tape stays current.</p>
+        </div>
+        <div className="fr-pills">
+          {GROUPS.map((g) => (
+            <button key={g} className="fr-pill" data-on={group===g?"1":"0"} onClick={() => setGroup(g)}>{g}</button>
+          ))}
+        </div>
+        <div className="fr-grid">
+          {list.map((r) => (
+            <button key={r.n} className="fr-glass fr-tile" onClick={() => onPick(r.q)}>
+              <u aria-hidden="true">{initials(r.n)}</u>
+              <b>{r.n}</b>
+              <s>{r.t}</s>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------- FILM ------------------------ */
+
+function Film({ seed, clearSeed }) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [vids, setVids] = useState(null);
+  const [active, setActive] = useState(null);
+
+  async function run(term) {
+    const query = (term !== undefined ? term : q).trim();
+    if (!query) return;
+    setBusy(true); setErr(""); setVids(null); setActive(null);
+    try {
+      const list = await ytSearch(query);
+      if (!list.length) setErr("Nothing came back for that. Try different words.");
+      setVids(list);
+      setActive(list[0] || null);
+    } catch (e) { setErr(e.message || "Something went wrong."); }
+    setBusy(false);
+  }
+
+  useEffect(() => {
+    if (seed) { setQ(seed); run(seed); clearSeed(); }
+  }, [seed]);
+
+  return (
+    <div className="fr-page">
+      <div className="fr-wrap fr-narrow">
+        <div className="fr-head">
+          <h2>Pull film</h2>
+          <p>A player, a team, a concept — anything you want to see done right.</p>
+        </div>
+
+        <label className="fr-label" htmlFor="q">Search</label>
+        <input id="q" className="fr-input" value={q} placeholder="Jalen Brunson footwork"
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && run()} />
+        <button className="fr-btn fr-full" onClick={() => run()} disabled={busy || !q.trim()}>
+          {busy ? "Pulling film" : "Pull the film"}
+        </button>
+
+        {busy && <p className="fr-load">Searching</p>}
+        {err && <p className="fr-err">{err}</p>}
+
+        {active && (
+          <>
+            <p className="fr-eyebrow">Now playing</p>
+            <iframe className="fr-player" title={active.title}
+              src={"https://www.youtube-nocookie.com/embed/" + active.id}
+              allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
+            <p className="fr-note fr-solid" style={{ marginTop:10 }}>{active.title}</p>
+            <a className="fr-link" target="_blank" rel="noreferrer"
+              href={"https://www.youtube.com/watch?v=" + active.id}>Open on YouTube</a>
+          </>
+        )}
+
+        {vids && vids.length > 0 && (
+          <>
+            <p className="fr-eyebrow">{vids.length} clips</p>
+            <div className="fr-vids">
+              {vids.map((v) => (
+                <button key={v.id} className="fr-glass fr-vid"
+                  data-on={active && active.id === v.id ? "1" : "0"}
+                  onClick={() => { setActive(v); window.scrollTo({ top:0, behavior:"smooth" }); }}>
+                  <img src={v.thumb} alt="" loading="lazy" />
+                  <div><h4>{v.title}</h4><p>{v.channel}</p></div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------- TRAIN ----------------------- */
+
+function Train() {
+  const [goal, setGoal] = useState("");
+  const [pos, setPos] = useState("Guard");
+  const [lvl, setLvl] = useState("High school");
+  const [days, setDays] = useState("4");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [out, setOut] = useState(null);
+
+  async function run() {
+    if (!goal.trim()) return;
+    setBusy(true); setErr(""); setOut(null);
+    try {
+      const text = await ask(
+`You are a demanding but clear basketball skills coach.
+Player: ${lvl} ${pos}. Trains ${days} days a week. Goal: "${goal}".
+Reply with ONLY this JSON, no markdown:
+{"read":"one blunt sentence naming the real limiting factor","keys":[{"point":"under 6 words","why":"under 20 words"}],"drills":[{"name":"","dose":"sets x reps or minutes","cue":"one coaching cue, under 12 words"}],"week":[{"day":"Mon","focus":"under 8 words","min":"30"}]}
+Exactly 3 keys, 4 drills, and ${days} training days plus rest days to fill 7.`);
+      setOut(toJSON(text));
+    } catch (e) { setErr(e.message || "Something went wrong."); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="fr-page">
+      <div className="fr-wrap fr-narrow">
+        <div className="fr-head">
+          <h2>Get better</h2>
+          <p>Tell it what keeps happening in games. It builds the week around that.</p>
+        </div>
+
+        <div className="fr-row">
+          <div>
+            <label className="fr-label" htmlFor="goal">What are you trying to fix?</label>
+            <textarea id="goal" className="fr-area" value={goal}
+              placeholder="I get blown by on closeouts and foul a lot"
+              onChange={(e) => setGoal(e.target.value)} />
+          </div>
+        </div>
+        <div className="fr-row" data-cols="2">
+          <div>
+            <label className="fr-label" htmlFor="pos">Position</label>
+            <select id="pos" className="fr-select" value={pos} onChange={(e) => setPos(e.target.value)}>
+              <option>Guard</option><option>Wing</option><option>Forward</option><option>Big</option>
+            </select>
+          </div>
+          <div>
+            <label className="fr-label" htmlFor="lvl">Level</label>
+            <select id="lvl" className="fr-select" value={lvl} onChange={(e) => setLvl(e.target.value)}>
+              <option>Middle school</option><option>High school</option>
+              <option>AAU / travel</option><option>College</option><option>Adult rec</option>
+            </select>
+          </div>
+        </div>
+        <div className="fr-row" data-cols="2">
+          <div>
+            <label className="fr-label" htmlFor="days">Days per week</label>
+            <select id="days" className="fr-select" value={days} onChange={(e) => setDays(e.target.value)}>
+              <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+            </select>
+          </div>
+        </div>
+        <button className="fr-btn fr-full" onClick={run} disabled={busy || !goal.trim()}>
+          {busy ? "Building" : "Build the plan"}
+        </button>
+
+        {busy && <p className="fr-load">Working</p>}
+        {err && <p className="fr-err">{err}</p>}
+
+        {out && (
+          <>
+            <p className="fr-eyebrow">The read</p>
+            <p className="fr-read">{out.read}</p>
+
+            <p className="fr-eyebrow">Keys</p>
+            <div className="fr-glass fr-panel">
+              {(out.keys||[]).map((k,i) => (
+                <div className="fr-item" key={i}>
+                  <Mark n={i+1} color="cyan" />
+                  <div><p className="fr-name">{k.point}</p><p className="fr-note">{k.why}</p></div>
+                </div>
+              ))}
+            </div>
+
+            <p className="fr-eyebrow">Drills</p>
+            <div className="fr-glass fr-panel">
+              {(out.drills||[]).map((d,i) => (
+                <div className="fr-item" key={i}>
+                  <Mark n={i+1} />
+                  <div style={{ flex:1 }}>
+                    <p className="fr-name">{d.name}</p>
+                    <p className="fr-dose">{d.dose}</p>
+                    <p className="fr-cue">“{d.cue}”</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="fr-eyebrow">The week</p>
+            <div className="fr-week">
+              {(out.week||[]).map((d,i) => (
+                <div className="fr-glass fr-day" key={i}>
+                  <b>{d.day}{d.min ? " · " + d.min + " min" : ""}</b>
+                  <i>{d.focus}</i>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------ CLIP ----------------------- */
+
+async function grabFrames(file, count) {
+  count = count || 8;
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.src = url; video.muted = true; video.playsInline = true; video.preload = "auto";
+  try {
+    await new Promise((resolve, reject) => {
+      video.onloadeddata = resolve;
+      video.onerror = () => reject(new Error("This browser can't read that video. MP4 works best."));
+      setTimeout(() => reject(new Error("That clip took too long to load. Try a shorter one.")), 20000);
+    });
+    if (!video.videoWidth) throw new Error("That file has no video track.");
+    const canvas = document.createElement("canvas");
+    const scale = 560 / video.videoWidth;
+    canvas.width = 560; canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext("2d");
+    const dur = video.duration || 1;
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      const t = Math.min(dur * ((i + 0.5) / count), Math.max(dur - 0.05, 0));
+      await new Promise((resolve) => { video.onseeked = resolve; video.currentTime = t; });
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      frames.push(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+    }
+    return frames;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function Clip() {
+  const [file, setFile] = useState(null);
+  const [what, setWhat] = useState("");
+  const [pos, setPos] = useState("Guard");
+  const [lvl, setLvl] = useState("High school");
+  const [frames, setFrames] = useState([]);
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const [diag, setDiag] = useState(null);
+  const [plan, setPlan] = useState(null);
+  const [thread, setThread] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [q, setQ] = useState("");
+  const [asking, setAsking] = useState(false);
+  const input = useRef(null);
+
+  function reset(f) {
+    setFile(f); setFrames([]); setDiag(null); setPlan(null);
+    setThread([]); setHistory([]); setErr("");
+  }
+
+  async function run() {
+    if (!file) return;
+    setErr(""); setDiag(null); setPlan(null); setThread([]); setFrames([]);
+    try {
+      setBusy("Pulling frames");
+      const f = await grabFrames(file);
+      setFrames(f);
+
+      setBusy("Reading the tape");
+      const seed = f.map((data) => ({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data } }));
+      seed.push({ type:"text", text:
+`You are a sharp, blunt basketball skills coach breaking down one player's clip.
+These 8 stills are evenly spaced through the clip, in order, frame 1 to 8.
+Player: ${lvl} ${pos}. They say the clip is: "${what || "unspecified"}".
+Judge only what the stills actually show. If the angle or blur hides the mechanics, say that plainly in "read" rather than guessing.
+Reply with ONLY this JSON, no markdown:
+{"read":"two sentences on the overall picture","grade":"letter grade like B-","phases":[{"name":"phase of the move","status":"good|ok|fix","detail":"under 22 words"}],"working":["2 things holding up, under 14 words each"],"breaking":[{"frame":3,"issue":"under 18 words","cost":"what this costs in a game, under 12 words"}]}
+Exactly 4 phases named for this specific move. Max 3 breaking.` });
+
+      const raw1 = await send([{ role:"user", content: seed }]);
+      const d = toJSON(raw1);
+      setDiag(d);
+
+      setBusy("Writing the plan");
+      const raw2 = await ask(
+`A ${lvl} ${pos} filmed "${what || "a rep"}". Your film breakdown found:
+${JSON.stringify(d)}
+
+Now give them the work. Reply with ONLY this JSON, no markdown:
+{"priority":{"fix":"the one thing to fix first, under 8 words","why":"under 25 words"},"drills":[{"name":"","dose":"sets x reps","cue":"under 12 words","progression":"how it gets harder, under 14 words"}],"weeks":[{"label":"Week 1","focus":"under 12 words","check":"how they know it worked, under 12 words"}],"watch":{"query":"a YouTube search for a pro who does this right","why":"under 16 words"}}
+Exactly 3 drills and 2 weeks.`);
+      setPlan(toJSON(raw2));
+      setHistory([{ role:"user", content: seed }, { role:"assistant", content: raw1 }]);
+    } catch (e) { setErr(e.message || "Something went wrong."); }
+    setBusy("");
+  }
+
+  async function askCoach() {
+    if (!q.trim() || asking) return;
+    const question = q.trim();
+    setQ(""); setAsking(true);
+    setThread((t) => t.concat([{ who:"you", text:question }]));
+    try {
+      const next = history.concat([{ role:"user",
+        content: question + "\n\n(Answer as the coach, still looking at those same frames. Plain text, no JSON, under 120 words.)" }]);
+      const reply = await send(next);
+      setHistory(next.concat([{ role:"assistant", content: reply }]));
+      setThread((t) => t.concat([{ who:"coach", text:reply }]));
+    } catch (e) {
+      setThread((t) => t.concat([{ who:"coach", text: e.message || "That didn't go through. Ask again." }]));
+    }
+    setAsking(false);
+  }
+
+  const flagged = {};
+  ((diag && diag.breaking) || []).forEach((b) => { flagged[Number(b.frame)] = true; });
+
+  return (
+    <div className="fr-page">
+      <div className="fr-wrap fr-narrow">
+        <div className="fr-head">
+          <h2>My clip</h2>
+          <p>Five to fifteen seconds, one rep, filmed from the side. That's all it needs.</p>
+        </div>
+
+        <input ref={input} type="file" accept="video/*" style={{ display:"none" }}
+          onChange={(e) => reset(e.target.files[0] || null)} />
+        <div className="fr-drop" role="button" tabIndex={0}
+          onClick={() => input.current.click()}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current.click()}>
+          <b>{file ? file.name : "Add a clip"}</b>
+          {!file && <span>MP4 works best</span>}
+        </div>
+
+        <div style={{ marginTop:16 }}>
+          <label className="fr-label" htmlFor="what">What's in the clip?</label>
+          <input id="what" className="fr-input" value={what}
+            placeholder="Catch and shoot from the left wing"
+            onChange={(e) => setWhat(e.target.value)} />
+        </div>
+
+        <div className="fr-row" data-cols="2" style={{ marginTop:14 }}>
+          <div>
+            <label className="fr-label" htmlFor="cpos">Position</label>
+            <select id="cpos" className="fr-select" value={pos} onChange={(e) => setPos(e.target.value)}>
+              <option>Guard</option><option>Wing</option><option>Forward</option><option>Big</option>
+            </select>
+          </div>
+          <div>
+            <label className="fr-label" htmlFor="clvl">Level</label>
+            <select id="clvl" className="fr-select" value={lvl} onChange={(e) => setLvl(e.target.value)}>
+              <option>Middle school</option><option>High school</option>
+              <option>AAU / travel</option><option>College</option><option>Adult rec</option>
+            </select>
+          </div>
+        </div>
+
+        <button className="fr-btn fr-full" onClick={run} disabled={!!busy || !file}>
+          {busy || "Analyze my film"}
+        </button>
+
+        {busy && <p className="fr-load">{busy}</p>}
+        {err && <p className="fr-err">{err}</p>}
+
+        {frames.length > 0 && (
+          <>
+            <p className="fr-eyebrow">The frames</p>
+            <div className="fr-frames">
+              {frames.map((f,i) => (
+                <div className="fr-frame" key={i} data-flag={flagged[i+1] ? "1" : "0"}>
+                  <img src={"data:image/jpeg;base64," + f} alt={"Frame " + (i+1)} />
+                  <b>{String(i+1).padStart(2,"0")}</b>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {diag && (
+          <>
+            <p className="fr-eyebrow">The read</p>
+            <div className="fr-glass fr-grade">
+              <b>{diag.grade}</b>
+              <p className="fr-note fr-solid" style={{ margin:0 }}>{diag.read}</p>
+            </div>
+
+            <p className="fr-eyebrow">Phase by phase</p>
+            <div className="fr-glass fr-panel">
+              {(diag.phases||[]).map((p,i) => (
+                <div className="fr-phase" key={i}>
+                  <span className="fr-pip" style={{ background: PIP[p.status] || "var(--faint)" }} />
+                  <div><h4>{p.name}</h4><p className="fr-note">{p.detail}</p></div>
+                </div>
+              ))}
+            </div>
+
+            {diag.working && diag.working.length > 0 && (
+              <>
+                <p className="fr-eyebrow">Holding up</p>
+                <div className="fr-glass fr-panel">
+                  {diag.working.map((w,i) => (
+                    <div className="fr-item" key={i}>
+                      <Mark n="✓" color="cyan" />
+                      <p className="fr-note fr-solid" style={{ margin:0 }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {diag.breaking && diag.breaking.length > 0 && (
+              <>
+                <p className="fr-eyebrow">Where it breaks down</p>
+                <div className="fr-glass fr-panel">
+                  {diag.breaking.map((b,i) => (
+                    <div className="fr-item" key={i}>
+                      <Mark n={b.frame} />
+                      <div>
+                        <p className="fr-dose">Frame {String(b.frame).padStart(2,"0")}</p>
+                        <p className="fr-note fr-solid">{b.issue}</p>
+                        <p className="fr-note">Costs you: {b.cost}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {plan && (
+          <>
+            <p className="fr-eyebrow">Fix this first</p>
+            <div className="fr-glass fr-panel">
+              <p className="fr-read" style={{ color:"var(--amber)" }}>{plan.priority && plan.priority.fix}</p>
+              <p className="fr-note">{plan.priority && plan.priority.why}</p>
+            </div>
+
+            <p className="fr-eyebrow">Your drills</p>
+            <div className="fr-glass fr-panel">
+              {(plan.drills||[]).map((d,i) => (
+                <div className="fr-item" key={i}>
+                  <Mark n={i+1} />
+                  <div style={{ flex:1 }}>
+                    <p className="fr-name">{d.name}</p>
+                    <p className="fr-dose">{d.dose}</p>
+                    <p className="fr-cue">“{d.cue}”</p>
+                    <p className="fr-note">Then: {d.progression}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="fr-eyebrow">Next two weeks</p>
+            <div className="fr-week">
+              {(plan.weeks||[]).map((w,i) => (
+                <div className="fr-glass fr-day" key={i}>
+                  <b>{w.label}</b><i>{w.focus}</i>
+                  <p className="fr-note">Check: {w.check}</p>
+                </div>
+              ))}
+            </div>
+
+            {plan.watch && plan.watch.query && (
+              <>
+                <p className="fr-eyebrow">Go watch this</p>
+                <div className="fr-glass fr-panel">
+                  <p className="fr-note fr-solid" style={{ marginBottom:12 }}>{plan.watch.why}</p>
+                  <a className="fr-pill" style={{ textDecoration:"none" }} target="_blank" rel="noreferrer"
+                    href={"https://www.youtube.com/results?search_query=" + encodeURIComponent(plan.watch.query)}>
+                    {plan.watch.query}
+                  </a>
+                </div>
+              </>
+            )}
+
+            <p className="fr-eyebrow">Ask the coach</p>
+            <p className="fr-note" style={{ marginBottom:14 }}>
+              Still looking at your frames. Ask anything about this clip.
+            </p>
+            {thread.map((m,i) => (
+              <div className={m.who === "you" ? "fr-msg" : "fr-glass fr-msg"} key={i} data-who={m.who}>{m.text}</div>
+            ))}
+            {asking && <p className="fr-load">Thinking</p>}
+            <div className="fr-ask">
+              <input className="fr-input" value={q} placeholder="Why does my elbow drift out?"
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && askCoach()} />
+              <button className="fr-btn" style={{ marginTop:0 }} onClick={askCoach}
+                disabled={asking || !q.trim()}>Ask</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------ APP ------------------------ */
+
+const NAV = [
+  { id:"browse", label:"Browse" },
+  { id:"film", label:"Pull film" },
+  { id:"train", label:"Get better" },
+  { id:"clip", label:"My clip" },
+];
+
+function App() {
+  const [page, setPage] = useState("home");
+  const [theme, setTheme] = useState("dark");
+  const [seed, setSeed] = useState("");
+
+  useEffect(() => {
+    const m = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)");
+    if (m && m.matches) setTheme("light");
+  }, []);
+
+  function go(to) {
+    setPage(to);
+    window.scrollTo({ top:0, behavior:"smooth" });
+  }
+
+  return (
+    <div className="fr" data-theme={theme}>
+      <div className="fr-amb" aria-hidden="true"><i /><i /><i /></div>
+      <div className="fr-shell">
+        <nav className="fr-nav">
+          <div className="fr-navin">
+            <button className="fr-brand" onClick={() => go("home")}><i />Film Room</button>
+            <div className="fr-links">
+              {NAV.map((n) => (
+                <button key={n.id} className="fr-link" data-on={page===n.id?"1":"0"}
+                  onClick={() => go(n.id)}>{n.label}</button>
+              ))}
+            </div>
+            <button className="fr-sun" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Switch theme">{theme === "dark" ? "☀" : "☾"}</button>
+          </div>
+        </nav>
+
+        {page === "home"   && <Landing go={go} />}
+        {page === "browse" && <Browse onPick={(query) => { setSeed(query); go("film"); }} />}
+        {page === "film"   && <Film seed={seed} clearSeed={() => setSeed("")} />}
+        {page === "train"  && <Train />}
+        {page === "clip"   && <Clip />}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
