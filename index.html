@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Film Room — see what you're actually doing</title>
 <meta name="description" content="Pull film on any player or concept, break down your own clip frame by frame, and get the drills that fix it." />
-<meta name="theme-color" content="#070B0E" />
+<meta name="theme-color" content="#EDF0F2" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
 
 
@@ -14,7 +14,7 @@
 <style>
 
 html, body, #root { height: 100%; margin: 0; }
-body { background: #070B0E; }
+body { background: #EDF0F2; }
 
 .fr[data-theme="dark"] {
   --bg:#070B0E; --text:#EEF3F4; --dim:rgba(238,243,244,.56); --faint:rgba(238,243,244,.30);
@@ -354,6 +354,11 @@ body { background: #070B0E; }
 .fr-send:disabled, .fr-plus:disabled { opacity:.4; cursor:default; }
 .fr-send:not(:disabled):hover { transform:translateY(-1px); }
 .fr-plus:focus-visible, .fr-send:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* --- tiles with no photo --- */
+.fr-tile[data-photo="0"] { background:var(--glass-2); }
+.fr-tile[data-photo="0"] u { top:auto; bottom:-10px; right:8px; left:auto;
+  font-size:64px; opacity:.10; }
 </style>
 </head>
 
@@ -1030,31 +1035,6 @@ async function wikiPhotos(titles) {
   }
   return photoCache;
 }
-async function commonsPhoto(term) {
-  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*" + "&generator=search&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=400" + "&gsrsearch=" + encodeURIComponent(term);
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    const pages = (data.query || {}).pages || {};
-    const first = pages[Object.keys(pages)[0]];
-    const info = first && first.imageinfo && first.imageinfo[0];
-    return info && (info.thumburl || info.url) || null;
-  } catch (e) {
-    return null;
-  }
-}
-async function fillGaps(items, onFound) {
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    const key = it.wiki || it.n;
-    if (photoCache[key]) continue;
-    const url = await commonsPhoto(it.searchTerm || it.n + " basketball");
-    if (url) {
-      photoCache[key] = url;
-      if (onFound) onFound();
-    }
-  }
-}
 async function wikiBio(title) {
   if (title in bioCache) return bioCache[title];
   const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=extracts|pageimages&exintro=1&explaintext=1" + "&piprop=thumbnail&pithumbsize=600&titles=" + encodeURIComponent(title);
@@ -1359,6 +1339,19 @@ const GAME_ITEMS = GAMES.map(g => ({
   wiki: g.wiki,
   kind: "game"
 }));
+
+/* Searchable but not on the front page. Any of these opens a full player page. */
+const MORE = ("Davion Mitchell|Malik Monk|Keegan Murray|Jalen Green|Amen Thompson|Ausar Thompson|" + "Jabari Smith Jr.|Paolo Banchero|Jalen Suggs|Anfernee Simons|Shaedon Sharpe|Scoot Henderson|" + "Jaden Ivey|Jalen Duren|Ausar Thompson|Bennedict Mathurin|Andrew Nembhard|Myles Turner|" + "Pascal Siakam|Immanuel Quickley|RJ Barrett|Josh Giddey|Coby White|Zach LaVine|Nikola Vucevic|" + "DeMar DeRozan|Lauri Markkanen|Walker Kessler|Collin Sexton|Jordan Clarkson|Trey Murphy III|" + "Herbert Jones|CJ McCollum|Dejounte Murray|Zaccharie Risacher|Jalen Johnson|Onyeka Okongwu|" + "Tyler Herro|Jaime Jaquez Jr.|Nikola Jovic|Terry Rozier|Kyle Kuzma|Jordan Poole|Bilal Coulibaly|" + "Deni Avdija|Toumani Camara|Deandre Ayton|Jerami Grant|Anfernee Simons|Keyonte George|" + "Cooper Flagg|Ace Bailey|Dylan Harper|VJ Edgecombe|Tre Johnson|Khaman Maluach|" + "Devin Vassell|Stephon Castle|Jeremy Sochan|Julian Champagnie|Brandon Miller|Miles Bridges|" + "Mark Williams|Grant Williams|Jalen Williams|Isaiah Hartenstein|Lu Dort|Cason Wallace|" + "Kristaps Porzingis|Al Horford|Sam Hauser|Payton Pritchard|Naz Reid|Rudy Gobert|Jaden McDaniels|" + "Mike Conley|Aaron Gordon|Michael Porter Jr.|Christian Braun|Peyton Watson|" + "James Harden|Kawhi Leonard|Ivica Zubac|Norman Powell|Austin Reaves|Rui Hachimura|" + "Klay Thompson|Dereck Lively II|Daniel Gafford|PJ Washington|Alperen Sengun|Fred VanVleet|" + "Dillon Brooks|Tari Eason|Amen Thompson|Julius Randle|Donte DiVincenzo|Rob Dillingham|" + "Scottie Barnes|Immanuel Quickley|Gradey Dick|Trae Young|Dyson Daniels|" + "Sabrina Ionescu|Jonquel Jones|Courtney Vandersloot|Kelsey Mitchell|NaLyssa Smith|" + "Rhyne Howard|Ariel Atkins|Jackie Young|Chelsea Gray|Tiffany Hayes|Marina Mabrey|" + "Dearica Hamby|Azura Stevens|Skylar Diggins|Allisha Gray|Cameron Brink|Kamilla Cardoso|" + "Rickea Jackson|Aaliyah Edwards|Hailey Van Lith|Juju Watkins|Flau'jae Johnson|" + "Lauren Betts|Madison Booker|Audi Crooks|Ta'Niya Latson|Olivia Miles|" + "Candace Parker|Elena Delle Donne|Sylvia Fowles|Tina Charles|Seimone Augustus|" + "Cheryl Miller|Sheryl Swoopes|Rebecca Lobo|Dawn Staley|" + "Vince Carter|Paul Pierce|Kevin Garnett|Chris Bosh|Carmelo Anthony|Russell Westbrook|" + "Blake Griffin|Rajon Rondo|Tony Parker|Pau Gasol|Yao Ming|Dikembe Mutombo|" + "Charles Barkley|Karl Malone|John Stockton|Scottie Pippen|Clyde Drexler|Patrick Ewing|" + "David Robinson|Isiah Thomas|Julius Erving|Oscar Robertson|Jerry West|Wilt Chamberlain|" + "Elgin Baylor|Bob Cousy|George Gervin|Dominique Wilkins|Alonzo Mourning|Gary Payton|" + "Jason Kidd|Grant Hill|Chris Webber|Penny Hardaway|Ben Wallace|Kevin McHale|Robert Parish").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+const SEARCH_POOL = ROSTER.concat(MORE);
 const PLAYER_FILTERS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
 const GAME_FILTERS = ["All", "Pro", "College", "World"];
 function Library({
@@ -1366,6 +1359,7 @@ function Library({
   blurb,
   placeholder,
   items,
+  pool,
   filters,
   onOpen,
   onSearch
@@ -1383,18 +1377,40 @@ function Library({
       });
       setPhotos(map);
     };
-    wikiPhotos(items.map(r => r.wiki || r.n)).then(() => {
-      sync();
-      return fillGaps(items, sync);
-    }).catch(function () {});
+    wikiPhotos(items.map(r => r.wiki || r.n)).then(sync).catch(function () {});
     return () => {
       alive = false;
     };
   }, [title]);
+  useEffect(() => {
+    let alive = true;
+    const shown = list.slice(0, 40).map(r => r.wiki || r.n);
+    wikiPhotos(shown).then(() => {
+      if (!alive) return;
+      const map = {};
+      items.concat(list).forEach(r => {
+        map[r.n] = photoCache[r.wiki || r.n];
+      });
+      setPhotos(map);
+    }).catch(function () {});
+    return () => {
+      alive = false;
+    };
+  }, [term]);
   const q = term.trim().toLowerCase();
+  const searchable = pool || items;
   let list = filter === "All" ? items : items.filter(r => r.g === filter);
   if (q) {
-    list = items.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
+    const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
+    hit.sort((a, b) => {
+      const ai = a.n.toLowerCase().indexOf(q),
+        bi = b.n.toLowerCase().indexOf(q);
+      if (ai !== bi) return ai - bi;
+      const ax = a.g === "More" ? 1 : 0,
+        bx = b.g === "More" ? 1 : 0;
+      return ax - bx;
+    });
+    list = hit.slice(0, 40);
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
@@ -1435,15 +1451,20 @@ function Library({
     }
   }, /*#__PURE__*/React.createElement("p", {
     className: "fr-name"
-  }, "Nothing here by that name"), /*#__PURE__*/React.createElement("p", {
+  }, "Not in the library"), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
       marginBottom: 16
     }
-  }, "Search YouTube for it instead \\u2014 works for any player at any level."), /*#__PURE__*/React.createElement("button", {
+  }, "Open it anyway \\u2014 works for any player at any level, right down to your own highlight tape."), /*#__PURE__*/React.createElement("button", {
     className: "fr-btn",
-    onClick: () => onSearch(term.trim())
-  }, "Search film for \"", term.trim(), "\"")), /*#__PURE__*/React.createElement("p", {
+    onClick: () => onOpen({
+      n: term.trim(),
+      t: "Player",
+      g: "",
+      kind: "player"
+    })
+  }, "Open ", term.trim())), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
       marginTop: 22,
@@ -1457,6 +1478,7 @@ function Players(props) {
     blurb: ROSTER.length + " players, college programs and skills. Tap a player for film study, highlights, full games and their college tape.",
     placeholder: "Search a player, school, or skill",
     items: ROSTER,
+    pool: SEARCH_POOL,
     filters: PLAYER_FILTERS,
     onOpen: props.onOpen,
     onSearch: props.onSearch
@@ -2011,13 +2033,9 @@ function App() {
   const [stack, setStack] = useState([{
     page: "home"
   }]);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
   const [seed, setSeed] = useState(null);
   const top = stack[stack.length - 1];
-  useEffect(() => {
-    const m = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)");
-    if (m && m.matches) setTheme("light");
-  }, []);
   function push(entry) {
     setStack(s => s.concat([entry]));
     window.scrollTo({
