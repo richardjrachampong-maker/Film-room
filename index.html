@@ -383,16 +383,17 @@ body { background: #EDF0F2; }
 .fr-rich ul { padding-left:20px; }
 .fr-coach { padding:20px 22px; line-height:1.62; }
 
-/* --- kill the slab under the chat bar --- */
-.fr-bar { background:none; padding:14px 0 18px; }
-.fr-bar::before { content:""; position:absolute; left:0; right:0; bottom:0; height:calc(100% + 28px);
-  background:linear-gradient(to top, var(--bg) 55%, rgba(0,0,0,0)); z-index:-1; pointer-events:none; }
-.fr-bar { position:sticky; isolation:isolate; }
+/* --- chat bar sits on a soft fade, not a slab --- */
+.fr-bar { background:linear-gradient(to top, var(--bg) 45%, rgba(255,255,255,0)); padding:18px 0 18px; }
+.fr-bar[data-empty="1"] { background:none; padding:0; }
 .fr-barin { box-shadow:0 10px 34px rgba(0,0,0,.13), inset 0 1px 0 rgba(255,255,255,.14); }
+
+.fr-build { position:fixed; bottom:6px; right:10px; font-size:10px; letter-spacing:.1em; color:var(--faint); pointer-events:none; z-index:60; }
 </style>
 </head>
 
 <body>
+<div class="fr-build">b14</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1010,6 +1011,74 @@ async function ytSearch(q, opts) {
   }
   const cand = (data.candidates || [])[0];
   if (!cand) throw new Error("Gemini sent nothing back. Try again.");
+  return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
+}
+
+/* ------------------------ AI ------------------------- */
+
+let storedKey = "";
+try {
+  storedKey = window.localStorage.getItem("fr-gemini-key") || "";
+} catch (e) {
+  storedKey = "";
+}
+function aiKey() {
+  return AI_PROXY || GEMINI_KEY || storedKey;
+}
+function saveKey(k) {
+  storedKey = (k || "").trim();
+  try {
+    window.localStorage.setItem("fr-gemini-key", storedKey);
+  } catch (e) {}
+}
+const AI_OFF = "No AI key yet. Add one below \u2014 it's free and takes a minute.";
+async function post(url, body, headers) {
+  let res;
+  try {
+    var h = {
+      "Content-Type": "application/json"
+    };
+    if (headers) {
+      for (var k in headers) h[k] = headers[k];
+    }
+    res = await fetch(url, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    throw new Error("Couldn't reach the coaching service. Check your connection and try again.");
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("The coaching service sent back something unreadable.");
+  }
+  return data;
+}
+async function aiGemini(turns, wantJSON) {
+  const body = {
+    contents: turns.map(t => ({
+      role: t.role === "model" ? "model" : "user",
+      parts: t.parts
+    })),
+    generationConfig: {
+      maxOutputTokens: 3000
+    }
+  };
+  if (wantJSON) body.generationConfig.responseMimeType = "application/json";
+  const url = AI_PROXY ? AI_PROXY : "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
+  const data = await post(url, body, AI_PROXY ? null : {
+    "x-goog-api-key": aiKey()
+  });
+  if (data.error) {
+    const m = data.error.message || JSON.stringify(data.error);
+    const status = data.error.status ? " (" + data.error.status + ")" : "";
+    throw new Error("Google said" + status + ": " + m);
+  }
+  const cand = (data.candidates || [])[0];
+  if (!cand) throw new Error("Nothing came back. Try again.");
   return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
 }
 async function aiClaude(turns) {
@@ -1856,7 +1925,7 @@ function Train() {
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
-    }, "Tap + to send a clip. Any length \\u2014 it works out what you're doing."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
+    }, "Tap + to send a clip. Any length, and nothing to fill in."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
       onSaved: () => setReady(true)
     })), /*#__PURE__*/React.createElement("input", {
       ref: input,
@@ -1917,6 +1986,56 @@ const NAV = [{
   id: "train",
   label: "Train"
 }];
+class Boundary extends React.Component {
+  constructor(p) {
+    super(p);
+    this.state = {
+      err: null
+    };
+  }
+  static getDerivedStateFromError(err) {
+    return {
+      err: err
+    };
+  }
+  componentDidCatch(err) {
+    if (window.console) console.error(err);
+  }
+  render() {
+    if (this.state.err) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "40px 24px",
+          fontFamily: "system-ui, sans-serif",
+          color: "#0B1215"
+        }
+      }, /*#__PURE__*/React.createElement("h2", {
+        style: {
+          margin: "0 0 12px",
+          fontSize: 20
+        }
+      }, "Film Room hit an error"), /*#__PURE__*/React.createElement("p", {
+        style: {
+          margin: "0 0 16px",
+          fontSize: 15,
+          lineHeight: 1.5
+        }
+      }, String(this.state.err && this.state.err.message ? this.state.err.message : this.state.err)), /*#__PURE__*/React.createElement("button", {
+        onClick: () => this.setState({
+          err: null
+        }),
+        style: {
+          padding: "10px 18px",
+          borderRadius: 999,
+          border: "1px solid #ccc",
+          background: "#fff",
+          fontSize: 15
+        }
+      }, "Try again"));
+    }
+    return this.props.children;
+  }
+}
 function App() {
   const [stack, setStack] = useState([{
     page: "home"
@@ -2018,7 +2137,7 @@ function App() {
     clearSeed: () => setSeed(null)
   }), top.page === "train" && /*#__PURE__*/React.createElement(Train, null)));
 }
-ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(Boundary, null, /*#__PURE__*/React.createElement(App, null)));
   } catch (err) {
     fail("Film Room hit an error while starting: " + (err && err.message ? err.message : err));
     if (window.console) console.error(err);
