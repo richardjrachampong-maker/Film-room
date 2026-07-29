@@ -383,17 +383,24 @@ body { background: #EDF0F2; }
 .fr-rich ul { padding-left:20px; }
 .fr-coach { padding:20px 22px; line-height:1.62; }
 
-/* --- chat bar sits on a soft fade, not a slab --- */
-.fr-bar { background:linear-gradient(to top, var(--bg) 45%, rgba(255,255,255,0)); padding:18px 0 18px; }
-.fr-bar[data-empty="1"] { background:none; padding:0; }
-.fr-barin { box-shadow:0 10px 34px rgba(0,0,0,.13), inset 0 1px 0 rgba(255,255,255,.14); }
+/* --- chat bar floats, no panel behind it --- */
+.fr-bar { background:none !important; padding:16px 0 20px; }
+.fr-bar[data-empty="1"] { padding:0; }
+.fr-barin { box-shadow:0 12px 38px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.16);
+  backdrop-filter:blur(26px) saturate(1.4); -webkit-backdrop-filter:blur(26px) saturate(1.4); }
 
 .fr-build { position:fixed; bottom:6px; right:10px; font-size:10px; letter-spacing:.1em; color:var(--faint); pointer-events:none; z-index:60; }
+
+/* --- team crests sit inside the tile, not cropped --- */
+.fr-tile[data-logo="1"] .fr-face { object-fit:contain; padding:20px 20px 46px;
+  background:var(--glass-2); object-position:center; }
+.fr-tile[data-logo="1"] .fr-scrim {
+  background:linear-gradient(to top, rgba(5,9,12,.86) 0%, rgba(5,9,12,.30) 34%, rgba(5,9,12,0) 62%); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b15</div>
+<div class="fr-build">b16</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -881,48 +888,56 @@ const GAMES = [{
   n: "Lakers",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
   q: "Lakers full game replay",
   wiki: "Los Angeles Lakers"
 }, {
   n: "Celtics",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
   q: "Celtics full game replay",
   wiki: "Boston Celtics"
 }, {
   n: "Warriors",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
   q: "Warriors full game replay",
   wiki: "Golden State Warriors"
 }, {
   n: "Knicks",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
   q: "Knicks full game replay",
   wiki: "New York Knicks"
 }, {
   n: "Nuggets",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
   q: "Nuggets full game replay",
   wiki: "Denver Nuggets"
 }, {
   n: "Thunder",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
   q: "Thunder full game replay",
   wiki: "Oklahoma City Thunder"
 }, {
   n: "Bucks",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
   q: "Bucks full game replay",
   wiki: "Milwaukee Bucks"
 }, {
   n: "Heat",
   t: "Full games",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
   q: "Heat full game replay",
   wiki: "Miami Heat"
 }, {
@@ -1242,13 +1257,15 @@ function Tile({
   photo,
   onClick
 }) {
+  const pic = item.img || photo;
   return /*#__PURE__*/React.createElement("button", {
     className: "fr-glass fr-tile",
-    "data-photo": photo ? "1" : "0",
+    "data-photo": pic ? "1" : "0",
+    "data-logo": item.img ? "1" : "0",
     onClick: onClick
-  }, photo ? /*#__PURE__*/React.createElement("img", {
+  }, pic ? /*#__PURE__*/React.createElement("img", {
     className: "fr-face",
-    src: photo,
+    src: pic,
     alt: "",
     loading: "lazy"
   }) : /*#__PURE__*/React.createElement("u", {
@@ -1416,23 +1433,23 @@ function Library({
       if (!alive) return;
       const map = {};
       items.forEach(r => {
-        map[r.n] = photoCache[r.wiki || r.n];
+        map[r.n] = r.kind === "player" ? photoCache[r.wiki || r.n] : null;
       });
       setPhotos(map);
     };
-    wikiPhotos(items.map(r => r.wiki || r.n)).then(sync).catch(function () {});
+    wikiPhotos(items.filter(r => r.kind === "player").map(r => r.wiki || r.n)).then(sync).catch(function () {});
     return () => {
       alive = false;
     };
   }, [title]);
   useEffect(() => {
     let alive = true;
-    const shown = list.slice(0, 40).map(r => r.wiki || r.n);
+    const shown = list.slice(0, 40).filter(r => r.kind === "player").map(r => r.wiki || r.n);
     wikiPhotos(shown).then(() => {
       if (!alive) return;
       const map = {};
       items.concat(list).forEach(r => {
-        map[r.n] = photoCache[r.wiki || r.n];
+        map[r.n] = r.kind === "player" ? photoCache[r.wiki || r.n] : null;
       });
       setPhotos(map);
     }).catch(function () {});
@@ -1932,7 +1949,7 @@ function Train() {
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
-        parts = [T("You are an expert basketball skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Never invent facts about this player. You do not know their height, position, level, " + "what they do wrong, or what they are already good at. Do not describe their weaknesses " + "as if you have watched them.\n" + "If the question is too vague to answer well, say so in one line and ask up to two short " + "questions that would let you answer properly. Then stop. Do not guess and prescribe anyway.\n" + "If the question is specific enough, answer it directly with real drills, real sets and reps, " + "and real coaching cues. No filler.\n" + "Plain text. Short ## headings and - bullets allowed. Under 300 words.")];
+        parts = [T("You are an expert basketball skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words.")];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
