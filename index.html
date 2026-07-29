@@ -559,11 +559,18 @@ body { background: #EDF0F2; }
 .fr-adminnote { margin:16px 0 0; padding:11px 14px; border-radius:12px;
   background:var(--glass-2); border:1px solid var(--edge);
   font-size:13.5px; color:var(--text); }
+
+/* --- quick / deep --- */
+.fr-chattop { align-items:center; }
+.fr-modes { display:flex; gap:4px; padding:3px; border-radius:999px;
+  background:var(--glass); border:1px solid var(--edge); margin-right:auto; }
+.fr-modes .fr-pill { border:0; background:none; padding:6px 13px; }
+.fr-modes .fr-pill[data-on="1"] { background:var(--amber); color:var(--onAmber); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b38</div>
+<div class="fr-build">b39</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -913,7 +920,7 @@ const FIREBASE_PROJECT = "filmroom-212bd";
 const GOOGLE_CLIENT_ID = "";
 
 // The one account that sees the admin panel. Put your own email here.
-const ADMIN_EMAIL = "";
+const ADMIN_EMAIL = "Richard.jr.achampong@gmail.com";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -1801,16 +1808,22 @@ async function post(url, body, headers) {
   }
   return data;
 }
-async function aiGemini(turns, wantJSON) {
+async function aiGemini(turns, wantJSON, opts) {
+  opts = opts || {};
   const body = {
     contents: turns.map(t => ({
       role: t.role === "model" ? "model" : "user",
       parts: t.parts
     })),
     generationConfig: {
-      maxOutputTokens: 3000
+      maxOutputTokens: opts.fast ? 1200 : 3000
     }
   };
+  // the model "thinks" before answering by default, which is most of the wait
+  if (opts.fast) body.generationConfig.thinkingConfig = {
+    thinkingBudget: 0
+  };
+  if (opts.fast) body.model = "fast";
   if (wantJSON) body.generationConfig.responseMimeType = "application/json";
   const url = AI_PROXY ? AI_PROXY : "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
   const data = await post(url, body, AI_PROXY ? null : {
@@ -1852,15 +1865,15 @@ function coachExtra() {
   const c = adminFlags().coach;
   return c ? "\n\nAlso follow this standing instruction: " + c : "";
 }
-async function ai(turns, wantJSON) {
-  if (aiKey()) return aiGemini(turns, wantJSON);
+async function ai(turns, wantJSON, opts) {
+  if (aiKey()) return aiGemini(turns, wantJSON, opts);
   if (AI_ENDPOINT) return aiClaude(turns);
   throw new Error(AI_OFF);
 }
-const askJSON = parts => ai([{
+const askJSON = (parts, opts) => ai([{
   role: "user",
   parts: parts
-}], true);
+}], true, opts);
 const T = s => ({
   text: s
 });
@@ -3023,7 +3036,7 @@ function titleOf(msgs) {
 
 /* ------------------------ CLIP ----------------------- */
 
-async function grabFrames(file, onProgress) {
+async function grabFrames(file, onProgress, fast) {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
@@ -3038,10 +3051,11 @@ async function grabFrames(file, onProgress) {
     });
     if (!video.videoWidth) throw new Error("That file has no video track.");
     const dur = video.duration && isFinite(video.duration) ? video.duration : 10;
-    const count = Math.max(8, Math.min(16, Math.round(dur / 2)));
+    const count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(8, Math.min(16, Math.round(dur / 2)));
     const canvas = document.createElement("canvas");
-    const scale = 560 / video.videoWidth;
-    canvas.width = 560;
+    const wide = fast ? 400 : 560;
+    const scale = wide / video.videoWidth;
+    canvas.width = wide;
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
     const frames = [];
@@ -3052,7 +3066,7 @@ async function grabFrames(file, onProgress) {
         video.currentTime = t;
       });
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      frames.push(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+      frames.push(canvas.toDataURL("image/jpeg", fast ? 0.55 : 0.72).split(",")[1]);
       if (onProgress) onProgress(i + 1, count);
     }
     return {
@@ -3173,6 +3187,20 @@ function Train({
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [mode, setMode] = useState(function () {
+    try {
+      return window.localStorage.getItem("fr-mode") || "quick";
+    } catch (e) {
+      return "quick";
+    }
+  });
+  function pickMode(m) {
+    setMode(m);
+    try {
+      window.localStorage.setItem("fr-mode", m);
+    } catch (e) {}
+  }
+  const fast = mode === "quick";
   const [msgs, setMsgs] = useState([]);
   const [history, setHistory] = useState([]);
   const [text, setText] = useState("");
@@ -3246,9 +3274,9 @@ function Train({
       let parts = [];
       if (clip) {
         setBusy("Watching your film");
-        const got = await grabFrames(clip, (i, n) => setBusy("Watching your film " + Math.round(i / n * 100) + "%"));
+        const got = await grabFrames(clip, (i, n) => setBusy("Watching your film " + Math.round(i / n * 100) + "%"), fast);
         parts = got.frames.map(IMG);
-        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing. Under 500 words."));
+        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + (fast ? " Keep it tight: under 220 words, no preamble." : " Under 500 words.")));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
@@ -3259,7 +3287,9 @@ function Train({
         role: "user",
         parts: parts
       }]);
-      const reply = await ai(turns, false);
+      const reply = await ai(turns, false, {
+        fast: fast
+      });
       setHistory(turns.concat([{
         role: "model",
         parts: [T(reply)]
@@ -3305,7 +3335,25 @@ function Train({
   }, "\u2191")));
   const chatbar = /*#__PURE__*/React.createElement("div", {
     className: "fr-chattop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-modes",
+    role: "group",
+    "aria-label": "Answer speed"
   }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": mode === "quick" ? "1" : "0",
+    onClick: function () {
+      pickMode("quick");
+    },
+    title: "Fewer frames, no thinking step"
+  }, "Quick"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": mode === "deep" ? "1" : "0",
+    onClick: function () {
+      pickMode("deep");
+    },
+    title: "More frames, more careful"
+  }, "Deep")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
     onClick: newChat
   }, "New chat"), chats.length > 0 && /*#__PURE__*/React.createElement("button", {
@@ -3341,7 +3389,7 @@ function Train({
       style: {
         width: "100%"
       }
-    }, chats.length > 0 && chatbar, historyList, /*#__PURE__*/React.createElement("h2", {
+    }, chatbar, historyList, /*#__PURE__*/React.createElement("h2", {
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
