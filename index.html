@@ -427,19 +427,11 @@ body { background: #EDF0F2; }
 .fr-statpanel p { margin:0 0 16px; font-size:14.5px; line-height:1.6; color:var(--dim); }
 @media (prefers-reduced-motion: reduce) { .fr-statpanel { animation:none; } }
 
-/* --- open any name at all --- */
-.fr-openany { display:block; width:100%; text-align:left; cursor:pointer;
-  padding:16px 20px; margin-bottom:14px; border-radius:16px; }
-.fr-openany b { display:block; font-family:'Outfit',sans-serif; font-weight:600;
-  font-size:16px; letter-spacing:-.01em; }
-.fr-openany s { display:block; text-decoration:none; margin-top:3px;
-  font-size:13px; color:var(--dim); }
-.fr-openany:hover { border-color:var(--amber); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b20</div>
+<div class="fr-build">b21</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -922,28 +914,24 @@ const GAMES = [{
   n: "March Madness",
   t: "Tournament",
   g: "College",
-  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "March Madness full game replay",
   wiki: "NCAA Division I men's basketball tournament"
 }, {
   n: "NCAA Men",
   t: "Full games",
   g: "College",
-  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "NCAA mens basketball full game replay",
   wiki: "NCAA Division I men's basketball"
 }, {
   n: "NCAA Women",
   t: "Full games",
   g: "College",
-  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "NCAA womens basketball full game replay",
   wiki: "NCAA Division I women's basketball"
 }, {
   n: "Final Four",
   t: "Tournament",
   g: "College",
-  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "Final Four full game replay basketball",
   wiki: "Final Four"
 }, {
@@ -1570,17 +1558,19 @@ function Tile({
   photo,
   onClick
 }) {
-  const pic = item.img || photo;
+  const [broken, setBroken] = useState(false);
+  const pic = broken ? null : item.img || photo;
   return /*#__PURE__*/React.createElement("button", {
     className: "fr-glass fr-tile",
     "data-photo": pic ? "1" : "0",
-    "data-logo": item.img ? "1" : "0",
+    "data-logo": item.img && !broken ? "1" : "0",
     onClick: onClick
   }, pic ? /*#__PURE__*/React.createElement("img", {
     className: "fr-face",
     src: pic,
     alt: "",
-    loading: "lazy"
+    loading: "lazy",
+    onError: () => setBroken(true)
   }) : /*#__PURE__*/React.createElement("u", {
     "aria-hidden": "true"
   }, initials(item.n)), /*#__PURE__*/React.createElement("span", {
@@ -1739,7 +1729,15 @@ function Library({
         bx = b.g === "More" ? 1 : 0;
       return ax - bx;
     });
-    list = hit.slice(0, 40);
+    const typed = term.trim();
+    const exact = hit.some(r => r.n.toLowerCase() === q);
+    const invented = !exact && typed.length > 2 && title === "Players" ? [{
+      n: typed,
+      t: "Player",
+      g: "",
+      kind: "player"
+    }] : [];
+    list = invented.concat(hit).slice(0, 40);
   }
   useEffect(() => {
     let alive = true;
@@ -1795,15 +1793,7 @@ function Library({
     className: "fr-pill",
     "data-on": filter === g ? "1" : "0",
     onClick: () => setFilter(g)
-  }, g))), q && /*#__PURE__*/React.createElement("button", {
-    className: "fr-glass fr-openany",
-    onClick: () => onOpen({
-      n: term.trim(),
-      t: "Player",
-      g: "",
-      kind: "player"
-    })
-  }, /*#__PURE__*/React.createElement("b", null, "Open ", term.trim()), /*#__PURE__*/React.createElement("s", null, "Any player at any level, even if they are not listed")), list.length > 0 ? /*#__PURE__*/React.createElement("div", {
+  }, g))), list.length > 0 ? /*#__PURE__*/React.createElement("div", {
     className: "fr-grid"
   }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
     key: r.n + r.g,
