@@ -537,19 +537,6 @@ body { background: #EDF0F2; }
 .fr-sportbtn[data-on="1"] { background:var(--amber); color:var(--onAmber); border-color:transparent; }
 .fr-sportbtn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
 
-/* --- chat header, history and disclaimer --- */
-.fr-chattop { display:flex; gap:8px; margin-bottom:14px; }
-.fr-histlist { padding:6px; margin-bottom:16px; max-height:280px; overflow-y:auto; }
-.fr-histrow { display:flex; align-items:center; gap:4px; border-radius:12px; }
-.fr-histrow[data-on="1"] { background:var(--glass-2); }
-.fr-histrow > button:first-child { flex:1; min-width:0; text-align:left; cursor:pointer;
-  background:none; border:0; padding:11px 12px; color:var(--text); }
-.fr-histrow b { display:block; font-family:'Outfit',sans-serif; font-weight:500; font-size:14px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.fr-histrow span { display:block; margin-top:2px; font-size:12px; color:var(--faint); }
-.fr-histrow .fr-x { font-size:20px; padding:0 10px; }
-.fr-disclaim { margin:16px 0 0; font-size:12.5px; line-height:1.55; color:var(--faint);
-  text-align:center; }
 
 /* --- admin panel --- */
 .fr-admin { max-width:520px; max-height:82vh; overflow-y:auto; }
@@ -560,17 +547,53 @@ body { background: #EDF0F2; }
   background:var(--glass-2); border:1px solid var(--edge);
   font-size:13.5px; color:var(--text); }
 
-/* --- quick / deep --- */
-.fr-chattop { align-items:center; }
-.fr-modes { display:flex; gap:4px; padding:3px; border-radius:999px;
-  background:var(--glass); border:1px solid var(--edge); margin-right:auto; }
-.fr-modes .fr-pill { border:0; background:none; padding:6px 13px; }
+
+/* --- floating control tray, bottom left --- */
+.fr-tray { position:fixed; left:16px; bottom:16px; z-index:55; }
+.fr-trayin { display:flex; align-items:center; gap:6px; padding:6px;
+  border-radius:999px; box-shadow:0 10px 30px rgba(0,0,0,.16); }
+.fr-modes { display:flex; gap:2px; padding:2px; border-radius:999px; background:var(--glass-2); }
+.fr-modes .fr-pill { border:0; background:none; padding:6px 12px; font-size:12.5px; }
 .fr-modes .fr-pill[data-on="1"] { background:var(--amber); color:var(--onAmber); }
+.fr-traydiv { width:1px; height:22px; background:var(--edge); }
+.fr-trayb { appearance:none; cursor:pointer; background:none; border:0; border-radius:999px;
+  color:var(--dim); font-family:'Outfit',sans-serif; font-weight:600; font-size:12.5px;
+  letter-spacing:.04em; padding:8px 12px; white-space:nowrap;
+  transition:color .2s, background .2s; }
+.fr-trayb:hover { color:var(--text); background:var(--glass-2); }
+.fr-trayb[data-on="1"] { color:var(--text); background:var(--glass-2); }
+.fr-trayb:focus-visible, .fr-modes .fr-pill:focus-visible {
+  outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* --- past chats, floating above the tray --- */
+.fr-histwrap { position:fixed; left:16px; bottom:74px; z-index:56; width:290px; }
+.fr-histlist { padding:6px; max-height:min(52vh,420px); overflow-y:auto;
+  box-shadow:0 12px 34px rgba(0,0,0,.18);
+  animation:slideUp .28s cubic-bezier(.2,.7,.3,1) both; }
+.fr-histrow { display:flex; align-items:center; gap:2px; border-radius:12px; }
+.fr-histrow[data-on="1"] { background:var(--glass-2); }
+.fr-histrow > button:first-child { flex:1; min-width:0; text-align:left; cursor:pointer;
+  background:none; border:0; padding:10px 12px; color:var(--text); }
+.fr-histrow b { display:block; font-family:'Outfit',sans-serif; font-weight:500; font-size:13.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fr-histrow span { display:block; margin-top:2px; font-size:11.5px; color:var(--faint); }
+.fr-histrow .fr-x { font-size:19px; padding:0 9px; }
+.fr-histempty { margin:0; padding:14px 12px; font-size:13.5px; color:var(--dim); }
+
+.fr-disclaim { margin:16px 0 0; font-size:12.5px; line-height:1.55; color:var(--faint);
+  text-align:center; }
+
+/* keep the tray clear of the chat bar on narrow screens */
+@media (max-width:760px) {
+  .fr-tray { left:12px; bottom:auto; top:64px; }
+  .fr-histwrap { left:12px; right:12px; width:auto; top:118px; bottom:auto; }
+}
+@media (prefers-reduced-motion: reduce) { .fr-histlist { animation:none; } }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b40</div>
+<div class="fr-build">b42</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1810,7 +1833,11 @@ async function post(url, body, headers) {
 }
 async function aiGemini(turns, wantJSON, opts) {
   opts = opts || {};
-  function build(withExtras) {
+
+  // level 2 = ask for the fast model as well
+  // level 1 = just switch off the thinking step (the big win)
+  // level 0 = plain request, always accepted
+  function build(level) {
     const body = {
       contents: turns.map(function (t) {
         return {
@@ -1823,25 +1850,22 @@ async function aiGemini(turns, wantJSON, opts) {
       }
     };
     if (wantJSON) body.generationConfig.responseMimeType = "application/json";
-    // The "thinking" step before answering is most of the wait, so Quick turns it off.
-    // Not every model or proxy accepts these, hence the retry below.
-    if (withExtras && opts.fast) {
-      body.generationConfig.thinkingConfig = {
-        thinkingBudget: 0
-      };
-      body.model = "fast";
-    }
+    if (opts.fast && level >= 1) body.generationConfig.thinkingConfig = {
+      thinkingBudget: 0
+    };
+    if (opts.fast && level >= 2) body.model = "fast";
     return body;
   }
   const url = AI_PROXY ? AI_PROXY : "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
   const headers = AI_PROXY ? null : {
     "x-goog-api-key": aiKey()
   };
-  let data = await post(url, build(true), headers);
-
-  // If the speed settings weren't understood, ask again the plain way.
-  if (data.error && /INVALID_ARGUMENT|Unknown name|not supported/i.test(data.error.message || "")) {
-    data = await post(url, build(false), headers);
+  let data = null;
+  const start = opts.fast ? 2 : 0;
+  for (let level = start; level >= 0; level--) {
+    data = await post(url, build(level), headers);
+    if (!data.error) break; // worked
+    if (level === 0) break; // nothing left to strip
   }
   if (data.error) {
     const m = data.error.message || JSON.stringify(data.error);
@@ -3350,7 +3374,9 @@ function Train({
     "aria-label": "Send"
   }, "\u2191")));
   const chatbar = /*#__PURE__*/React.createElement("div", {
-    className: "fr-chattop"
+    className: "fr-tray"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-trayin"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-modes",
     role: "group",
@@ -3369,18 +3395,28 @@ function Train({
       pickMode("deep");
     },
     title: "More frames, more careful"
-  }, "Deep")), /*#__PURE__*/React.createElement("button", {
-    className: "fr-pill",
-    onClick: newChat
-  }, "New chat"), chats.length > 0 && /*#__PURE__*/React.createElement("button", {
-    className: "fr-pill",
+  }, "Deep")), /*#__PURE__*/React.createElement("span", {
+    className: "fr-traydiv",
+    "aria-hidden": "true"
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-trayb",
+    onClick: newChat,
+    title: "Start a new chat"
+  }, "New"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-trayb",
     onClick: function () {
       setShowHistory(!showHistory);
-    }
-  }, "History", chats.length > 1 ? " (" + chats.length + ")" : ""));
-  const historyList = showHistory && chats.length > 0 && /*#__PURE__*/React.createElement("div", {
+    },
+    "data-on": showHistory ? "1" : "0",
+    title: "Past chats"
+  }, "History", chats.length ? " " + chats.length : "")));
+  const historyList = showHistory && /*#__PURE__*/React.createElement("div", {
+    className: "fr-histwrap"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "fr-glass fr-histlist"
-  }, chats.map(function (c) {
+  }, chats.length === 0 && /*#__PURE__*/React.createElement("p", {
+    className: "fr-histempty"
+  }, "No past chats yet."), chats.map(function (c) {
     return /*#__PURE__*/React.createElement("div", {
       className: "fr-histrow",
       key: c.id,
@@ -3396,7 +3432,7 @@ function Train({
       },
       "aria-label": "Delete this chat"
     }, "\u00D7"));
-  }));
+  })));
   if (empty) {
     return /*#__PURE__*/React.createElement("div", {
       className: "fr-blank"
@@ -3405,7 +3441,7 @@ function Train({
       style: {
         width: "100%"
       }
-    }, chatbar, historyList, /*#__PURE__*/React.createElement("h2", {
+    }, /*#__PURE__*/React.createElement("h2", {
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
@@ -3421,7 +3457,7 @@ function Train({
         display: "none"
       },
       onChange: e => pick(e.target.files[0] || null)
-    }));
+    }), historyList, chatbar);
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page",
@@ -3430,7 +3466,7 @@ function Train({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
-  }, chatbar, historyList, !ready && /*#__PURE__*/React.createElement(KeyGate, {
+  }, !ready && /*#__PURE__*/React.createElement(KeyGate, {
     onSaved: () => setReady(true)
   }), /*#__PURE__*/React.createElement("div", {
     className: "fr-thread"
@@ -3459,7 +3495,7 @@ function Train({
     onChange: e => pick(e.target.files[0] || null)
   }), bar, /*#__PURE__*/React.createElement("p", {
     className: "fr-disclaim"
-  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")));
+  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")), historyList, chatbar);
 }
 
 /* ------------------------ APP ------------------------ */
