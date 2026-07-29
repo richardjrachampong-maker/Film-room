@@ -525,11 +525,36 @@ body { background: #EDF0F2; }
 @media (prefers-reduced-motion: reduce) {
   .fr-nudge, .fr-settings, .fr-lockcard { animation:none; }
 }
+
+/* --- sport picker --- */
+.fr-sports { display:flex; flex-wrap:wrap; gap:8px; padding-top:14px;
+  border-top:1px solid var(--edge); }
+.fr-sportbtn { appearance:none; cursor:pointer; border-radius:999px;
+  background:var(--glass); border:1px solid var(--edge); color:var(--dim);
+  font-family:'Outfit',sans-serif; font-weight:600; font-size:13.5px;
+  padding:9px 15px; transition:color .2s, border-color .2s, background .2s; }
+.fr-sportbtn:hover { color:var(--text); border-color:var(--edge-2); }
+.fr-sportbtn[data-on="1"] { background:var(--amber); color:var(--onAmber); border-color:transparent; }
+.fr-sportbtn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* --- chat header, history and disclaimer --- */
+.fr-chattop { display:flex; gap:8px; margin-bottom:14px; }
+.fr-histlist { padding:6px; margin-bottom:16px; max-height:280px; overflow-y:auto; }
+.fr-histrow { display:flex; align-items:center; gap:4px; border-radius:12px; }
+.fr-histrow[data-on="1"] { background:var(--glass-2); }
+.fr-histrow > button:first-child { flex:1; min-width:0; text-align:left; cursor:pointer;
+  background:none; border:0; padding:11px 12px; color:var(--text); }
+.fr-histrow b { display:block; font-family:'Outfit',sans-serif; font-weight:500; font-size:14px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fr-histrow span { display:block; margin-top:2px; font-size:12px; color:var(--faint); }
+.fr-histrow .fr-x { font-size:20px; padding:0 10px; }
+.fr-disclaim { margin:16px 0 0; font-size:12.5px; line-height:1.55; color:var(--faint);
+  text-align:center; }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b35</div>
+<div class="fr-build">b36</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -899,10 +924,10 @@ const C = (n, t, q, wiki, img) => ({
   img: img,
   kind: "concept"
 });
-const ROSTER = [P("Stephen Curry", "Off-ball movement", "Guards"), P("Kyrie Irving", "Handle & finishing", "Guards"), P("Shai Gilgeous-Alexander", "Deceleration", "Guards"), P("Luka Doncic", "Pace & step-back", "Guards", "Luka Don\u010di\u0107"), P("Tyrese Haliburton", "Passing reads", "Guards"), P("Ja Morant", "Explosive finishing", "Guards"), P("Damian Lillard", "Screen usage", "Guards"), P("Jalen Brunson", "Footwork", "Guards"), P("Trae Young", "Pick and roll", "Guards"), P("Anthony Edwards", "Downhill scoring", "Guards", "Anthony Edwards (basketball)"), P("Donovan Mitchell", "Shot creation", "Guards"), P("De'Aaron Fox", "Speed with control", "Guards"), P("Chris Paul", "Pace & midrange", "Guards"), P("Jrue Holiday", "On-ball defense", "Guards"), P("Derrick White", "Two-way guard play", "Guards"), P("Cade Cunningham", "Size at guard", "Guards"), P("LaMelo Ball", "Vision & passing", "Guards"), P("Darius Garland", "Change of pace", "Guards"), P("Caitlin Clark", "Deep pull-up", "Guards"), P("Sabrina Ionescu", "Shooting off movement", "Guards"), P("Paige Bueckers", "Shot creation", "Guards"), P("Kelsey Plum", "Off-ball scoring", "Guards"), P("Arike Ogunbowale", "Shot making", "Guards"), P("Jewell Loyd", "Midrange craft", "Guards"), P("Chelsea Gray", "Point guard reads", "Guards"), P("LeBron James", "Reading defenses", "Wings"), P("Kevin Durant", "Shooting mechanics", "Wings"), P("Jayson Tatum", "Shot creation", "Wings"), P("Kawhi Leonard", "Two-way footwork", "Wings"), P("Jimmy Butler", "Drawing fouls", "Wings"), P("Devin Booker", "Midrange scoring", "Wings"), P("Jaylen Brown", "Downhill attacking", "Wings"), P("Paul George", "Closeout defense", "Wings"), P("Mikal Bridges", "Wing defense", "Wings"), P("OG Anunoby", "Point of attack D", "Wings"), P("Franz Wagner", "Craft & finishing", "Wings"), P("Scottie Barnes", "Versatility", "Wings"), P("Brandon Ingram", "Length & pull-up", "Wings"), P("DeMar DeRozan", "Midrange footwork", "Wings"), P("Zion Williamson", "Power finishing", "Wings"), P("Breanna Stewart", "Length & versatility", "Wings"), P("Napheesa Collier", "Two-way forward", "Wings"), P("Satou Sabally", "Positional size", "Wings"), P("Kahleah Copper", "Slashing", "Wings"), P("Nneka Ogwumike", "Efficient scoring", "Wings"), P("Angel Reese", "Rebounding motor", "Wings"), P("Nikola Jokic", "Post reads & passing", "Bigs", "Nikola Joki\u0107"), P("Giannis Antetokounmpo", "Downhill force", "Bigs"), P("Joel Embiid", "Face-up game", "Bigs"), P("Victor Wembanyama", "Length everywhere", "Bigs"), P("Anthony Davis", "Two-way big", "Bigs"), P("Bam Adebayo", "Switch defense", "Bigs"), P("Draymond Green", "Help defense", "Bigs"), P("Rudy Gobert", "Rim protection", "Bigs"), P("Domantas Sabonis", "Rebounding & passing", "Bigs"), P("Alperen Sengun", "Post craft", "Bigs", "Alperen \u015Eeng\u00FCn"), P("Chet Holmgren", "Stretch & block", "Bigs"), P("Evan Mobley", "Mobile defense", "Bigs"), P("Karl-Anthony Towns", "Shooting big", "Bigs"), P("Jarrett Allen", "Vertical spacing", "Bigs"), P("A'ja Wilson", "Post scoring", "Bigs"), P("Aliyah Boston", "Post positioning", "Bigs"), P("Alyssa Thomas", "Playmaking forward", "Bigs"), P("Brittney Griner", "Rim finishing", "Bigs"), P("Michael Jordan", "Midrange craft", "Legends"), P("Kobe Bryant", "Footwork", "Legends"), P("Hakeem Olajuwon", "Post footwork", "Legends"), P("Tim Duncan", "Fundamentals", "Legends"), P("Magic Johnson", "Open court passing", "Legends"), P("Larry Bird", "Reading the game", "Legends"), P("Shaquille O'Neal", "Post power", "Legends"), P("Kareem Abdul-Jabbar", "The skyhook", "Legends"), P("Allen Iverson", "Handle & crossover", "Legends"), P("Steve Nash", "Pick and roll mastery", "Legends"), P("Dirk Nowitzki", "One-leg fadeaway", "Legends"), P("Manu Ginobili", "Euro step", "Legends", "Manu Gin\u00F3bili"), P("Dwyane Wade", "Body control", "Legends"), P("Tracy McGrady", "Shot creation", "Legends"), P("Ray Allen", "Shooting form", "Legends"), P("Reggie Miller", "Off-ball movement", "Legends"), P("Bill Russell", "Defensive timing", "Legends"), P("Diana Taurasi", "Shot making", "Legends"), P("Lisa Leslie", "Post dominance", "Legends"), P("Maya Moore", "Complete scoring", "Legends"), P("Sue Bird", "Running an offense", "Legends"), P("Tamika Catchings", "Two-way motor", "Legends"), P("JuJu Watkins", "Shot creation", "College"), P("Sarah Strong", "Two-way forward", "College"), P("Lauren Betts", "Post dominance", "College"), P("Hannah Hidalgo", "Ball pressure", "College"), P("Flau'jae Johnson", "Slashing", "College"), P("Madison Booker", "Midrange scoring", "College"), P("Audi Crooks", "Post footwork", "College"), P("Ta'Niya Latson", "Scoring guard", "College"), P("Cooper Flagg", "Two-way forward", "College"), P("AJ Dybantsa", "Wing scoring", "College"), P("Darryn Peterson", "Shot creation", "College"), P("Cameron Boozer", "Post & face-up", "College"), P("Nate Ament", "Length & shooting", "College"), P("Koa Peat", "Physical finishing", "College"), P("Mikel Brown Jr.", "Pick and roll", "College"), P("Caleb Wilson", "Athletic forward", "College"), C("Jump Shot", "Shooting", "basketball jump shot form tutorial", "Jump shot (basketball)"), C("Free Throw", "Shooting", "free throw shooting technique tutorial", "Free throw"), C("Three Pointer", "Shooting", "three point shooting form tutorial basketball", "Three-point field goal"), C("Layup", "Finishing", "layup technique tutorial basketball", "Layup"), C("Floater", "Finishing", "floater package tutorial basketball", "Layup"), C("Euro Step", "Finishing", "euro step tutorial breakdown basketball", "Euro step"), C("Slam Dunk", "Finishing", "how to dunk tutorial basketball", "Slam dunk"), C("Crossover", "Handle", "crossover dribble tutorial basketball", "Crossover dribble"), C("Dribbling", "Handle", "ball handling drills basketball tutorial", "Dribbling"), C("Change of Pace", "Handle", "change of pace dribbling basketball tutorial", "Dribbling"), C("Post Up", "Inside", "post up moves tutorial basketball", "Post (basketball)"), C("Boxing Out", "Inside", "rebounding box out technique basketball", "Rebound (basketball)"), C("Pick and Roll", "Team", "pick and roll reads tutorial basketball", "Pick and roll"), C("Off-ball Screens", "Team", "using off ball screens basketball tutorial", "Screen (basketball)"), C("Fast Break", "Team", "fast break fundamentals basketball", "Fast break"), C("Closeouts", "Defense", "how to close out properly basketball defense drill", "Basketball"), C("Man Defense", "Defense", "man to man defense fundamentals basketball", "Man-to-man defense", "https://commons.wikimedia.org/wiki/Special:FilePath/Bader%20defense%20vs%20bgsu.jpg?width=500"), C("Zone Defense", "Defense", "zone defense basketball tutorial", "Zone defense"), C("Steals", "Defense", "how to get steals basketball defense tutorial", "Steal (basketball)"), C("Blocking", "Defense", "shot blocking technique basketball", "Block (basketball)")];
+const BB_ROSTER = [P("Stephen Curry", "Off-ball movement", "Guards"), P("Kyrie Irving", "Handle & finishing", "Guards"), P("Shai Gilgeous-Alexander", "Deceleration", "Guards"), P("Luka Doncic", "Pace & step-back", "Guards", "Luka Don\u010di\u0107"), P("Tyrese Haliburton", "Passing reads", "Guards"), P("Ja Morant", "Explosive finishing", "Guards"), P("Damian Lillard", "Screen usage", "Guards"), P("Jalen Brunson", "Footwork", "Guards"), P("Trae Young", "Pick and roll", "Guards"), P("Anthony Edwards", "Downhill scoring", "Guards", "Anthony Edwards (basketball)"), P("Donovan Mitchell", "Shot creation", "Guards"), P("De'Aaron Fox", "Speed with control", "Guards"), P("Chris Paul", "Pace & midrange", "Guards"), P("Jrue Holiday", "On-ball defense", "Guards"), P("Derrick White", "Two-way guard play", "Guards"), P("Cade Cunningham", "Size at guard", "Guards"), P("LaMelo Ball", "Vision & passing", "Guards"), P("Darius Garland", "Change of pace", "Guards"), P("Caitlin Clark", "Deep pull-up", "Guards"), P("Sabrina Ionescu", "Shooting off movement", "Guards"), P("Paige Bueckers", "Shot creation", "Guards"), P("Kelsey Plum", "Off-ball scoring", "Guards"), P("Arike Ogunbowale", "Shot making", "Guards"), P("Jewell Loyd", "Midrange craft", "Guards"), P("Chelsea Gray", "Point guard reads", "Guards"), P("LeBron James", "Reading defenses", "Wings"), P("Kevin Durant", "Shooting mechanics", "Wings"), P("Jayson Tatum", "Shot creation", "Wings"), P("Kawhi Leonard", "Two-way footwork", "Wings"), P("Jimmy Butler", "Drawing fouls", "Wings"), P("Devin Booker", "Midrange scoring", "Wings"), P("Jaylen Brown", "Downhill attacking", "Wings"), P("Paul George", "Closeout defense", "Wings"), P("Mikal Bridges", "Wing defense", "Wings"), P("OG Anunoby", "Point of attack D", "Wings"), P("Franz Wagner", "Craft & finishing", "Wings"), P("Scottie Barnes", "Versatility", "Wings"), P("Brandon Ingram", "Length & pull-up", "Wings"), P("DeMar DeRozan", "Midrange footwork", "Wings"), P("Zion Williamson", "Power finishing", "Wings"), P("Breanna Stewart", "Length & versatility", "Wings"), P("Napheesa Collier", "Two-way forward", "Wings"), P("Satou Sabally", "Positional size", "Wings"), P("Kahleah Copper", "Slashing", "Wings"), P("Nneka Ogwumike", "Efficient scoring", "Wings"), P("Angel Reese", "Rebounding motor", "Wings"), P("Nikola Jokic", "Post reads & passing", "Bigs", "Nikola Joki\u0107"), P("Giannis Antetokounmpo", "Downhill force", "Bigs"), P("Joel Embiid", "Face-up game", "Bigs"), P("Victor Wembanyama", "Length everywhere", "Bigs"), P("Anthony Davis", "Two-way big", "Bigs"), P("Bam Adebayo", "Switch defense", "Bigs"), P("Draymond Green", "Help defense", "Bigs"), P("Rudy Gobert", "Rim protection", "Bigs"), P("Domantas Sabonis", "Rebounding & passing", "Bigs"), P("Alperen Sengun", "Post craft", "Bigs", "Alperen \u015Eeng\u00FCn"), P("Chet Holmgren", "Stretch & block", "Bigs"), P("Evan Mobley", "Mobile defense", "Bigs"), P("Karl-Anthony Towns", "Shooting big", "Bigs"), P("Jarrett Allen", "Vertical spacing", "Bigs"), P("A'ja Wilson", "Post scoring", "Bigs"), P("Aliyah Boston", "Post positioning", "Bigs"), P("Alyssa Thomas", "Playmaking forward", "Bigs"), P("Brittney Griner", "Rim finishing", "Bigs"), P("Michael Jordan", "Midrange craft", "Legends"), P("Kobe Bryant", "Footwork", "Legends"), P("Hakeem Olajuwon", "Post footwork", "Legends"), P("Tim Duncan", "Fundamentals", "Legends"), P("Magic Johnson", "Open court passing", "Legends"), P("Larry Bird", "Reading the game", "Legends"), P("Shaquille O'Neal", "Post power", "Legends"), P("Kareem Abdul-Jabbar", "The skyhook", "Legends"), P("Allen Iverson", "Handle & crossover", "Legends"), P("Steve Nash", "Pick and roll mastery", "Legends"), P("Dirk Nowitzki", "One-leg fadeaway", "Legends"), P("Manu Ginobili", "Euro step", "Legends", "Manu Gin\u00F3bili"), P("Dwyane Wade", "Body control", "Legends"), P("Tracy McGrady", "Shot creation", "Legends"), P("Ray Allen", "Shooting form", "Legends"), P("Reggie Miller", "Off-ball movement", "Legends"), P("Bill Russell", "Defensive timing", "Legends"), P("Diana Taurasi", "Shot making", "Legends"), P("Lisa Leslie", "Post dominance", "Legends"), P("Maya Moore", "Complete scoring", "Legends"), P("Sue Bird", "Running an offense", "Legends"), P("Tamika Catchings", "Two-way motor", "Legends"), P("JuJu Watkins", "Shot creation", "College"), P("Sarah Strong", "Two-way forward", "College"), P("Lauren Betts", "Post dominance", "College"), P("Hannah Hidalgo", "Ball pressure", "College"), P("Flau'jae Johnson", "Slashing", "College"), P("Madison Booker", "Midrange scoring", "College"), P("Audi Crooks", "Post footwork", "College"), P("Ta'Niya Latson", "Scoring guard", "College"), P("Cooper Flagg", "Two-way forward", "College"), P("AJ Dybantsa", "Wing scoring", "College"), P("Darryn Peterson", "Shot creation", "College"), P("Cameron Boozer", "Post & face-up", "College"), P("Nate Ament", "Length & shooting", "College"), P("Koa Peat", "Physical finishing", "College"), P("Mikel Brown Jr.", "Pick and roll", "College"), P("Caleb Wilson", "Athletic forward", "College"), C("Jump Shot", "Shooting", "basketball jump shot form tutorial", "Jump shot (basketball)"), C("Free Throw", "Shooting", "free throw shooting technique tutorial", "Free throw"), C("Three Pointer", "Shooting", "three point shooting form tutorial basketball", "Three-point field goal"), C("Layup", "Finishing", "layup technique tutorial basketball", "Layup"), C("Floater", "Finishing", "floater package tutorial basketball", "Layup"), C("Euro Step", "Finishing", "euro step tutorial breakdown basketball", "Euro step"), C("Slam Dunk", "Finishing", "how to dunk tutorial basketball", "Slam dunk"), C("Crossover", "Handle", "crossover dribble tutorial basketball", "Crossover dribble"), C("Dribbling", "Handle", "ball handling drills basketball tutorial", "Dribbling"), C("Change of Pace", "Handle", "change of pace dribbling basketball tutorial", "Dribbling"), C("Post Up", "Inside", "post up moves tutorial basketball", "Post (basketball)"), C("Boxing Out", "Inside", "rebounding box out technique basketball", "Rebound (basketball)"), C("Pick and Roll", "Team", "pick and roll reads tutorial basketball", "Pick and roll"), C("Off-ball Screens", "Team", "using off ball screens basketball tutorial", "Screen (basketball)"), C("Fast Break", "Team", "fast break fundamentals basketball", "Fast break"), C("Closeouts", "Defense", "how to close out properly basketball defense drill", "Basketball"), C("Man Defense", "Defense", "man to man defense fundamentals basketball", "Man-to-man defense", "https://commons.wikimedia.org/wiki/Special:FilePath/Bader%20defense%20vs%20bgsu.jpg?width=500"), C("Zone Defense", "Defense", "zone defense basketball tutorial", "Zone defense"), C("Steals", "Defense", "how to get steals basketball defense tutorial", "Steal (basketball)"), C("Blocking", "Defense", "shot blocking technique basketball", "Block (basketball)")];
 
 /* Where each player came from, for the "Before the pros" tab. */
-const PRE = {
+const BB_PRE = {
   "Stephen Curry": "Davidson",
   "Kyrie Irving": "Duke",
   "Shai Gilgeous-Alexander": "Kentucky",
@@ -990,8 +1015,8 @@ const PRE = {
   "Sue Bird": "UConn",
   "Tamika Catchings": "Tennessee"
 };
-const GROUPS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
-const GAMES = [{
+const BB_GROUPS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
+const BB_GAMES = [{
   n: "NBA Finals",
   t: "Championship",
   g: "Pro",
@@ -1406,7 +1431,194 @@ const GAMES = [{
   img: "https://a.espncdn.com/i/teamlogos/ncaa/500/120.png",
   q: "Maryland womens basketball full game"
 }];
-const GAME_GROUPS = ["All", "Pro", "College", "World"];
+const BB_GAME_GROUPS = ["All", "Pro", "College", "World"];
+
+/* Searchable but not on the front page. Any of these opens a full player page. */
+const BB_MORE = ("Davion Mitchell|Malik Monk|Keegan Murray|Jalen Green|Amen Thompson|Ausar Thompson|" + "Jabari Smith Jr.|Paolo Banchero|Jalen Suggs|Anfernee Simons|Shaedon Sharpe|Scoot Henderson|" + "Jaden Ivey|Jalen Duren|Ausar Thompson|Bennedict Mathurin|Andrew Nembhard|Myles Turner|" + "Pascal Siakam|Immanuel Quickley|RJ Barrett|Josh Giddey|Coby White|Zach LaVine|Nikola Vucevic|" + "DeMar DeRozan|Lauri Markkanen|Walker Kessler|Collin Sexton|Jordan Clarkson|Trey Murphy III|" + "Herbert Jones|CJ McCollum|Dejounte Murray|Zaccharie Risacher|Jalen Johnson|Onyeka Okongwu|" + "Tyler Herro|Jaime Jaquez Jr.|Nikola Jovic|Terry Rozier|Kyle Kuzma|Jordan Poole|Bilal Coulibaly|" + "Deni Avdija|Toumani Camara|Deandre Ayton|Jerami Grant|Anfernee Simons|Keyonte George|" + "Cooper Flagg|Ace Bailey|Dylan Harper|VJ Edgecombe|Tre Johnson|Khaman Maluach|" + "Devin Vassell|Stephon Castle|Jeremy Sochan|Julian Champagnie|Brandon Miller|Miles Bridges|" + "Mark Williams|Grant Williams|Jalen Williams|Isaiah Hartenstein|Lu Dort|Cason Wallace|" + "Kristaps Porzingis|Al Horford|Sam Hauser|Payton Pritchard|Naz Reid|Rudy Gobert|Jaden McDaniels|" + "Mike Conley|Aaron Gordon|Michael Porter Jr.|Christian Braun|Peyton Watson|" + "James Harden|Kawhi Leonard|Ivica Zubac|Norman Powell|Austin Reaves|Rui Hachimura|" + "Klay Thompson|Dereck Lively II|Daniel Gafford|PJ Washington|Alperen Sengun|Fred VanVleet|" + "Dillon Brooks|Tari Eason|Amen Thompson|Julius Randle|Donte DiVincenzo|Rob Dillingham|" + "Scottie Barnes|Immanuel Quickley|Gradey Dick|Trae Young|Dyson Daniels|" + "Sabrina Ionescu|Jonquel Jones|Courtney Vandersloot|Kelsey Mitchell|NaLyssa Smith|" + "Rhyne Howard|Ariel Atkins|Jackie Young|Chelsea Gray|Tiffany Hayes|Marina Mabrey|" + "Dearica Hamby|Azura Stevens|Skylar Diggins|Allisha Gray|Cameron Brink|Kamilla Cardoso|" + "Rickea Jackson|Aaliyah Edwards|Hailey Van Lith|Juju Watkins|Flau'jae Johnson|" + "Lauren Betts|Madison Booker|Audi Crooks|Ta'Niya Latson|Olivia Miles|" + "Candace Parker|Elena Delle Donne|Sylvia Fowles|Tina Charles|Seimone Augustus|" + "Cheryl Miller|Sheryl Swoopes|Rebecca Lobo|Dawn Staley|" + "Vince Carter|Paul Pierce|Kevin Garnett|Chris Bosh|Carmelo Anthony|Russell Westbrook|" + "Blake Griffin|Rajon Rondo|Tony Parker|Pau Gasol|Yao Ming|Dikembe Mutombo|" + "Charles Barkley|Karl Malone|John Stockton|Scottie Pippen|Clyde Drexler|Patrick Ewing|" + "David Robinson|Isiah Thomas|Julius Erving|Oscar Robertson|Jerry West|Wilt Chamberlain|" + "Elgin Baylor|Bob Cousy|George Gervin|Dominique Wilkins|Alonzo Mourning|Gary Payton|" + "Jason Kidd|Grant Hill|Chris Webber|Penny Hardaway|Ben Wallace|Kevin McHale|Robert Parish" + "|Jalen Brunson|Tyler Herro|Desmond Bane|Jalen Duren|Ausar Thompson|Bub Carrington|Reed Sheppard|Zach Edey|Donovan Clingan|Alex Sarr|Matas Buzelis|Ron Holland|Kel'el Ware|Jared McCain|Yves Missi|Zaccharie Risacher|Stephon Castle|Devin Carter|Isaiah Collier|Rob Dillingham|Dalton Knecht|Tristan da Silva|Kyle Filipowski|Jaylen Wells|Kyshawn George|Carlton Carrington|Jamal Shead|Baylor Scheierman|Terrence Shannon Jr.|Johnny Furphy|Trayce Jackson-Davis|Brandin Podziemski|Jaime Jaquez Jr.|Keyonte George|Brice Sensabaugh|Gradey Dick|Cason Wallace|Anthony Black|Taylor Hendricks|Jett Howard|Kobe Bufkin|Nick Smith Jr.|Jordan Hawkins|Dereck Lively II|Bilal Coulibaly|Jarace Walker|Victor Oladipo|Bradley Beal|Kyle Lowry|Marcus Smart|Malcolm Brogdon|Bogdan Bogdanovic|Buddy Hield|Tim Hardaway Jr.|Seth Curry|Duncan Robinson|Max Strus|Sam Merrill|Grayson Allen|Royce O'Neale|Kelly Olynyk|Jusuf Nurkic|Nic Claxton|Isaiah Stewart|Robert Williams III|Brook Lopez|Clint Capela|Steven Adams|Jonas Valanciunas|Bam Adebayo|Wendell Carter Jr.|Jalen Smith|Naz Reid|Santi Aldama|Obi Toppin|Precious Achiuwa|Isaiah Jackson|Goga Bitadze|Moritz Wagner|Luke Kennard|Corey Kispert|Cam Thomas|Quentin Grimes|Immanuel Quickley|Andrew Wiggins|Michael Porter Jr.|Aaron Gordon|Christian Braun|Peyton Watson|Julian Strawther|Vince Carter|Tracy McGrady|Rasheed Wallace|Ben Wallace|Chauncey Billups|Richard Hamilton|Baron Davis|Stephon Marbury|Antoine Walker|Latrell Sprewell|Shawn Kemp|Gary Payton|Alonzo Mourning|Dikembe Mutombo|Mitch Richmond|Chris Mullin|Glen Rice|Detlef Schrempf|Toni Kukoc|Arvydas Sabonis|Drazen Petrovic|Sarunas Marciulionis|Peja Stojakovic|Bill Walton|Moses Malone|Elvin Hayes|Nate Archibald|Dave Cowens|Willis Reed|Walt Frazier|Earl Monroe|Pete Maravich|Rick Barry|Bob Pettit|George Mikan|Sabrina Ionescu|Kelsey Plum|Jackie Young|Aja Wilson|Alyssa Thomas|DeWanna Bonner|Courtney Williams|Natasha Cloud|Brionna Jones|Ezi Magbegor|Jonquel Jones|Emma Meesseman|Gabby Williams|Kayla McBride|Kate Martin|Cameron Brink|Rickea Jackson|Angel Reese|Aaliyah Edwards|Kamilla Cardoso|Leonie Fiebich|Sonia Citron|Paige Bueckers|Sarah Strong|JuJu Watkins|Hannah Hidalgo|Lauren Betts|Madison Booker|Audi Crooks|Flau'jae Johnson|Ta'Niya Latson|Olivia Miles|Kiki Rice|Syla Swords|Joyce Edwards|MiLaysia Fulwiley|Talaysia Cooper|Mikaylah Williams|Justice Carlton|Cooper Flagg|AJ Dybantsa|Darryn Peterson|Cameron Boozer|Nate Ament|Koa Peat|Mikel Brown Jr.|Caleb Wilson|Chris Cenac Jr.|Tounde Yessoufou|Nikolas Khamenia|Braylon Mullins|Jayden Quaintance|Karter Knox|Labaron Philon|Boogie Fland|Dylan Harper|Ace Bailey|VJ Edgecombe|Tre Johnson|Khaman Maluach|Kon Knueppel|Jeremiah Fears|Collin Murray-Boyles|Derik Queen|Asa Newell|Liam McNeeley|Thomas Sorber|Egor Demin|Danny Wolf|Noa Essengue|Carter Bryant|Will Riley|Drake Powell|Nolan Traore|Hugo Gonzalez|Rasheer Fleming|Adou Thiero|Johni Broome|Mark Sears|Braden Smith|JT Toppin|Otega Oweh|PJ Haggerty|Bennett Stirtz|Tahaad Pettiford|Milos Uzan|Alex Condon|Yaxel Lendeborg" + "|Kylan Boswell|Jamaree Bouyea|Jaden Bradley|Tony Bradley|Trevon Brazile|Koby Brea|Mikal Bridges|Bruce Brown" + "|Jaylen Brown|Kobe Brown|Maliq Brown|Thomas Bryant|Brayden Burries|Jimmy Butler III|Jamal Cain|Dylan Cardwell" + "|Branden Carlson|Cameron Carr|Jevon Carter|Alex Caruso|Colin Castleton|Justin Champagnie|Cam Christie|Max Christie" + "|Moussa Cisse|Sidy Cissoko|Jaylen Clark|Walter Clayton Jr.|Nique Clifford|Noah Clowney|Amir Coffey|John Collins" + "|Zach Collins|Pat Connaughton|Ryan Conwell|Sharife Cooper|Quadir Copeland|Cedric Coward|Isaiah Crawford|LJ Cryer" + "|Cade Cunningham|Stephen Curry|Pacome Dadiet|Anthony Davis|JD Davison|Sergio De Larrea|RayJ Dennis|Tucker DeVries" + "|Moussa Diabate|Alpha Diallo|Mohamed Diawara|Hunter Dickinson|Ousmane Dieng|Josh Dix|Tre Donaldson|Luka Doncic" + "|Luguentz Dort|Ayo Dosunmu|Andre Drummond|Kris Dunn|Ryan Dunn|Kevin Durant|Anthony Edwards|Justin Edwards" + "|Zuby Ejiofor|Keon Ellis|Joel Embiid|Tristan Enaruna|Tyson Etienne|Drew Eubanks|Isaiah Evans|Dorian Finney-Smith" + "|Adam Flagler|Kingston Flemings|Simone Fontecchio|De'Aaron Fox|Enrique Freeman|Myron Gardner|Darius Garland|Luka Garza" + "|Paul George|Taj Gibson|Keshon Gilbert|Shai Gilgeous-Alexander|Anthony Gill|Collin Gillespie|Ja'Kobi Gillespie|Vladislav Goldin" + "|Jordan Goodwin|Allen Graves|Hayden Gray|AJ Green|Draymond Green|Javonte Green|Jeff Green|Josh Green" + "|Mouhamadou Gueye|Mouhamed Gueye|Tyrese Haliburton|PJ Hall|Yang Hansen|Jaden Hardy|Elijah Harkless|Ron Harper Jr." + "|Gary Harris|Tobias Harris|Josh Hart|Jaxson Hayes|Killian Hayes|Chucky Hepburn|Haywood Highsmith|Blake Hinson" + "|Aaron Holiday|Jrue Holiday|Ronald Holland II|DaRon Holmes II|Chet Holmgren|Bryce Hopkins|Kevin Huerter|Jay Huff" + "|Ariel Hukporti|De'Andre Hunter|CJ Huntley|Bones Hyland|Oso Ighodaro|Joe Ingles|Brandon Ingram|Harrison Ingram" + "|Kyrie Irving|Jonathan Isaac|Vsevolod Ishchenko|GG Jackson|Quenton Jackson|Andre Jackson Jr.|Jaren Jackson Jr.|Kasparas Jakucionis" + "|Bronny James|LeBron James|Sion James|Joshua Jefferson|Trey Jemison III|Daniss Jenkins|Ty Jerome|Isaiah Joe" + "|AJ Johnson|Cameron Johnson|Chaney Johnson|Keldon Johnson|Keshad Johnson|Morez Johnson|Nikola Jokic|Curtis Jones" + "|Dillon Jones|Isaac Jones|Kam Jones|Lajae Jones|Spencer Jones|Tre Jones|Tyus Jones|David Jones Garcia" + "|Derrick Jones Jr.|DeAndre Jordan|Ryan Kalkbrenner|Arthur Kaluma|Alex Karaban|Trey Kaufman-Renn|Jack Kayil|Trevor Keels" + "|Jayson Kent|Tyler Kolek|Christian Koloko|John Konchar|Luke Kornet|Vit Krejci|Jonathan Kuminga|Jock Landale" + "|Chaz Lanier|Jake LaRavia|Pelle Larsson|Tobi Lawal|A.J. Lawson|Malevy Leons|Caris LeVert|Malique Lewis" + "|E.J. Liddell|Damian Lillard|Isaiah Livers|Kevon Looney|Karim Lopez|Caleb Love|Kevin Love|Trey Lyles" + "|Sandro Mamukelashvili|Terance Mann|Tre Mann|Chris Manon|Aday Mara|Bogoljub Markovic|Naji Marshall|Alijah Martin" + "|Caleb Martin|Tyrese Martin|Nick Martinelli|Jahmai Mashack|Karlo Matkovic|Tyrese Maxey|Bez Mbeng|Miles McBride" + "|T.J. McConnell|Kevin McCullar Jr.|Doug McDermott|Bryce McGowens|Jordan McLaughlin|De'Anthony Melton|Khris Middleton|Duke Miles" + "|Baba Miller|Jordan Miller|Leonard Miller|Riley Minix|Josh Minott|Ajay Mitchell|Dillon Mitchell|Donovan Mitchell" + "|Evan Mobley|Jonathan Mogbo|Moses Moody|Wendell Moore Jr.|Alex Morales|Ja Morant|Jamal Murray|Kris Murray" + "|Svi Mykhailiuk|Pete Nance|Larry Nance Jr.|Izaiyah Nelson|Ryan Nembhard|Aaron Nesmith|Tristen Newton|Narcisse Ngoy" + "|Tyler Nickel|Yanic Konan Niederhauser|Zeke Nnaji|Josh Oduro|AK Okereke|Josh Okogie|Ebuka Okorie|Isaac Okoro" + "|Felix Okpara|Norchad Omier|Ugonna Onyenso|Kelly Oubre Jr.|Gary Payton II|Micah Peavy|Sean Pedulla|Noah Penda" + "|Julian Phillips|Jalen Pickett|Jaron Pierre Jr.|Scotty Pippen Jr.|Daeqwon Plowden|Mason Plumlee|Jakob Poeltl|Craig Porter Jr." + "|Kevin Porter Jr.|Bobby Portis Jr.|Quinten Post|Micah Potter|John Poulakidas|Dwight Powell|Taurean Prince|Tyrese Proctor" + "|Olivier-Maxence Prosper|Zyon Pullin|Neemias Queta|Maxime Raynaud|Paul Reed|Tarris Reed Jr.|Julian Reese|Antonio Reeves" + "|Will Richard|Jase Richardson|Mitchell Robinson|David Roddy|Ryan Rollins|Rayan Rupert|D'Angelo Russell|Cormac Ryan" + "|Domantas Sabonis|Tidjane Salaun|Kobe Sanders|Gui Santos|Ben Saraf|Olivier Sarr|Marcus Sasser|Richie Saunders" + "|Dennis Schroder|Jaylin Sellers|Landry Shamet|Emanuel Sharp|Day'Ron Sharpe|Ben Sheppard|Max Shulga|KJ Simpson" + "|Jericho Sims|Jalen Slawson|Javon Small|Dru Smith|Tolu Smith|Cam Spencer|Pat Spencer|Hannes Steinbach" + "|Dailyn Swain|Jae'Sean Tate|Jayson Tatum|Meleek Thomas|Ethan Thompson|Bruce Thornton|Matisse Thybulle|Xavier Tillman" + "|Nae'Qwan Tomlin|John Tonje|Nikola Topic|Karl-Anthony Towns|Gary Trent Jr.|Oscar Tshiebwe|Jaylon Tyson|Ernest Udeh Jr." + "|Jarred Vanderbilt|Henri Veesaar|Gabe Vincent|Tristan Vukcevic|Dean Wade|Keaton Wagler|Franz Wagner|Jabari Walker" + "|Keaton Wallace" + "|Precious Achiuwa|Darius Acuff Jr.|Steven Adams|Michael Ajayi|Santi Aldama|Trey Alexander|Nickeil Alexander-Walker|Grayson Allen|Jarrett Allen|Jose Alvarado|Nate Ament|Christian Anderson|Kyle Anderson|Alex Antetokounmpo|Giannis Antetokounmpo|Thanasis Antetokounmpo|OG Anunoby|Deni Avdija|Tobe Awaka|Deandre Ayton|Marvin Bagley III|Ace Bailey|Patrick Baldwin Jr.|LaMelo Ball|Mo Bamba|Paolo Banchero|Desmond Bane|Dominick Barlow|Harrison Barnes|Scottie Barnes|Brooks Barnhizer|RJ Barrett|Charles Bassey|Tamar Bates|Jamison Battle|Nicolas Batum|Bradley Beal|MarJon Beauchamp|Joan Beringer|Saddiq Bey|Tarik Biberovic|Tyler Bilodeau|Goga Bitadze|Nate Bittle|Bismack Biyombo|Anthony Black|Bogdan Bogdanovic|Adem Bona|Devin Booker" + "|Jordan Walsh|Ja'Kobe Walter|P.J. Washington|TyTy Washington Jr.|Lindy Waters III|Trendon Watford|Jamir Watkins|Victor Wembanyama" + "|Blake Wesley|Derrick White|Cam Whitmore|Aaron Wiggins|Amari Williams|Brandon Williams|Cody Williams|Jaylin Williams" + "|Kenrich Williams|Nate Williams|Patrick Williams|Ziaire Williams|Zion Williamson|Jalen Wilson|Jahmir Young|Chris Youngblood" + "|Rocco Zikarsky").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+const BB_GAME_ITEMS = BB_GAMES.map(g => ({
+  n: g.n,
+  t: g.t,
+  g: g.g,
+  q: g.q,
+  wiki: g.wiki,
+  img: g.img,
+  kind: "game"
+}));
+const BB_POOL = BB_ROSTER.concat(BB_MORE);
+
+/* ===================== OTHER SPORTS ===================== */
+
+const SP = (n, t, g, wiki) => ({
+  n: n,
+  t: t,
+  g: g,
+  wiki: wiki,
+  kind: "player"
+});
+const SC = (n, t, q, wiki) => ({
+  n: n,
+  t: t,
+  g: "Skills",
+  q: q,
+  wiki: wiki,
+  kind: "concept"
+});
+const SG = (n, t, g, q, wiki) => ({
+  n: n,
+  t: t,
+  g: g,
+  q: q,
+  wiki: wiki,
+  kind: "game"
+});
+
+/* ---------------------- SOCCER ---------------------- */
+
+const SO_ROSTER = [SP("Lionel Messi", "Close control", "Forwards"), SP("Cristiano Ronaldo", "Finishing & heading", "Forwards"), SP("Kylian Mbappe", "Running with the ball", "Forwards", "Kylian Mbappé"), SP("Erling Haaland", "Movement in the box", "Forwards"), SP("Vinicius Junior", "One-v-one dribbling", "Forwards", "Vinícius Júnior"), SP("Mohamed Salah", "Cutting inside", "Forwards"), SP("Harry Kane", "Dropping deep", "Forwards"), SP("Robert Lewandowski", "Poacher's timing", "Forwards"), SP("Lamine Yamal", "Wing play", "Forwards"), SP("Bukayo Saka", "Wide attacking", "Forwards"), SP("Jude Bellingham", "Arriving in the box", "Midfielders"), SP("Kevin De Bruyne", "Passing range", "Midfielders"), SP("Rodri", "Screening the back four", "Midfielders"), SP("Pedri", "Receiving under pressure", "Midfielders"), SP("Federico Valverde", "Box to box", "Midfielders"), SP("Declan Rice", "Winning the ball back", "Midfielders"), SP("Phil Foden", "Between the lines", "Midfielders"), SP("Luka Modric", "Turning out of trouble", "Midfielders", "Luka Modrić"), SP("Virgil van Dijk", "Defending the back post", "Defenders"), SP("Ruben Dias", "Reading the game", "Defenders", "Rúben Dias"), SP("Achraf Hakimi", "Overlapping runs", "Defenders"), SP("Alphonso Davies", "Recovery pace", "Defenders"), SP("Alisson", "Sweeping behind", "Keepers", "Alisson Becker"), SP("Thibaut Courtois", "Shot stopping", "Keepers"), SP("Emiliano Martinez", "Penalty saves", "Keepers", "Emiliano Martínez"), SP("Aitana Bonmati", "Half-space play", "Women", "Aitana Bonmatí"), SP("Alexia Putellas", "Arriving late", "Women"), SP("Sam Kerr", "Running in behind", "Women"), SP("Lauren James", "Shot creation", "Women"), SP("Sophia Smith", "Direct running", "Women", "Sophia Wilson"), SP("Trinity Rodman", "Wing dribbling", "Women"), SP("Vivianne Miedema", "Finishing", "Women"), SP("Marta", "Left-foot technique", "Women", "Marta (footballer)"), SP("Pele", "Complete forward play", "Legends", "Pelé"), SP("Diego Maradona", "Dribbling at speed", "Legends"), SP("Zinedine Zidane", "Control and turns", "Legends"), SP("Ronaldinho", "Skill moves", "Legends"), SP("Ronaldo", "Explosive finishing", "Legends", "Ronaldo (Brazilian footballer)"), SP("Thierry Henry", "Cutting in from the left", "Legends"), SP("Johan Cruyff", "Movement and vision", "Legends"), SP("Paolo Maldini", "Defending without fouling", "Legends"), SP("Xavi", "Keeping the ball", "Legends", "Xavi"), SP("Andres Iniesta", "Escaping pressure", "Legends", "Andrés Iniesta"), SC("First Touch", "Technique", "soccer first touch drills tutorial", "Ball control (association football)"), SC("Dribbling", "Technique", "soccer dribbling drills tutorial", "Dribbling"), SC("Passing", "Technique", "soccer passing technique tutorial", "Passing (association football)"), SC("Finishing", "Attacking", "soccer finishing drills tutorial", "Shot (association football)"), SC("Free Kick", "Set pieces", "soccer free kick technique tutorial", "Direct free kick"), SC("Penalty Kick", "Set pieces", "soccer penalty kick technique tutorial", "Penalty kick (association football)"), SC("Crossing", "Attacking", "soccer crossing technique tutorial", "Cross (football)"), SC("Heading", "Technique", "soccer heading technique tutorial", "Header (association football)"), SC("Tackling", "Defending", "soccer tackling technique tutorial", "Tackle (football move)"), SC("Pressing", "Defending", "soccer pressing tactics explained", "Press (association football)"), SC("Goalkeeping", "Keeping", "soccer goalkeeper training drills", "Goalkeeper (association football)"), SC("Step Over", "Skill moves", "soccer step over tutorial", "Step over (football)"), SC("Through Ball", "Attacking", "soccer through ball tutorial", "Through ball"), SC("Offside Trap", "Defending", "soccer offside trap explained", "Offside (association football)")];
+const SO_GAMES = [SG("Champions League", "Full matches", "Club", "Champions League full match replay", "UEFA Champions League"), SG("Premier League", "Full matches", "Club", "Premier League full match replay", "Premier League"), SG("La Liga", "Full matches", "Club", "La Liga full match replay", "La Liga"), SG("Serie A", "Full matches", "Club", "Serie A full match replay", "Serie A"), SG("Bundesliga", "Full matches", "Club", "Bundesliga full match replay", "Bundesliga"), SG("Ligue 1", "Full matches", "Club", "Ligue 1 full match replay", "Ligue 1"), SG("Europa League", "Full matches", "Club", "Europa League full match replay", "UEFA Europa League"), SG("Copa Libertadores", "Full matches", "Club", "Copa Libertadores full match replay", "Copa Libertadores"), SG("MLS", "Full matches", "Club", "MLS full match replay", "Major League Soccer"), SG("World Cup", "Tournament", "International", "FIFA World Cup full match replay", "FIFA World Cup"), SG("Euros", "Tournament", "International", "UEFA Euro full match replay", "UEFA European Championship"), SG("Copa America", "Tournament", "International", "Copa America full match replay", "Copa América"), SG("AFCON", "Tournament", "International", "Africa Cup of Nations full match replay", "Africa Cup of Nations"), SG("Women's World Cup", "Tournament", "Women", "FIFA Women's World Cup full match replay", "FIFA Women's World Cup"), SG("WSL", "Full matches", "Women", "Women's Super League full match replay", "Women's Super League"), SG("NWSL", "Full matches", "Women", "NWSL full match replay", "National Women's Soccer League")];
+const SO_MORE = ("Antoine Griezmann|Jamal Musiala|Florian Wirtz|Bruno Fernandes|Martin Odegaard|" + "Son Heung-min|Victor Osimhen|Rafael Leao|Khvicha Kvaratskhelia|Nico Williams|Julian Alvarez|" + "Cole Palmer|Alejandro Garnacho|Eduardo Camavinga|Aurelien Tchouameni|Frenkie de Jong|" + "Joshua Kimmich|Toni Kroos|Ilkay Gundogan|Bernardo Silva|Riyad Mahrez|Sadio Mane|" + "Marcus Rashford|Ollie Watkins|Dominik Szoboszlai|Alexis Mac Allister|Enzo Fernandez|" + "Moises Caicedo|William Saliba|Gabriel Magalhaes|Josko Gvardiol|Trent Alexander-Arnold|" + "Andrew Robertson|Theo Hernandez|Antonio Rudiger|Marquinhos|Ederson|Gianluigi Donnarumma|" + "Jan Oblak|Manuel Neuer|Keylor Navas|Mary Earps|Beth Mead|Leah Williamson|Lucy Bronze|" + "Caitlin Foord|Khadija Shaw|Ewa Pajor|Barbra Banda|Mallory Swanson|Naomi Girma|" + "Catarina Macario|Rose Lavelle|Debinha|Wendie Renard|Ada Hegerberg|Megan Rapinoe|" + "Abby Wambach|Mia Hamm|Michel Platini|Franz Beckenbauer|George Best|Eusebio|" + "Roberto Baggio|Alessandro Del Piero|Francesco Totti|Steven Gerrard|Frank Lampard|" + "Paul Scholes|Roy Keane|Patrick Vieira|Didier Drogba|Samuel Etoo|Kaka|Iker Casillas").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+
+/* ---------------------- HOCKEY ---------------------- */
+
+const HO_ROSTER = [SP("Connor McDavid", "Skating with speed", "Forwards"), SP("Nathan MacKinnon", "Attacking off the rush", "Forwards"), SP("Auston Matthews", "Shot release", "Forwards"), SP("Leon Draisaitl", "Playmaking", "Forwards"), SP("Sidney Crosby", "Protecting the puck", "Forwards"), SP("Alex Ovechkin", "The one-timer", "Forwards"), SP("David Pastrnak", "Finding shooting lanes", "Forwards", "David Pastrňák"), SP("Nikita Kucherov", "Vision on the half wall", "Forwards"), SP("Kirill Kaprizov", "Creating off the wall", "Forwards"), SP("Matthew Tkachuk", "Playing on the edge", "Forwards"), SP("Mikko Rantanen", "Using his reach", "Forwards"), SP("Cale Makar", "Joining the rush", "Defence"), SP("Quinn Hughes", "Skating out of pressure", "Defence"), SP("Adam Fox", "Reading the blue line", "Defence"), SP("Victor Hedman", "Defending with size", "Defence"), SP("Roman Josi", "Two-way defence", "Defence"), SP("Igor Shesterkin", "Post-to-post movement", "Goalies"), SP("Connor Hellebuyck", "Positioning", "Goalies"), SP("Jeremy Swayman", "Tracking the puck", "Goalies"), SP("Hilary Knight", "Net-front presence", "Women"), SP("Marie-Philip Poulin", "Clutch finishing", "Women"), SP("Sarah Nurse", "Playmaking", "Women"), SP("Wayne Gretzky", "Seeing the play early", "Legends"), SP("Mario Lemieux", "Reach and hands", "Legends"), SP("Bobby Orr", "Rushing from defence", "Legends"), SP("Gordie Howe", "Complete power forward", "Legends"), SP("Patrick Roy", "Butterfly goaltending", "Legends"), SP("Martin Brodeur", "Puck handling", "Legends"), SP("Jaromir Jagr", "Shielding the puck", "Legends", "Jaromír Jágr"), SC("Skating", "Technique", "hockey skating drills tutorial", "Ice skating"), SC("Stickhandling", "Technique", "hockey stickhandling drills tutorial", "Stickhandling"), SC("Wrist Shot", "Shooting", "hockey wrist shot technique tutorial", "Wrist shot"), SC("Slap Shot", "Shooting", "hockey slap shot technique tutorial", "Slapshot"), SC("Backhand", "Shooting", "hockey backhand shot tutorial", "Backhand (ice hockey)"), SC("Passing", "Technique", "hockey passing drills tutorial", "Pass (ice hockey)"), SC("Faceoffs", "Technique", "hockey faceoff technique tutorial", "Face-off"), SC("Body Checking", "Defending", "hockey body checking technique tutorial", "Checking (ice hockey)"), SC("Goaltending", "Keeping", "hockey goalie training drills", "Goaltender"), SC("Power Play", "Team", "hockey power play systems explained", "Power play (sporting term)"), SC("Penalty Kill", "Team", "hockey penalty kill systems explained", "Penalty (ice hockey)"), SC("Deking", "Technique", "hockey deke tutorial", "Deke (ice hockey)")];
+const HO_GAMES = [SG("NHL", "Full games", "Pro", "NHL full game replay", "National Hockey League"), SG("Stanley Cup", "Playoffs", "Pro", "Stanley Cup Final full game replay", "Stanley Cup"), SG("Winter Classic", "Special", "Pro", "NHL Winter Classic full game replay", "NHL Winter Classic"), SG("PWHL", "Full games", "Women", "PWHL full game replay", "Professional Women's Hockey League"), SG("Olympic Hockey", "Tournament", "International", "Olympic ice hockey full game replay", "Ice hockey at the Winter Olympics"), SG("World Championship", "Tournament", "International", "IIHF World Championship full game replay", "IIHF World Championship"), SG("World Juniors", "Tournament", "International", "World Junior Championship full game replay", "World Junior Ice Hockey Championships"), SG("NCAA Hockey", "Full games", "College", "NCAA hockey full game replay", "NCAA Division I men's ice hockey"), SG("KHL", "Full games", "World", "KHL full game replay", "Kontinental Hockey League")];
+const HO_MORE = ("Jack Hughes|Artemi Panarin|Brady Tkachuk|Tim Stutzle|Elias Pettersson|" + "Jason Robertson|Kyle Connor|Mitch Marner|William Nylander|Brayden Point|Aleksander Barkov|" + "Sebastian Aho|Clayton Keller|Dylan Larkin|Jack Eichel|Mark Stone|Nick Suzuki|Tage Thompson|" + "Macklin Celebrini|Connor Bedard|Leo Carlsson|Adam Fantilli|Matvei Michkov|Logan Cooley|" + "Rasmus Dahlin|Evan Bouchard|Miro Heiskanen|Charlie McAvoy|Noah Dobson|Moritz Seider|" + "Jake Sanderson|Lane Hutson|Andrei Vasilevskiy|Ilya Sorokin|Linus Ullmark|Juuse Saros|" + "Thatcher Demko|Filip Gustavsson|Steven Stamkos|Evgeni Malkin|Patrick Kane|Brad Marchand|" + "John Tavares|Claude Giroux|Anze Kopitar|Joe Pavelski|Mark Messier|Steve Yzerman|" + "Nicklas Lidstrom|Ray Bourque|Dominik Hasek|Teemu Selanne|Peter Forsberg|Joe Sakic|" + "Kendall Coyne Schofield|Hannah Brandt|Alex Carpenter|Natalie Spooner|Emily Clark").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+
+/* -------------------- VOLLEYBALL -------------------- */
+
+const VO_ROSTER = [SP("Yuji Nishida", "Explosive spiking", "Men"), SP("Wilfredo Leon", "Jump serve", "Men", "Wilfredo León"), SP("Earvin Ngapeth", "Improvisation", "Men"), SP("Bartosz Kurek", "Attacking angles", "Men"), SP("Matt Anderson", "All-round hitting", "Men", "Matt Anderson (volleyball)"), SP("Micah Christenson", "Setting tempo", "Men"), SP("Ivan Zaytsev", "Power serving", "Men"), SP("Paola Egonu", "Opposite hitting", "Women"), SP("Tijana Boskovic", "Scoring under pressure", "Women", "Tijana Bošković"), SP("Zhu Ting", "Complete outside play", "Women"), SP("Jordan Larson", "Passing and defence", "Women"), SP("Melissa Vargas", "Attacking power", "Women"), SP("Gabi Guimaraes", "Serve receive", "Women", "Gabi (volleyball)"), SP("Isabelle Haak", "Opposite hitting", "Women"), SP("Kathryn Plummer", "Outside hitting", "Women"), SP("Karch Kiraly", "Complete game", "Legends"), SP("Giba", "Attacking craft", "Legends", "Giba"), SP("Sheilla Castro", "Middle blocking", "Legends"), SC("Serving", "Technique", "volleyball serving technique tutorial", "Serve (volleyball)"), SC("Jump Serve", "Serving", "volleyball jump serve tutorial", "Serve (volleyball)"), SC("Float Serve", "Serving", "volleyball float serve tutorial", "Serve (volleyball)"), SC("Passing", "Technique", "volleyball passing platform tutorial", "Volleyball"), SC("Setting", "Technique", "volleyball setting technique tutorial", "Setter (volleyball)"), SC("Spiking", "Attacking", "volleyball spike approach tutorial", "Spike (volleyball)"), SC("Blocking", "Defending", "volleyball blocking technique tutorial", "Block (volleyball)"), SC("Digging", "Defending", "volleyball digging drills tutorial", "Dig (volleyball)"), SC("Approach", "Attacking", "volleyball hitting approach footwork", "Spike (volleyball)"), SC("Libero Play", "Defending", "volleyball libero training drills", "Libero")];
+const VO_GAMES = [SG("Olympic Volleyball", "Tournament", "International", "Olympic volleyball full match", "Volleyball at the Summer Olympics"), SG("World Championship", "Tournament", "International", "FIVB World Championship full match", "FIVB Volleyball World Championship"), SG("Nations League", "Tournament", "International", "Volleyball Nations League full match", "FIVB Volleyball Nations League"), SG("NCAA Volleyball", "Full matches", "College", "NCAA volleyball full match", "NCAA Women's Volleyball Championship"), SG("Serie A1", "Full matches", "Club", "Italian Serie A1 volleyball full match", "Serie A (volleyball)"), SG("PlusLiga", "Full matches", "Club", "PlusLiga volleyball full match", "PlusLiga"), SG("LOVB", "Full matches", "Club", "LOVB volleyball full match", "League One Volleyball"), SG("Beach Volleyball", "Full matches", "Beach", "beach volleyball full match", "Beach volleyball")];
+const VO_MORE = ("Simone Giannelli|Alessandro Michieletto|Yuki Ishikawa|Ran Takahashi|" + "Aleksandar Nikolov|Marko Ivovic|Osniel Mergarejo|Nimir Abdel-Aziz|Torey Defalco|" + "Aaron Russell|Erik Shoji|Bruno Rezende|Ricardo Lucarelli|Yoandy Leal|" + "Kamil Semeniuk|Wilfredo Leon|Jakub Kochanowski|Mateusz Bieniek|" + "Andrea Giani|Ivan Miljkovic|Clay Stanley|David Lee|" + "Kim Yeon-koung|Sarina Koga|Mayu Ishikawa|Ana Cristina|Kelsey Robinson|" + "Micha Hancock|Justine Wong-Orantes|Annie Drews|Andrea Drews|Haleigh Washington|" + "Chiaka Ogbogu|Jordyn Poulter|Logan Eggleston|Madi Skinner|Asjia O'Neal|" + "Ekaterina Antropova|Alessia Orro|Monica De Gennaro|Miriam Sylla|Myriam Fatime Sylla|" + "Nia Reed|Brooke Nuneviller|Sarah Franklin|Anna Smrek").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+
+/* --------------------- FOOTBALL --------------------- */
+
+const FB_ROSTER = [SP("Patrick Mahomes", "Throwing off platform", "Quarterbacks"), SP("Josh Allen", "Arm strength", "Quarterbacks"), SP("Lamar Jackson", "Running threat", "Quarterbacks"), SP("Joe Burrow", "Pocket poise", "Quarterbacks"), SP("Jayden Daniels", "Escaping pressure", "Quarterbacks"), SP("C.J. Stroud", "Reading coverage", "Quarterbacks"), SP("Justin Jefferson", "Route running", "Receivers"), SP("Ja'Marr Chase", "Contested catches", "Receivers"), SP("Tyreek Hill", "Separation speed", "Receivers"), SP("CeeDee Lamb", "Releases off the line", "Receivers"), SP("Amon-Ra St. Brown", "Working the middle", "Receivers"), SP("Travis Kelce", "Finding soft spots", "Receivers"), SP("Christian McCaffrey", "Receiving out of the backfield", "Backs"), SP("Saquon Barkley", "Vision and cuts", "Backs"), SP("Derrick Henry", "Running through contact", "Backs"), SP("Bijan Robinson", "Balance", "Backs"), SP("Micah Parsons", "Pass rush moves", "Defence"), SP("Myles Garrett", "Getting off the ball", "Defence"), SP("T.J. Watt", "Bending the edge", "Defence"), SP("Sauce Gardner", "Press coverage", "Defence"), SP("Patrick Surtain II", "Man coverage", "Defence"), SP("Fred Warner", "Diagnosing plays", "Defence"), SP("Tom Brady", "Pre-snap reads", "Legends"), SP("Peyton Manning", "Running the offence", "Legends"), SP("Jerry Rice", "Route craft", "Legends"), SP("Barry Sanders", "Change of direction", "Legends"), SP("Lawrence Taylor", "Rushing the passer", "Legends"), SP("Randy Moss", "Deep tracking", "Legends"), SP("Ray Lewis", "Reading the run", "Legends"), SP("Deion Sanders", "Coverage technique", "Legends"), SC("Route Running", "Offence", "football route running drills tutorial", "Route (gridiron football)"), SC("Pocket Presence", "Offence", "quarterback pocket presence drills", "Quarterback"), SC("Throwing Mechanics", "Offence", "quarterback throwing mechanics tutorial", "Forward pass"), SC("Ball Security", "Offence", "football ball security drills", "Fumble"), SC("Offensive Line Play", "Offence", "offensive line technique drills football", "Offensive lineman"), SC("Pass Rush", "Defence", "football pass rush moves tutorial", "Quarterback sack"), SC("Man Coverage", "Defence", "football man coverage technique", "Man-to-man coverage"), SC("Zone Coverage", "Defence", "football zone coverage explained", "Zone coverage"), SC("Tackling", "Defence", "football tackling technique drills", "Tackle (football move)"), SC("Kicking", "Special teams", "football field goal kicking technique", "Placekicker"), SC("Punting", "Special teams", "football punting technique tutorial", "Punter (football)")];
+const FB_GAMES = [SG("Super Bowl", "Championship", "Pro", "Super Bowl full game replay", "Super Bowl"), SG("NFL", "Full games", "Pro", "NFL full game replay", "National Football League"), SG("NFL Playoffs", "Postseason", "Pro", "NFL playoffs full game replay", "NFL playoffs"), SG("Pro Bowl", "All-star", "Pro", "Pro Bowl full game replay", "Pro Bowl"), SG("College Playoff", "Postseason", "College", "College Football Playoff full game replay", "College Football Playoff"), SG("NCAA Football", "Full games", "College", "NCAA football full game replay", "College football"), SG("Rose Bowl", "Bowl game", "College", "Rose Bowl full game replay", "Rose Bowl Game"), SG("Army-Navy", "Rivalry", "College", "Army Navy game full replay", "Army–Navy Game")];
+const FB_MORE = ("Jalen Hurts|Dak Prescott|Jared Goff|Justin Herbert|Brock Purdy|Caleb Williams|" + "Drake Maye|Bo Nix|Baker Mayfield|Kyler Murray|Trevor Lawrence|Tua Tagovailoa|" + "A.J. Brown|DeVonta Smith|Garrett Wilson|Chris Olave|Drake London|Malik Nabers|" + "Marvin Harrison Jr.|Rome Odunze|Brian Thomas Jr.|Nico Collins|Puka Nacua|" + "George Kittle|Mark Andrews|Trey McBride|Brock Bowers|Sam LaPorta|" + "Jahmyr Gibbs|De'Von Achane|Kyren Williams|Josh Jacobs|Jonathan Taylor|" + "Breece Hall|James Cook|Kenneth Walker III|Rachaad White|" + "Aidan Hutchinson|Will Anderson Jr.|Nick Bosa|Maxx Crosby|Danielle Hunter|" + "Chris Jones|Quinnen Williams|Dexter Lawrence|Jalen Carter|Vita Vea|" + "Roquan Smith|Zack Baun|Bobby Wagner|Devin White|" + "Derek Stingley Jr.|Jaycee Horn|Christian Gonzalez|Brian Branch|Kyle Hamilton|" + "Antoine Winfield Jr.|Minkah Fitzpatrick|Budda Baker|" + "Trent Williams|Penei Sewell|Lane Johnson|Tristan Wirfs|Quenton Nelson|" + "Aaron Donald|J.J. Watt|Von Miller|Khalil Mack|Aaron Rodgers|Drew Brees|" + "Emmitt Smith|Walter Payton|Joe Montana|Dan Marino|John Elway|Brett Favre|" + "Calvin Johnson|Terrell Owens|Reggie White|Ronnie Lott|Ed Reed|Champ Bailey").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+}).map(function (n) {
+  return {
+    n: n,
+    t: "Player",
+    g: "More",
+    kind: "player"
+  };
+});
+
+/* ------------------- THE REGISTRY ------------------- */
+
+function itemsOf(list, kind) {
+  return list.filter(function (x) {
+    return x.kind === kind;
+  });
+}
+const SPORTS = {
+  basketball: {
+    label: "Basketball",
+    term: "basketball",
+    roster: BB_ROSTER,
+    games: BB_GAME_ITEMS,
+    pool: BB_POOL,
+    pre: BB_PRE,
+    playerFilters: BB_GROUPS,
+    gameFilters: BB_GAME_GROUPS,
+    gamesBlurb: "Whole replays, not highlights. Everything here is filtered to videos over 20 minutes."
+  },
+  soccer: {
+    label: "Soccer",
+    term: "soccer",
+    roster: SO_ROSTER,
+    games: SO_GAMES,
+    pool: SO_ROSTER.concat(SO_MORE),
+    pre: {},
+    playerFilters: ["All", "Forwards", "Midfielders", "Defenders", "Keepers", "Women", "Legends", "Skills"],
+    gameFilters: ["All", "Club", "International", "Women"],
+    gamesBlurb: "Full matches from the biggest leagues and tournaments, not highlight packages."
+  },
+  hockey: {
+    label: "Hockey",
+    term: "hockey",
+    roster: HO_ROSTER,
+    games: HO_GAMES,
+    pool: HO_ROSTER.concat(HO_MORE),
+    pre: {},
+    playerFilters: ["All", "Forwards", "Defence", "Goalies", "Women", "Legends", "Skills"],
+    gameFilters: ["All", "Pro", "Women", "International", "College", "World"],
+    gamesBlurb: "Full games from the NHL and the international tournaments."
+  },
+  volleyball: {
+    label: "Volleyball",
+    term: "volleyball",
+    roster: VO_ROSTER,
+    games: VO_GAMES,
+    pool: VO_ROSTER.concat(VO_MORE),
+    pre: {},
+    playerFilters: ["All", "Men", "Women", "Legends", "Skills"],
+    gameFilters: ["All", "International", "Club", "College", "Beach"],
+    gamesBlurb: "Full matches from the Olympics, the club leagues and the college game."
+  },
+  football: {
+    label: "Football",
+    term: "football",
+    roster: FB_ROSTER,
+    games: FB_GAMES,
+    pool: FB_ROSTER.concat(FB_MORE),
+    pre: {},
+    playerFilters: ["All", "Quarterbacks", "Receivers", "Backs", "Defence", "Legends", "Skills"],
+    gameFilters: ["All", "Pro", "College"],
+    gamesBlurb: "Full games and the biggest bowls, not highlight reels."
+  }
+};
+const SPORT_KEYS = ["basketball", "soccer", "hockey", "volleyball", "football"];
+let SPORT = "basketball";
+try {
+  const stored = window.localStorage.getItem("fr-sport");
+  if (stored && SPORTS[stored]) SPORT = stored;
+} catch (e) {}
+let D = SPORTS[SPORT];
+function setSportData(key) {
+  SPORT = SPORTS[key] ? key : "basketball";
+  D = SPORTS[SPORT];
+  try {
+    window.localStorage.setItem("fr-sport", SPORT);
+  } catch (e) {}
+}
 
 /* ---------------------- YouTube ---------------------- */
 
@@ -1980,6 +2192,8 @@ function Settings({
   user,
   theme,
   setTheme,
+  sport,
+  setSport,
   onSignIn,
   onSignOut,
   onClose
@@ -2014,6 +2228,25 @@ function Settings({
     },
     onClick: onSignIn
   }, "Sign in")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Sport"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-sports"
+  }, SPORT_KEYS.map(function (k) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: k,
+      className: "fr-sportbtn",
+      "data-on": sport === k ? "1" : "0",
+      onClick: function () {
+        setSport(k);
+      }
+    }, SPORTS[k].label);
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      fontSize: 13,
+      marginTop: 10
+    }
+  }, "Everything follows the sport you pick \\u2014 players, full games, skills and the coach."), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Appearance"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
@@ -2086,12 +2319,13 @@ function LockedTrain({
 /* --------------------- LANDING ----------------------- */
 
 function Landing({
-  go
+  go,
+  sport
 }) {
   const cards = [{
     ic: "\u25B6",
     h: "Players",
-    p: "Search anyone, or browse the roster. Film study, highlights and college tape on each.",
+    p: "Search anyone, or browse the roster. Film study, highlights and full games on each.",
     to: "players"
   }, {
     ic: "\u25A4",
@@ -2116,7 +2350,7 @@ function Landing({
     size: 44
   })), /*#__PURE__*/React.createElement("p", {
     className: "fr-eyeb"
-  }, "Film Room"), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
+  }, "Film Room \\u00B7 ", SPORTS[sport].label), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
     className: "fr-lede"
   }, "Pull tape on any player, skill, or full game. Send your own clip and get it graded across every category in it. Then get the drills that actually fix it."), /*#__PURE__*/React.createElement("div", {
     className: "fr-cta"
@@ -2144,30 +2378,6 @@ function Landing({
 
 /* --------------------- LIBRARY ----------------------- */
 
-const GAME_ITEMS = GAMES.map(g => ({
-  n: g.n,
-  t: g.t,
-  g: g.g,
-  q: g.q,
-  wiki: g.wiki,
-  img: g.img,
-  kind: "game"
-}));
-
-/* Searchable but not on the front page. Any of these opens a full player page. */
-const MORE = ("Davion Mitchell|Malik Monk|Keegan Murray|Jalen Green|Amen Thompson|Ausar Thompson|" + "Jabari Smith Jr.|Paolo Banchero|Jalen Suggs|Anfernee Simons|Shaedon Sharpe|Scoot Henderson|" + "Jaden Ivey|Jalen Duren|Ausar Thompson|Bennedict Mathurin|Andrew Nembhard|Myles Turner|" + "Pascal Siakam|Immanuel Quickley|RJ Barrett|Josh Giddey|Coby White|Zach LaVine|Nikola Vucevic|" + "DeMar DeRozan|Lauri Markkanen|Walker Kessler|Collin Sexton|Jordan Clarkson|Trey Murphy III|" + "Herbert Jones|CJ McCollum|Dejounte Murray|Zaccharie Risacher|Jalen Johnson|Onyeka Okongwu|" + "Tyler Herro|Jaime Jaquez Jr.|Nikola Jovic|Terry Rozier|Kyle Kuzma|Jordan Poole|Bilal Coulibaly|" + "Deni Avdija|Toumani Camara|Deandre Ayton|Jerami Grant|Anfernee Simons|Keyonte George|" + "Cooper Flagg|Ace Bailey|Dylan Harper|VJ Edgecombe|Tre Johnson|Khaman Maluach|" + "Devin Vassell|Stephon Castle|Jeremy Sochan|Julian Champagnie|Brandon Miller|Miles Bridges|" + "Mark Williams|Grant Williams|Jalen Williams|Isaiah Hartenstein|Lu Dort|Cason Wallace|" + "Kristaps Porzingis|Al Horford|Sam Hauser|Payton Pritchard|Naz Reid|Rudy Gobert|Jaden McDaniels|" + "Mike Conley|Aaron Gordon|Michael Porter Jr.|Christian Braun|Peyton Watson|" + "James Harden|Kawhi Leonard|Ivica Zubac|Norman Powell|Austin Reaves|Rui Hachimura|" + "Klay Thompson|Dereck Lively II|Daniel Gafford|PJ Washington|Alperen Sengun|Fred VanVleet|" + "Dillon Brooks|Tari Eason|Amen Thompson|Julius Randle|Donte DiVincenzo|Rob Dillingham|" + "Scottie Barnes|Immanuel Quickley|Gradey Dick|Trae Young|Dyson Daniels|" + "Sabrina Ionescu|Jonquel Jones|Courtney Vandersloot|Kelsey Mitchell|NaLyssa Smith|" + "Rhyne Howard|Ariel Atkins|Jackie Young|Chelsea Gray|Tiffany Hayes|Marina Mabrey|" + "Dearica Hamby|Azura Stevens|Skylar Diggins|Allisha Gray|Cameron Brink|Kamilla Cardoso|" + "Rickea Jackson|Aaliyah Edwards|Hailey Van Lith|Juju Watkins|Flau'jae Johnson|" + "Lauren Betts|Madison Booker|Audi Crooks|Ta'Niya Latson|Olivia Miles|" + "Candace Parker|Elena Delle Donne|Sylvia Fowles|Tina Charles|Seimone Augustus|" + "Cheryl Miller|Sheryl Swoopes|Rebecca Lobo|Dawn Staley|" + "Vince Carter|Paul Pierce|Kevin Garnett|Chris Bosh|Carmelo Anthony|Russell Westbrook|" + "Blake Griffin|Rajon Rondo|Tony Parker|Pau Gasol|Yao Ming|Dikembe Mutombo|" + "Charles Barkley|Karl Malone|John Stockton|Scottie Pippen|Clyde Drexler|Patrick Ewing|" + "David Robinson|Isiah Thomas|Julius Erving|Oscar Robertson|Jerry West|Wilt Chamberlain|" + "Elgin Baylor|Bob Cousy|George Gervin|Dominique Wilkins|Alonzo Mourning|Gary Payton|" + "Jason Kidd|Grant Hill|Chris Webber|Penny Hardaway|Ben Wallace|Kevin McHale|Robert Parish" + "|Jalen Brunson|Tyler Herro|Desmond Bane|Jalen Duren|Ausar Thompson|Bub Carrington|Reed Sheppard|Zach Edey|Donovan Clingan|Alex Sarr|Matas Buzelis|Ron Holland|Kel'el Ware|Jared McCain|Yves Missi|Zaccharie Risacher|Stephon Castle|Devin Carter|Isaiah Collier|Rob Dillingham|Dalton Knecht|Tristan da Silva|Kyle Filipowski|Jaylen Wells|Kyshawn George|Carlton Carrington|Jamal Shead|Baylor Scheierman|Terrence Shannon Jr.|Johnny Furphy|Trayce Jackson-Davis|Brandin Podziemski|Jaime Jaquez Jr.|Keyonte George|Brice Sensabaugh|Gradey Dick|Cason Wallace|Anthony Black|Taylor Hendricks|Jett Howard|Kobe Bufkin|Nick Smith Jr.|Jordan Hawkins|Dereck Lively II|Bilal Coulibaly|Jarace Walker|Victor Oladipo|Bradley Beal|Kyle Lowry|Marcus Smart|Malcolm Brogdon|Bogdan Bogdanovic|Buddy Hield|Tim Hardaway Jr.|Seth Curry|Duncan Robinson|Max Strus|Sam Merrill|Grayson Allen|Royce O'Neale|Kelly Olynyk|Jusuf Nurkic|Nic Claxton|Isaiah Stewart|Robert Williams III|Brook Lopez|Clint Capela|Steven Adams|Jonas Valanciunas|Bam Adebayo|Wendell Carter Jr.|Jalen Smith|Naz Reid|Santi Aldama|Obi Toppin|Precious Achiuwa|Isaiah Jackson|Goga Bitadze|Moritz Wagner|Luke Kennard|Corey Kispert|Cam Thomas|Quentin Grimes|Immanuel Quickley|Andrew Wiggins|Michael Porter Jr.|Aaron Gordon|Christian Braun|Peyton Watson|Julian Strawther|Vince Carter|Tracy McGrady|Rasheed Wallace|Ben Wallace|Chauncey Billups|Richard Hamilton|Baron Davis|Stephon Marbury|Antoine Walker|Latrell Sprewell|Shawn Kemp|Gary Payton|Alonzo Mourning|Dikembe Mutombo|Mitch Richmond|Chris Mullin|Glen Rice|Detlef Schrempf|Toni Kukoc|Arvydas Sabonis|Drazen Petrovic|Sarunas Marciulionis|Peja Stojakovic|Bill Walton|Moses Malone|Elvin Hayes|Nate Archibald|Dave Cowens|Willis Reed|Walt Frazier|Earl Monroe|Pete Maravich|Rick Barry|Bob Pettit|George Mikan|Sabrina Ionescu|Kelsey Plum|Jackie Young|Aja Wilson|Alyssa Thomas|DeWanna Bonner|Courtney Williams|Natasha Cloud|Brionna Jones|Ezi Magbegor|Jonquel Jones|Emma Meesseman|Gabby Williams|Kayla McBride|Kate Martin|Cameron Brink|Rickea Jackson|Angel Reese|Aaliyah Edwards|Kamilla Cardoso|Leonie Fiebich|Sonia Citron|Paige Bueckers|Sarah Strong|JuJu Watkins|Hannah Hidalgo|Lauren Betts|Madison Booker|Audi Crooks|Flau'jae Johnson|Ta'Niya Latson|Olivia Miles|Kiki Rice|Syla Swords|Joyce Edwards|MiLaysia Fulwiley|Talaysia Cooper|Mikaylah Williams|Justice Carlton|Cooper Flagg|AJ Dybantsa|Darryn Peterson|Cameron Boozer|Nate Ament|Koa Peat|Mikel Brown Jr.|Caleb Wilson|Chris Cenac Jr.|Tounde Yessoufou|Nikolas Khamenia|Braylon Mullins|Jayden Quaintance|Karter Knox|Labaron Philon|Boogie Fland|Dylan Harper|Ace Bailey|VJ Edgecombe|Tre Johnson|Khaman Maluach|Kon Knueppel|Jeremiah Fears|Collin Murray-Boyles|Derik Queen|Asa Newell|Liam McNeeley|Thomas Sorber|Egor Demin|Danny Wolf|Noa Essengue|Carter Bryant|Will Riley|Drake Powell|Nolan Traore|Hugo Gonzalez|Rasheer Fleming|Adou Thiero|Johni Broome|Mark Sears|Braden Smith|JT Toppin|Otega Oweh|PJ Haggerty|Bennett Stirtz|Tahaad Pettiford|Milos Uzan|Alex Condon|Yaxel Lendeborg" + "|Kylan Boswell|Jamaree Bouyea|Jaden Bradley|Tony Bradley|Trevon Brazile|Koby Brea|Mikal Bridges|Bruce Brown" + "|Jaylen Brown|Kobe Brown|Maliq Brown|Thomas Bryant|Brayden Burries|Jimmy Butler III|Jamal Cain|Dylan Cardwell" + "|Branden Carlson|Cameron Carr|Jevon Carter|Alex Caruso|Colin Castleton|Justin Champagnie|Cam Christie|Max Christie" + "|Moussa Cisse|Sidy Cissoko|Jaylen Clark|Walter Clayton Jr.|Nique Clifford|Noah Clowney|Amir Coffey|John Collins" + "|Zach Collins|Pat Connaughton|Ryan Conwell|Sharife Cooper|Quadir Copeland|Cedric Coward|Isaiah Crawford|LJ Cryer" + "|Cade Cunningham|Stephen Curry|Pacome Dadiet|Anthony Davis|JD Davison|Sergio De Larrea|RayJ Dennis|Tucker DeVries" + "|Moussa Diabate|Alpha Diallo|Mohamed Diawara|Hunter Dickinson|Ousmane Dieng|Josh Dix|Tre Donaldson|Luka Doncic" + "|Luguentz Dort|Ayo Dosunmu|Andre Drummond|Kris Dunn|Ryan Dunn|Kevin Durant|Anthony Edwards|Justin Edwards" + "|Zuby Ejiofor|Keon Ellis|Joel Embiid|Tristan Enaruna|Tyson Etienne|Drew Eubanks|Isaiah Evans|Dorian Finney-Smith" + "|Adam Flagler|Kingston Flemings|Simone Fontecchio|De'Aaron Fox|Enrique Freeman|Myron Gardner|Darius Garland|Luka Garza" + "|Paul George|Taj Gibson|Keshon Gilbert|Shai Gilgeous-Alexander|Anthony Gill|Collin Gillespie|Ja'Kobi Gillespie|Vladislav Goldin" + "|Jordan Goodwin|Allen Graves|Hayden Gray|AJ Green|Draymond Green|Javonte Green|Jeff Green|Josh Green" + "|Mouhamadou Gueye|Mouhamed Gueye|Tyrese Haliburton|PJ Hall|Yang Hansen|Jaden Hardy|Elijah Harkless|Ron Harper Jr." + "|Gary Harris|Tobias Harris|Josh Hart|Jaxson Hayes|Killian Hayes|Chucky Hepburn|Haywood Highsmith|Blake Hinson" + "|Aaron Holiday|Jrue Holiday|Ronald Holland II|DaRon Holmes II|Chet Holmgren|Bryce Hopkins|Kevin Huerter|Jay Huff" + "|Ariel Hukporti|De'Andre Hunter|CJ Huntley|Bones Hyland|Oso Ighodaro|Joe Ingles|Brandon Ingram|Harrison Ingram" + "|Kyrie Irving|Jonathan Isaac|Vsevolod Ishchenko|GG Jackson|Quenton Jackson|Andre Jackson Jr.|Jaren Jackson Jr.|Kasparas Jakucionis" + "|Bronny James|LeBron James|Sion James|Joshua Jefferson|Trey Jemison III|Daniss Jenkins|Ty Jerome|Isaiah Joe" + "|AJ Johnson|Cameron Johnson|Chaney Johnson|Keldon Johnson|Keshad Johnson|Morez Johnson|Nikola Jokic|Curtis Jones" + "|Dillon Jones|Isaac Jones|Kam Jones|Lajae Jones|Spencer Jones|Tre Jones|Tyus Jones|David Jones Garcia" + "|Derrick Jones Jr.|DeAndre Jordan|Ryan Kalkbrenner|Arthur Kaluma|Alex Karaban|Trey Kaufman-Renn|Jack Kayil|Trevor Keels" + "|Jayson Kent|Tyler Kolek|Christian Koloko|John Konchar|Luke Kornet|Vit Krejci|Jonathan Kuminga|Jock Landale" + "|Chaz Lanier|Jake LaRavia|Pelle Larsson|Tobi Lawal|A.J. Lawson|Malevy Leons|Caris LeVert|Malique Lewis" + "|E.J. Liddell|Damian Lillard|Isaiah Livers|Kevon Looney|Karim Lopez|Caleb Love|Kevin Love|Trey Lyles" + "|Sandro Mamukelashvili|Terance Mann|Tre Mann|Chris Manon|Aday Mara|Bogoljub Markovic|Naji Marshall|Alijah Martin" + "|Caleb Martin|Tyrese Martin|Nick Martinelli|Jahmai Mashack|Karlo Matkovic|Tyrese Maxey|Bez Mbeng|Miles McBride" + "|T.J. McConnell|Kevin McCullar Jr.|Doug McDermott|Bryce McGowens|Jordan McLaughlin|De'Anthony Melton|Khris Middleton|Duke Miles" + "|Baba Miller|Jordan Miller|Leonard Miller|Riley Minix|Josh Minott|Ajay Mitchell|Dillon Mitchell|Donovan Mitchell" + "|Evan Mobley|Jonathan Mogbo|Moses Moody|Wendell Moore Jr.|Alex Morales|Ja Morant|Jamal Murray|Kris Murray" + "|Svi Mykhailiuk|Pete Nance|Larry Nance Jr.|Izaiyah Nelson|Ryan Nembhard|Aaron Nesmith|Tristen Newton|Narcisse Ngoy" + "|Tyler Nickel|Yanic Konan Niederhauser|Zeke Nnaji|Josh Oduro|AK Okereke|Josh Okogie|Ebuka Okorie|Isaac Okoro" + "|Felix Okpara|Norchad Omier|Ugonna Onyenso|Kelly Oubre Jr.|Gary Payton II|Micah Peavy|Sean Pedulla|Noah Penda" + "|Julian Phillips|Jalen Pickett|Jaron Pierre Jr.|Scotty Pippen Jr.|Daeqwon Plowden|Mason Plumlee|Jakob Poeltl|Craig Porter Jr." + "|Kevin Porter Jr.|Bobby Portis Jr.|Quinten Post|Micah Potter|John Poulakidas|Dwight Powell|Taurean Prince|Tyrese Proctor" + "|Olivier-Maxence Prosper|Zyon Pullin|Neemias Queta|Maxime Raynaud|Paul Reed|Tarris Reed Jr.|Julian Reese|Antonio Reeves" + "|Will Richard|Jase Richardson|Mitchell Robinson|David Roddy|Ryan Rollins|Rayan Rupert|D'Angelo Russell|Cormac Ryan" + "|Domantas Sabonis|Tidjane Salaun|Kobe Sanders|Gui Santos|Ben Saraf|Olivier Sarr|Marcus Sasser|Richie Saunders" + "|Dennis Schroder|Jaylin Sellers|Landry Shamet|Emanuel Sharp|Day'Ron Sharpe|Ben Sheppard|Max Shulga|KJ Simpson" + "|Jericho Sims|Jalen Slawson|Javon Small|Dru Smith|Tolu Smith|Cam Spencer|Pat Spencer|Hannes Steinbach" + "|Dailyn Swain|Jae'Sean Tate|Jayson Tatum|Meleek Thomas|Ethan Thompson|Bruce Thornton|Matisse Thybulle|Xavier Tillman" + "|Nae'Qwan Tomlin|John Tonje|Nikola Topic|Karl-Anthony Towns|Gary Trent Jr.|Oscar Tshiebwe|Jaylon Tyson|Ernest Udeh Jr." + "|Jarred Vanderbilt|Henri Veesaar|Gabe Vincent|Tristan Vukcevic|Dean Wade|Keaton Wagler|Franz Wagner|Jabari Walker" + "|Keaton Wallace" + "|Precious Achiuwa|Darius Acuff Jr.|Steven Adams|Michael Ajayi|Santi Aldama|Trey Alexander|Nickeil Alexander-Walker|Grayson Allen|Jarrett Allen|Jose Alvarado|Nate Ament|Christian Anderson|Kyle Anderson|Alex Antetokounmpo|Giannis Antetokounmpo|Thanasis Antetokounmpo|OG Anunoby|Deni Avdija|Tobe Awaka|Deandre Ayton|Marvin Bagley III|Ace Bailey|Patrick Baldwin Jr.|LaMelo Ball|Mo Bamba|Paolo Banchero|Desmond Bane|Dominick Barlow|Harrison Barnes|Scottie Barnes|Brooks Barnhizer|RJ Barrett|Charles Bassey|Tamar Bates|Jamison Battle|Nicolas Batum|Bradley Beal|MarJon Beauchamp|Joan Beringer|Saddiq Bey|Tarik Biberovic|Tyler Bilodeau|Goga Bitadze|Nate Bittle|Bismack Biyombo|Anthony Black|Bogdan Bogdanovic|Adem Bona|Devin Booker" + "|Jordan Walsh|Ja'Kobe Walter|P.J. Washington|TyTy Washington Jr.|Lindy Waters III|Trendon Watford|Jamir Watkins|Victor Wembanyama" + "|Blake Wesley|Derrick White|Cam Whitmore|Aaron Wiggins|Amari Williams|Brandon Williams|Cody Williams|Jaylin Williams" + "|Kenrich Williams|Nate Williams|Patrick Williams|Ziaire Williams|Zion Williamson|Jalen Wilson|Jahmir Young|Chris Youngblood" + "|Rocco Zikarsky").split("|").filter(function (v, i, a) {
-  return v && a.indexOf(v) === i;
-}).map(function (n) {
-  return {
-    n: n,
-    t: "Player",
-    g: "More",
-    kind: "player"
-  };
-});
-const SEARCH_POOL = ROSTER.concat(MORE);
-const PLAYER_FILTERS = ["All", "Guards", "Wings", "Bigs", "Legends", "College", "Skills"];
-const GAME_FILTERS = ["All", "Pro", "College", "World"];
 function Library({
   title,
   blurb,
@@ -2185,7 +2395,7 @@ function Library({
   const searchable = pool || items;
   let list = filter === "All" ? items : items.filter(r => r.g === filter);
   if (q) {
-    const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
+    const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (D.pre[r.n] || "").toLowerCase().indexOf(q) > -1);
     hit.sort((a, b) => {
       const ai = a.n.toLowerCase().indexOf(q),
         bi = b.n.toLowerCase().indexOf(q);
@@ -2298,11 +2508,11 @@ function Library({
 function Players(props) {
   return /*#__PURE__*/React.createElement(Library, {
     title: "Players",
-    blurb: "Search " + SEARCH_POOL.length + " players by name, or browse the shortlist below. Tap anyone for film study, highlights, full games and their college tape.",
+    blurb: "Search " + D.pool.length + " players by name, or browse the shortlist below. Tap anyone for film study, highlights, full games and their college tape.",
     placeholder: "Search a player, school, or skill",
-    items: ROSTER,
-    pool: SEARCH_POOL,
-    filters: PLAYER_FILTERS,
+    items: D.roster,
+    pool: D.pool,
+    filters: D.playerFilters,
     onOpen: props.onOpen,
     onSearch: props.onSearch
   });
@@ -2310,10 +2520,10 @@ function Players(props) {
 function GamesPage(props) {
   return /*#__PURE__*/React.createElement(Library, {
     title: "Full games",
-    blurb: "Whole replays, not highlights. Everything here is filtered to videos over 20 minutes.",
+    blurb: D.gamesBlurb,
     placeholder: "Search a team or competition",
-    items: GAME_ITEMS,
-    filters: GAME_FILTERS,
+    items: D.games,
+    filters: D.gameFilters,
     onOpen: props.onOpen,
     onSearch: props.onSearch
   });
@@ -2326,12 +2536,12 @@ function tabsFor(item) {
     return [{
       id: "highlights",
       label: "Highlights",
-      q: item.n + " basketball highlights",
+      q: item.n + " " + D.term + " highlights",
       dur: "any"
     }, {
       id: "games",
       label: "Full games",
-      q: item.n + " basketball full game",
+      q: item.n + " " + D.term + " full game",
       dur: "long"
     }, {
       id: "players",
@@ -2343,24 +2553,24 @@ function tabsFor(item) {
   const tabs = [{
     id: "study",
     label: "Film study",
-    q: item.g === "College" ? item.n + " college basketball film breakdown" : item.n + " basketball film study breakdown",
+    q: item.g === "College" ? item.n + " college " + D.term + " film breakdown" : item.n + " " + D.term + " film study breakdown",
     dur: "any"
   }, {
     id: "highlights",
     label: "Highlights",
-    q: item.n + " basketball highlights",
+    q: item.n + " " + D.term + " highlights",
     dur: "any"
   }, {
     id: "games",
     label: "Full games",
-    q: item.n + " basketball full game",
+    q: item.n + " " + D.term + " full game",
     dur: "long"
   }];
-  const pre = item.g === "College" ? null : PRE[item.n];
+  const pre = item.g === "College" ? null : D.pre[item.n];
   if (pre) tabs.push({
     id: "pre",
     label: "Before the pros",
-    q: item.n + " " + pre + " basketball highlights",
+    q: item.n + " " + pre + " " + D.term + " highlights",
     dur: "any"
   });
   return tabs;
@@ -2401,7 +2611,7 @@ function Player({
       });
       setActive(list[0] || null);
       if (!list.length) {
-        setErr(id === "study" ? "Couldn't find any basketball film for \u201C" + player.n + "\u201D. Check the spelling, or try their full name." : "No " + t.label.toLowerCase() + " came back for " + player.n + ".");
+        setErr(id === "study" ? "Couldn't find any " + D.term + " film for \u201C" + player.n + "\u201D. Check the spelling, or try their full name." : "No " + t.label.toLowerCase() + " came back for " + player.n + ".");
       }
     } catch (e) {
       setErr(e.message || "Something went wrong.");
@@ -2442,9 +2652,9 @@ function Player({
     className: "fr-pname"
   }, player.n), /*#__PURE__*/React.createElement("p", {
     className: "fr-dose"
-  }, player.t, player.g ? " \u00B7 " + player.g : "", PRE[player.n] ? " \u00B7 " + PRE[player.n] : ""))), stats && player.kind === "player" && /*#__PURE__*/React.createElement("div", {
+  }, player.t, player.g ? " \u00B7 " + player.g : "", D.pre[player.n] ? " \u00B7 " + D.pre[player.n] : ""))), stats && player.kind === "player" && /*#__PURE__*/React.createElement("div", {
     className: "fr-glass fr-statpanel"
-  }, /*#__PURE__*/React.createElement("h4", null, player.n), /*#__PURE__*/React.createElement("dl", null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Known for"), /*#__PURE__*/React.createElement("dd", null, player.t)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Position group"), /*#__PURE__*/React.createElement("dd", null, player.g)), PRE[player.n] && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Came from"), /*#__PURE__*/React.createElement("dd", null, PRE[player.n]))), bio && bio.text && /*#__PURE__*/React.createElement("p", null, bio.text), /*#__PURE__*/React.createElement("a", {
+  }, /*#__PURE__*/React.createElement("h4", null, player.n), /*#__PURE__*/React.createElement("dl", null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Known for"), /*#__PURE__*/React.createElement("dd", null, player.t)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Position group"), /*#__PURE__*/React.createElement("dd", null, player.g)), D.pre[player.n] && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Came from"), /*#__PURE__*/React.createElement("dd", null, D.pre[player.n]))), bio && bio.text && /*#__PURE__*/React.createElement("p", null, bio.text), /*#__PURE__*/React.createElement("a", {
     className: "fr-pill",
     style: {
       textDecoration: "none",
@@ -2563,6 +2773,45 @@ function Film({
     active: active,
     setActive: setActive
   }))));
+}
+
+/* ------------------- CHAT STORAGE -------------------- */
+
+function chatKey(sport) {
+  return "fr-chats-" + (sport || "basketball");
+}
+function loadChats(sport) {
+  try {
+    return JSON.parse(window.localStorage.getItem(chatKey(sport)) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+function saveChats(sport, chats) {
+  try {
+    window.localStorage.setItem(chatKey(sport), JSON.stringify(chats.slice(0, 30)));
+  } catch (e) {}
+}
+
+/* Images are far too big to keep, so only the words are stored. */
+function slimHistory(history) {
+  return history.map(function (turn) {
+    return {
+      role: turn.role,
+      parts: turn.parts.filter(function (p) {
+        return p.text !== undefined;
+      })
+    };
+  }).filter(function (t) {
+    return t.parts.length;
+  });
+}
+function titleOf(msgs) {
+  for (let i = 0; i < msgs.length; i++) {
+    if (msgs[i].who === "you" && msgs[i].text) return msgs[i].text.slice(0, 48);
+    if (msgs[i].who === "you" && msgs[i].clip) return msgs[i].clip;
+  }
+  return "New chat";
 }
 
 /* ------------------------ CLIP ----------------------- */
@@ -2708,15 +2957,69 @@ function KeyGate({
     }
   }, "Stored on this device only. It never goes to us or into your repo."));
 }
-function Train() {
-  const [msgs, setMsgs] = useState([]);
-  const [history, setHistory] = useState([]);
+function Train({
+  sport
+}) {
+  const [chats, setChats] = useState(function () {
+    return loadChats(sport);
+  });
+  const [chatId, setChatId] = useState(function () {
+    const c = loadChats(sport);
+    return c.length ? c[0].id : null;
+  });
+  const [showHistory, setShowHistory] = useState(false);
+  const current = chats.filter(function (c) {
+    return c.id === chatId;
+  })[0];
+  const [msgs, setMsgs] = useState(function () {
+    return current && current.msgs || [];
+  });
+  const [history, setHistory] = useState(function () {
+    return current && current.history || [];
+  });
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState("");
   const [ready, setReady] = useState(!!aiKey());
   const input = useRef(null);
   const bottom = useRef(null);
+  useEffect(function () {
+    if (!msgs.length) return;
+    const id = chatId || String(Date.now());
+    if (!chatId) setChatId(id);
+    const entry = {
+      id: id,
+      at: Date.now(),
+      title: titleOf(msgs),
+      msgs: msgs,
+      history: slimHistory(history)
+    };
+    const next = [entry].concat(chats.filter(function (c) {
+      return c.id !== id;
+    }));
+    setChats(next);
+    saveChats(sport, next);
+  }, [msgs.length]);
+  function newChat() {
+    setChatId(null);
+    setMsgs([]);
+    setHistory([]);
+    setShowHistory(false);
+  }
+  function openChat(c) {
+    setChatId(c.id);
+    setMsgs(c.msgs || []);
+    setHistory(c.history || []);
+    setShowHistory(false);
+  }
+  function deleteChat(id) {
+    const next = chats.filter(function (c) {
+      return c.id !== id;
+    });
+    setChats(next);
+    saveChats(sport, next);
+    if (id === chatId) newChat();
+  }
   useEffect(() => {
     if (bottom.current && bottom.current.scrollIntoView) {
       bottom.current.scrollIntoView({
@@ -2751,7 +3054,7 @@ function Train() {
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
-        parts = [T("You are an expert basketball skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words.")];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words.")];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
@@ -2802,6 +3105,36 @@ function Train() {
     disabled: !!busy || !text.trim(),
     "aria-label": "Send"
   }, "\u2191")));
+  const chatbar = /*#__PURE__*/React.createElement("div", {
+    className: "fr-chattop"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: newChat
+  }, "New chat"), chats.length > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      setShowHistory(!showHistory);
+    }
+  }, "History", chats.length > 1 ? " (" + chats.length + ")" : ""));
+  const historyList = showHistory && chats.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-histlist"
+  }, chats.map(function (c) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-histrow",
+      key: c.id,
+      "data-on": c.id === chatId ? "1" : "0"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function () {
+        openChat(c);
+      }
+    }, /*#__PURE__*/React.createElement("b", null, c.title), /*#__PURE__*/React.createElement("span", null, new Date(c.at).toLocaleDateString())), /*#__PURE__*/React.createElement("button", {
+      className: "fr-x",
+      onClick: function () {
+        deleteChat(c.id);
+      },
+      "aria-label": "Delete this chat"
+    }, "\u00D7"));
+  }));
   if (empty) {
     return /*#__PURE__*/React.createElement("div", {
       className: "fr-blank"
@@ -2810,11 +3143,13 @@ function Train() {
       style: {
         width: "100%"
       }
-    }, /*#__PURE__*/React.createElement("h2", {
+    }, chats.length > 0 && chatbar, historyList, /*#__PURE__*/React.createElement("h2", {
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
-    }, "Tap + to send a clip. Any length, and nothing to fill in."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
+    }, "Tap + to send a clip. Any length, and nothing to fill in."), /*#__PURE__*/React.createElement("p", {
+      className: "fr-disclaim"
+    }, "The coach can get things wrong. Treat it as a second opinion, not a diagnosis \\u2014 and never train through pain on its say-so."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
       onSaved: () => setReady(true)
     })), /*#__PURE__*/React.createElement("input", {
       ref: input,
@@ -2833,7 +3168,7 @@ function Train() {
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
-  }, !ready && /*#__PURE__*/React.createElement(KeyGate, {
+  }, chatbar, historyList, !ready && /*#__PURE__*/React.createElement(KeyGate, {
     onSaved: () => setReady(true)
   }), /*#__PURE__*/React.createElement("div", {
     className: "fr-thread"
@@ -2860,7 +3195,9 @@ function Train() {
       display: "none"
     },
     onChange: e => pick(e.target.files[0] || null)
-  }), bar));
+  }), bar, /*#__PURE__*/React.createElement("p", {
+    className: "fr-disclaim"
+  }, "The coach can get things wrong \\u2014 it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")));
 }
 
 /* ------------------------ APP ------------------------ */
@@ -2930,6 +3267,19 @@ function App() {
     page: "home"
   }]);
   const [theme, setTheme] = useState("light");
+  const [sport, setSportState] = useState(SPORT);
+  function setSport(key) {
+    setSportData(key);
+    setSportState(key);
+    setStack([{
+      page: "home"
+    }]);
+    setShowSettings(false);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }
   const [seed, setSeed] = useState(null);
   const [user, setUser] = useState(loadSession);
   const [saved, setSaved] = useState([]);
@@ -3073,6 +3423,8 @@ function App() {
     user: user,
     theme: theme,
     setTheme: setTheme,
+    sport: sport,
+    setSport: setSport,
     onClose: () => setShowSettings(false),
     onSignIn: () => {
       setShowSettings(false);
@@ -3088,7 +3440,8 @@ function App() {
       setShowSignIn(true);
     }
   }), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
-    go: go
+    go: go,
+    sport: sport
   }), top.page === "players" && /*#__PURE__*/React.createElement(Players, {
     onOpen: openItem,
     onSearch: query => openFilm(query, "any")
@@ -3104,7 +3457,9 @@ function App() {
     clearSeed: () => setSeed(null)
   }), top.page === "train" && (accountsOn() && !user ? /*#__PURE__*/React.createElement(LockedTrain, {
     onSignIn: () => setShowSignIn(true)
-  }) : /*#__PURE__*/React.createElement(Train, null))));
+  }) : /*#__PURE__*/React.createElement(Train, {
+    sport: sport
+  }))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(Boundary, null, /*#__PURE__*/React.createElement(App, null)));
   } catch (err) {
