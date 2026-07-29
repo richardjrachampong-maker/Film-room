@@ -396,11 +396,22 @@ body { background: #EDF0F2; }
   background:var(--glass-2); object-position:center; }
 .fr-tile[data-logo="1"] .fr-scrim {
   background:linear-gradient(to top, rgba(5,9,12,.86) 0%, rgba(5,9,12,.30) 34%, rgba(5,9,12,0) 62%); }
+
+/* --- stats link on a player page --- */
+.fr-profile { position:relative; padding-right:96px; }
+.fr-stats { position:absolute; top:0; right:0; text-decoration:none;
+  background:var(--glass-2); border:1px solid var(--edge); color:var(--text);
+  border-radius:999px; padding:8px 14px; font-family:'Outfit',sans-serif;
+  font-size:12.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  transition:border-color .2s, color .2s; white-space:nowrap; }
+.fr-stats:hover { border-color:var(--amber); color:var(--amber); }
+.fr-stats span { font-size:11px; margin-left:2px; }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b16</div>
+<div class="fr-build">b17</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1020,13 +1031,19 @@ async function ytSearch(q, opts) {
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) {
-    const m = data.error.message || JSON.stringify(data.error);
-    const status = data.error.status ? " (" + data.error.status + ")" : "";
-    throw new Error("Google said" + status + ": " + m);
+    const m = data.error.message || "";
+    if (/quota/i.test(m)) throw new Error("Out of YouTube searches for today. It resets at midnight Pacific.");
+    if (/referer|referrer|blocked|API_KEY/i.test(m)) throw new Error("YouTube refused this key on this address. Check the website restriction in Google Cloud.");
+    throw new Error("YouTube said: " + (m || "search failed"));
   }
-  const cand = (data.candidates || [])[0];
-  if (!cand) throw new Error("Gemini sent nothing back. Try again.");
-  return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
+  const out = (data.items || []).map(it => ({
+    id: it.id && it.id.videoId,
+    title: unescapeHTML(it.snippet.title),
+    channel: unescapeHTML(it.snippet.channelTitle),
+    thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
+  })).filter(v => v.id);
+  ytCache[key] = out;
+  return out;
 }
 
 /* --------------------- Wikipedia --------------------- */
@@ -1382,6 +1399,7 @@ const GAME_ITEMS = GAMES.map(g => ({
   g: g.g,
   q: g.q,
   wiki: g.wiki,
+  img: g.img,
   kind: "game"
 }));
 
@@ -1641,7 +1659,14 @@ function Player({
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-profile"
-  }, photo ? /*#__PURE__*/React.createElement("img", {
+  }, player.kind === "player" && /*#__PURE__*/React.createElement("a", {
+    className: "fr-stats",
+    target: "_blank",
+    rel: "noreferrer",
+    href: "https://www.basketball-reference.com/search/search.fcgi?search=" + encodeURIComponent(player.n)
+  }, "Stats ", /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true"
+  }, "\u2197")), photo ? /*#__PURE__*/React.createElement("img", {
     src: photo,
     alt: "",
     className: "fr-avatar"
