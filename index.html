@@ -426,11 +426,20 @@ body { background: #EDF0F2; }
 .fr-statpanel dd { margin:0; font-size:15px; font-weight:500; text-align:right; }
 .fr-statpanel p { margin:0 0 16px; font-size:14.5px; line-height:1.6; color:var(--dim); }
 @media (prefers-reduced-motion: reduce) { .fr-statpanel { animation:none; } }
+
+/* --- open any name at all --- */
+.fr-openany { display:block; width:100%; text-align:left; cursor:pointer;
+  padding:16px 20px; margin-bottom:14px; border-radius:16px; }
+.fr-openany b { display:block; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:16px; letter-spacing:-.01em; }
+.fr-openany s { display:block; text-decoration:none; margin-top:3px;
+  font-size:13px; color:var(--dim); }
+.fr-openany:hover { border-color:var(--amber); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b19</div>
+<div class="fr-build">b20</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -885,48 +894,56 @@ const GAMES = [{
   n: "NBA Finals",
   t: "Championship",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/nba.png",
   q: "NBA Finals full game replay",
   wiki: "NBA Finals"
 }, {
   n: "NBA Playoffs",
   t: "Postseason",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/nba.png",
   q: "NBA playoffs full game replay",
   wiki: "NBA playoffs"
 }, {
   n: "WNBA Finals",
   t: "Championship",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png",
   q: "WNBA Finals full game replay",
   wiki: "WNBA Finals"
 }, {
   n: "WNBA",
   t: "Regular season",
   g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png",
   q: "WNBA full game replay",
   wiki: "Women's National Basketball Association"
 }, {
   n: "March Madness",
   t: "Tournament",
   g: "College",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "March Madness full game replay",
   wiki: "NCAA Division I men's basketball tournament"
 }, {
   n: "NCAA Men",
   t: "Full games",
   g: "College",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "NCAA mens basketball full game replay",
   wiki: "NCAA Division I men's basketball"
 }, {
   n: "NCAA Women",
   t: "Full games",
   g: "College",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "NCAA womens basketball full game replay",
   wiki: "NCAA Division I women's basketball"
 }, {
   n: "Final Four",
   t: "Tournament",
   g: "College",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png",
   q: "Final Four full game replay basketball",
   wiki: "Final Four"
 }, {
@@ -963,6 +980,7 @@ const GAMES = [{
   n: "Classic Games",
   t: "Archive",
   g: "World",
+  img: "https://a.espncdn.com/i/teamlogos/leagues/500/nba.png",
   q: "classic NBA full game replay",
   wiki: "National Basketball Association"
 }, {
@@ -1682,7 +1700,7 @@ const GAME_ITEMS = GAMES.map(g => ({
 }));
 
 /* Searchable but not on the front page. Any of these opens a full player page. */
-const MORE = ("Davion Mitchell|Malik Monk|Keegan Murray|Jalen Green|Amen Thompson|Ausar Thompson|" + "Jabari Smith Jr.|Paolo Banchero|Jalen Suggs|Anfernee Simons|Shaedon Sharpe|Scoot Henderson|" + "Jaden Ivey|Jalen Duren|Ausar Thompson|Bennedict Mathurin|Andrew Nembhard|Myles Turner|" + "Pascal Siakam|Immanuel Quickley|RJ Barrett|Josh Giddey|Coby White|Zach LaVine|Nikola Vucevic|" + "DeMar DeRozan|Lauri Markkanen|Walker Kessler|Collin Sexton|Jordan Clarkson|Trey Murphy III|" + "Herbert Jones|CJ McCollum|Dejounte Murray|Zaccharie Risacher|Jalen Johnson|Onyeka Okongwu|" + "Tyler Herro|Jaime Jaquez Jr.|Nikola Jovic|Terry Rozier|Kyle Kuzma|Jordan Poole|Bilal Coulibaly|" + "Deni Avdija|Toumani Camara|Deandre Ayton|Jerami Grant|Anfernee Simons|Keyonte George|" + "Cooper Flagg|Ace Bailey|Dylan Harper|VJ Edgecombe|Tre Johnson|Khaman Maluach|" + "Devin Vassell|Stephon Castle|Jeremy Sochan|Julian Champagnie|Brandon Miller|Miles Bridges|" + "Mark Williams|Grant Williams|Jalen Williams|Isaiah Hartenstein|Lu Dort|Cason Wallace|" + "Kristaps Porzingis|Al Horford|Sam Hauser|Payton Pritchard|Naz Reid|Rudy Gobert|Jaden McDaniels|" + "Mike Conley|Aaron Gordon|Michael Porter Jr.|Christian Braun|Peyton Watson|" + "James Harden|Kawhi Leonard|Ivica Zubac|Norman Powell|Austin Reaves|Rui Hachimura|" + "Klay Thompson|Dereck Lively II|Daniel Gafford|PJ Washington|Alperen Sengun|Fred VanVleet|" + "Dillon Brooks|Tari Eason|Amen Thompson|Julius Randle|Donte DiVincenzo|Rob Dillingham|" + "Scottie Barnes|Immanuel Quickley|Gradey Dick|Trae Young|Dyson Daniels|" + "Sabrina Ionescu|Jonquel Jones|Courtney Vandersloot|Kelsey Mitchell|NaLyssa Smith|" + "Rhyne Howard|Ariel Atkins|Jackie Young|Chelsea Gray|Tiffany Hayes|Marina Mabrey|" + "Dearica Hamby|Azura Stevens|Skylar Diggins|Allisha Gray|Cameron Brink|Kamilla Cardoso|" + "Rickea Jackson|Aaliyah Edwards|Hailey Van Lith|Juju Watkins|Flau'jae Johnson|" + "Lauren Betts|Madison Booker|Audi Crooks|Ta'Niya Latson|Olivia Miles|" + "Candace Parker|Elena Delle Donne|Sylvia Fowles|Tina Charles|Seimone Augustus|" + "Cheryl Miller|Sheryl Swoopes|Rebecca Lobo|Dawn Staley|" + "Vince Carter|Paul Pierce|Kevin Garnett|Chris Bosh|Carmelo Anthony|Russell Westbrook|" + "Blake Griffin|Rajon Rondo|Tony Parker|Pau Gasol|Yao Ming|Dikembe Mutombo|" + "Charles Barkley|Karl Malone|John Stockton|Scottie Pippen|Clyde Drexler|Patrick Ewing|" + "David Robinson|Isiah Thomas|Julius Erving|Oscar Robertson|Jerry West|Wilt Chamberlain|" + "Elgin Baylor|Bob Cousy|George Gervin|Dominique Wilkins|Alonzo Mourning|Gary Payton|" + "Jason Kidd|Grant Hill|Chris Webber|Penny Hardaway|Ben Wallace|Kevin McHale|Robert Parish").split("|").filter(function (v, i, a) {
+const MORE = ("Davion Mitchell|Malik Monk|Keegan Murray|Jalen Green|Amen Thompson|Ausar Thompson|" + "Jabari Smith Jr.|Paolo Banchero|Jalen Suggs|Anfernee Simons|Shaedon Sharpe|Scoot Henderson|" + "Jaden Ivey|Jalen Duren|Ausar Thompson|Bennedict Mathurin|Andrew Nembhard|Myles Turner|" + "Pascal Siakam|Immanuel Quickley|RJ Barrett|Josh Giddey|Coby White|Zach LaVine|Nikola Vucevic|" + "DeMar DeRozan|Lauri Markkanen|Walker Kessler|Collin Sexton|Jordan Clarkson|Trey Murphy III|" + "Herbert Jones|CJ McCollum|Dejounte Murray|Zaccharie Risacher|Jalen Johnson|Onyeka Okongwu|" + "Tyler Herro|Jaime Jaquez Jr.|Nikola Jovic|Terry Rozier|Kyle Kuzma|Jordan Poole|Bilal Coulibaly|" + "Deni Avdija|Toumani Camara|Deandre Ayton|Jerami Grant|Anfernee Simons|Keyonte George|" + "Cooper Flagg|Ace Bailey|Dylan Harper|VJ Edgecombe|Tre Johnson|Khaman Maluach|" + "Devin Vassell|Stephon Castle|Jeremy Sochan|Julian Champagnie|Brandon Miller|Miles Bridges|" + "Mark Williams|Grant Williams|Jalen Williams|Isaiah Hartenstein|Lu Dort|Cason Wallace|" + "Kristaps Porzingis|Al Horford|Sam Hauser|Payton Pritchard|Naz Reid|Rudy Gobert|Jaden McDaniels|" + "Mike Conley|Aaron Gordon|Michael Porter Jr.|Christian Braun|Peyton Watson|" + "James Harden|Kawhi Leonard|Ivica Zubac|Norman Powell|Austin Reaves|Rui Hachimura|" + "Klay Thompson|Dereck Lively II|Daniel Gafford|PJ Washington|Alperen Sengun|Fred VanVleet|" + "Dillon Brooks|Tari Eason|Amen Thompson|Julius Randle|Donte DiVincenzo|Rob Dillingham|" + "Scottie Barnes|Immanuel Quickley|Gradey Dick|Trae Young|Dyson Daniels|" + "Sabrina Ionescu|Jonquel Jones|Courtney Vandersloot|Kelsey Mitchell|NaLyssa Smith|" + "Rhyne Howard|Ariel Atkins|Jackie Young|Chelsea Gray|Tiffany Hayes|Marina Mabrey|" + "Dearica Hamby|Azura Stevens|Skylar Diggins|Allisha Gray|Cameron Brink|Kamilla Cardoso|" + "Rickea Jackson|Aaliyah Edwards|Hailey Van Lith|Juju Watkins|Flau'jae Johnson|" + "Lauren Betts|Madison Booker|Audi Crooks|Ta'Niya Latson|Olivia Miles|" + "Candace Parker|Elena Delle Donne|Sylvia Fowles|Tina Charles|Seimone Augustus|" + "Cheryl Miller|Sheryl Swoopes|Rebecca Lobo|Dawn Staley|" + "Vince Carter|Paul Pierce|Kevin Garnett|Chris Bosh|Carmelo Anthony|Russell Westbrook|" + "Blake Griffin|Rajon Rondo|Tony Parker|Pau Gasol|Yao Ming|Dikembe Mutombo|" + "Charles Barkley|Karl Malone|John Stockton|Scottie Pippen|Clyde Drexler|Patrick Ewing|" + "David Robinson|Isiah Thomas|Julius Erving|Oscar Robertson|Jerry West|Wilt Chamberlain|" + "Elgin Baylor|Bob Cousy|George Gervin|Dominique Wilkins|Alonzo Mourning|Gary Payton|" + "Jason Kidd|Grant Hill|Chris Webber|Penny Hardaway|Ben Wallace|Kevin McHale|Robert Parish" + "|Jalen Brunson|Tyler Herro|Desmond Bane|Jalen Duren|Ausar Thompson|Bub Carrington|Reed Sheppard|Zach Edey|Donovan Clingan|Alex Sarr|Matas Buzelis|Ron Holland|Kel'el Ware|Jared McCain|Yves Missi|Zaccharie Risacher|Stephon Castle|Devin Carter|Isaiah Collier|Rob Dillingham|Dalton Knecht|Tristan da Silva|Kyle Filipowski|Jaylen Wells|Kyshawn George|Carlton Carrington|Jamal Shead|Baylor Scheierman|Terrence Shannon Jr.|Johnny Furphy|Trayce Jackson-Davis|Brandin Podziemski|Jaime Jaquez Jr.|Keyonte George|Brice Sensabaugh|Gradey Dick|Cason Wallace|Anthony Black|Taylor Hendricks|Jett Howard|Kobe Bufkin|Nick Smith Jr.|Jordan Hawkins|Dereck Lively II|Bilal Coulibaly|Jarace Walker|Victor Oladipo|Bradley Beal|Kyle Lowry|Marcus Smart|Malcolm Brogdon|Bogdan Bogdanovic|Buddy Hield|Tim Hardaway Jr.|Seth Curry|Duncan Robinson|Max Strus|Sam Merrill|Grayson Allen|Royce O'Neale|Kelly Olynyk|Jusuf Nurkic|Nic Claxton|Isaiah Stewart|Robert Williams III|Brook Lopez|Clint Capela|Steven Adams|Jonas Valanciunas|Bam Adebayo|Wendell Carter Jr.|Jalen Smith|Naz Reid|Santi Aldama|Obi Toppin|Precious Achiuwa|Isaiah Jackson|Goga Bitadze|Moritz Wagner|Luke Kennard|Corey Kispert|Cam Thomas|Quentin Grimes|Immanuel Quickley|Andrew Wiggins|Michael Porter Jr.|Aaron Gordon|Christian Braun|Peyton Watson|Julian Strawther|Vince Carter|Tracy McGrady|Rasheed Wallace|Ben Wallace|Chauncey Billups|Richard Hamilton|Baron Davis|Stephon Marbury|Antoine Walker|Latrell Sprewell|Shawn Kemp|Gary Payton|Alonzo Mourning|Dikembe Mutombo|Mitch Richmond|Chris Mullin|Glen Rice|Detlef Schrempf|Toni Kukoc|Arvydas Sabonis|Drazen Petrovic|Sarunas Marciulionis|Peja Stojakovic|Bill Walton|Moses Malone|Elvin Hayes|Nate Archibald|Dave Cowens|Willis Reed|Walt Frazier|Earl Monroe|Pete Maravich|Rick Barry|Bob Pettit|George Mikan|Sabrina Ionescu|Kelsey Plum|Jackie Young|Aja Wilson|Alyssa Thomas|DeWanna Bonner|Courtney Williams|Natasha Cloud|Brionna Jones|Ezi Magbegor|Jonquel Jones|Emma Meesseman|Gabby Williams|Kayla McBride|Kate Martin|Cameron Brink|Rickea Jackson|Angel Reese|Aaliyah Edwards|Kamilla Cardoso|Leonie Fiebich|Sonia Citron|Paige Bueckers|Sarah Strong|JuJu Watkins|Hannah Hidalgo|Lauren Betts|Madison Booker|Audi Crooks|Flau'jae Johnson|Ta'Niya Latson|Olivia Miles|Kiki Rice|Syla Swords|Joyce Edwards|MiLaysia Fulwiley|Talaysia Cooper|Mikaylah Williams|Justice Carlton|Cooper Flagg|AJ Dybantsa|Darryn Peterson|Cameron Boozer|Nate Ament|Koa Peat|Mikel Brown Jr.|Caleb Wilson|Chris Cenac Jr.|Tounde Yessoufou|Nikolas Khamenia|Braylon Mullins|Jayden Quaintance|Karter Knox|Labaron Philon|Boogie Fland|Dylan Harper|Ace Bailey|VJ Edgecombe|Tre Johnson|Khaman Maluach|Kon Knueppel|Jeremiah Fears|Collin Murray-Boyles|Derik Queen|Asa Newell|Liam McNeeley|Thomas Sorber|Egor Demin|Danny Wolf|Noa Essengue|Carter Bryant|Will Riley|Drake Powell|Nolan Traore|Hugo Gonzalez|Rasheer Fleming|Adou Thiero|Johni Broome|Mark Sears|Braden Smith|JT Toppin|Otega Oweh|PJ Haggerty|Bennett Stirtz|Tahaad Pettiford|Milos Uzan|Alex Condon|Yaxel Lendeborg").split("|").filter(function (v, i, a) {
   return v && a.indexOf(v) === i;
 }).map(function (n) {
   return {
@@ -1777,7 +1795,15 @@ function Library({
     className: "fr-pill",
     "data-on": filter === g ? "1" : "0",
     onClick: () => setFilter(g)
-  }, g))), list.length > 0 ? /*#__PURE__*/React.createElement("div", {
+  }, g))), q && /*#__PURE__*/React.createElement("button", {
+    className: "fr-glass fr-openany",
+    onClick: () => onOpen({
+      n: term.trim(),
+      t: "Player",
+      g: "",
+      kind: "player"
+    })
+  }, /*#__PURE__*/React.createElement("b", null, "Open ", term.trim()), /*#__PURE__*/React.createElement("s", null, "Any player at any level, even if they are not listed")), list.length > 0 ? /*#__PURE__*/React.createElement("div", {
     className: "fr-grid"
   }, list.map(r => /*#__PURE__*/React.createElement(Tile, {
     key: r.n + r.g,
