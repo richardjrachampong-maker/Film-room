@@ -589,11 +589,41 @@ body { background: #EDF0F2; }
   .fr-histwrap { left:12px; right:12px; width:auto; top:118px; bottom:auto; }
 }
 @media (prefers-reduced-motion: reduce) { .fr-histlist { animation:none; } }
+
+/* --- chat: thread scrolls, composer stays put --- */
+.fr-chatpage { padding:16px 0 0; min-height:calc(100vh - 56px); }
+.fr-chatpage .fr-thread { padding-bottom:190px; }
+.fr-composer { position:fixed; left:0; right:0; bottom:0; z-index:50;
+  padding:10px 0 14px;
+  background:linear-gradient(to top, var(--bg) 58%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+.fr-composer .fr-disclaim { margin:10px 0 0; }
+@supports (padding: max(0px)) {
+  .fr-composer { padding-bottom:max(14px, env(safe-area-inset-bottom)); }
+}
+/* the tray clears the composer */
+.fr-tray { bottom:auto; top:70px; }
+.fr-histwrap { bottom:auto; top:124px; }
+@media (max-width:760px) {
+  .fr-tray { top:64px; }
+  .fr-histwrap { top:118px; }
+  .fr-chatpage .fr-thread { padding-bottom:210px; }
+}
+
+/* --- pro --- */
+.fr-upgrade { max-width:420px; }
+.fr-perks { list-style:none; margin:0; padding:0; }
+.fr-perks li { padding:13px 0; border-top:1px solid var(--edge); }
+.fr-perks li:first-child { border-top:0; }
+.fr-perks b { display:block; font-family:'Outfit',sans-serif; font-weight:600; font-size:15px; }
+.fr-perks span { display:block; margin-top:3px; font-size:13.5px; color:var(--dim); }
+.fr-trayb.fr-left { color:var(--amber); }
+.fr-trayb.fr-left:hover { background:var(--glass-2); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b42</div>
+<div class="fr-build">b46</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -944,6 +974,13 @@ const GOOGLE_CLIENT_ID = "";
 
 // The one account that sees the admin panel. Put your own email here.
 const ADMIN_EMAIL = "Richard.jr.achampong@gmail.com";
+
+// How many film analyses a free account gets each month. Text coaching is unlimited.
+const FREE_CLIPS = 5;
+
+// Your Stripe Payment Link. Leave empty until you have one and the upgrade
+// screen will ask people to get in touch instead of sending them nowhere.
+const STRIPE_LINK = "https://buy.stripe.com/test_dRm14p908cjH6pH6hQ6AM00";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -1846,7 +1883,7 @@ async function aiGemini(turns, wantJSON, opts) {
         };
       }),
       generationConfig: {
-        maxOutputTokens: opts.fast ? 1200 : 3000
+        maxOutputTokens: 3000
       }
     };
     if (wantJSON) body.generationConfig.responseMimeType = "application/json";
@@ -2283,6 +2320,7 @@ function SignIn({
 }
 function Settings({
   user,
+  pro,
   theme,
   setTheme,
   sport,
@@ -2310,7 +2348,7 @@ function Settings({
     className: "fr-slabel"
   }, "Account"), user ? /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, "Your saved players sync to any device")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, pro ? "Pro \u00b7 unlimited film" : "Free \u00b7 " + FREE_CLIPS + " film breakdowns a month")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
     onClick: onSignOut
   }, "Sign out")) : /*#__PURE__*/React.createElement("div", {
@@ -2420,6 +2458,144 @@ function LockedTrain({
   }, "Create an account")));
 }
 
+/* ------------------------- PRO ----------------------- */
+
+function thisMonth() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+
+/* Reads the whole profile: saved players, pro status, clips used this month. */
+async function loadProfile(user) {
+  const blank = {
+    saved: [],
+    pro: false,
+    used: 0,
+    month: thisMonth()
+  };
+  if (!user || !accountsOn()) return blank;
+  try {
+    const res = await fetch(docPath(user.uid), {
+      headers: {
+        Authorization: "Bearer " + user.token
+      }
+    });
+    if (!res.ok) return blank;
+    const f = (await res.json()).fields || {};
+    const arr = ((f.saved || {}).arrayValue || {}).values || [];
+    const month = (f.month || {}).stringValue || thisMonth();
+    return {
+      saved: arr.map(function (v) {
+        return v.stringValue;
+      }).filter(Boolean),
+      pro: (f.pro || {}).booleanValue === true,
+      // a new month wipes the count
+      used: month === thisMonth() ? Number((f.used || {}).integerValue || 0) : 0,
+      month: thisMonth()
+    };
+  } catch (e) {
+    return blank;
+  }
+}
+async function storeUsage(user, used) {
+  if (!user || !accountsOn()) return;
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=used&updateMask.fieldPaths=month", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          used: {
+            integerValue: String(used)
+          },
+          month: {
+            stringValue: thisMonth()
+          }
+        }
+      })
+    });
+  } catch (e) {}
+}
+
+/* Admin only: turn pro on or off for any account, by their user id. */
+async function setProFor(user, uid, on) {
+  const res = await fetch(FS_URL + FIREBASE_PROJECT + "/databases/(default)/documents/users/" + uid + "?updateMask.fieldPaths=pro", {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer " + user.token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      fields: {
+        pro: {
+          booleanValue: !!on
+        }
+      }
+    })
+  });
+  if (!res.ok) throw new Error("Couldn't update that account (" + res.status + ").");
+}
+function isPro(user, profile) {
+  if (adminFlags().allFree) return true; // pricing switched off entirely
+  return isAdmin(user) || !!(profile && profile.pro);
+}
+function UpgradeCard({
+  used,
+  onClose
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-sheet",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-settings fr-upgrade",
+    onClick: function (e) {
+      e.stopPropagation();
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-shead"
+  }, /*#__PURE__*/React.createElement("h3", null, "Film Room Pro"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-x",
+    onClick: onClose,
+    "aria-label": "Close"
+  }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "0 0 20px"
+    }
+  }, "You have used all ", FREE_CLIPS, " film breakdowns this month. It resets on the first."), /*#__PURE__*/React.createElement("ul", {
+    className: "fr-perks"
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Unlimited film"), /*#__PURE__*/React.createElement("span", null, "Send as many clips as you want")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Deep mode on every clip"), /*#__PURE__*/React.createElement("span", null, "Reads far more of the footage")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Longer clips"), /*#__PURE__*/React.createElement("span", null, "Full drills and possessions, not just moments"))), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "18px 0 0"
+    }
+  }, "Asking the coach questions stays free and unlimited, and so does everything in Players and Games."), STRIPE_LINK ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("a", {
+    className: "fr-btn fr-full",
+    href: STRIPE_LINK,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      marginTop: 20,
+      textAlign: "center",
+      textDecoration: "none",
+      display: "block"
+    }
+  }, "Go Pro"), STRIPE_LINK.indexOf("/test_") > -1 && /*#__PURE__*/React.createElement("p", {
+    className: "fr-adminnote",
+    style: {
+      marginTop: 12
+    }
+  }, "Test checkout \\u2014 no real payment is taken, and Pro is switched on by hand afterwards.")) : /*#__PURE__*/React.createElement("p", {
+    className: "fr-adminnote",
+    style: {
+      marginTop: 20
+    }
+  }, "Pro isn't on sale yet. Get in touch and I'll turn it on for your account.")));
+}
+
 /* ------------------------ ADMIN ---------------------- */
 
 function isAdmin(user) {
@@ -2449,6 +2625,20 @@ function AdminPanel({
   const [coach, setCoach] = useState(function () {
     return adminFlags().coach || "";
   });
+  const [uid, setUid] = useState("");
+  async function grant(on) {
+    if (!uid.trim()) {
+      say("Paste a user id first.");
+      return;
+    }
+    try {
+      await setProFor(user, uid.trim(), on);
+      say(on ? "That account is Pro now." : "Pro removed from that account.");
+      setUid("");
+    } catch (e) {
+      say(e.message);
+    }
+  }
   function flip(key) {
     setFlags(setAdminFlag(key, !flags[key]));
   }
@@ -2547,6 +2737,46 @@ function AdminPanel({
     },
     onClick: saveCoach
   }, "Save instructions"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Pricing"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Everything free for everyone"), /*#__PURE__*/React.createElement("span", null, "Switches Pro off entirely \\u2014 unlimited film and Deep mode for every account, no limits, no upgrade screen")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": flags.allFree ? "1" : "0",
+    onClick: function () {
+      flip("allFree");
+    }
+  }, flags.allFree ? "On" : "Off")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Pro accounts"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "0 0 10px"
+    }
+  }, "Paste someone's user id from Firebase \\u2192 Authentication \\u2192 Users. Your own account is always Pro."), /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    value: uid,
+    placeholder: "User id",
+    onChange: function (e) {
+      setUid(e.target.value);
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-adminbtns",
+    style: {
+      borderTop: 0,
+      paddingTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      grant(true);
+    }
+  }, "Give Pro"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      grant(false);
+    }
+  }, "Remove Pro")), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Data"), /*#__PURE__*/React.createElement("div", {
     className: "fr-adminbtns"
@@ -3219,7 +3449,11 @@ function KeyGate({
   }, "Stored on this device only. It never goes to us or into your repo."));
 }
 function Train({
-  sport
+  sport,
+  pro,
+  used,
+  onUse,
+  onOutOfClips
 }) {
   const [chats, setChats] = useState(function () {
     return loadChats(sport);
@@ -3240,7 +3474,7 @@ function Train({
       window.localStorage.setItem("fr-mode", m);
     } catch (e) {}
   }
-  const fast = mode === "quick";
+  const fast = mode === "quick" || !pro;
   const [msgs, setMsgs] = useState([]);
   const [history, setHistory] = useState([]);
   const [text, setText] = useState("");
@@ -3314,9 +3548,15 @@ function Train({
       let parts = [];
       if (clip) {
         setBusy("Watching your film");
+        if (!pro && used >= FREE_CLIPS) {
+          setBusy("");
+          onOutOfClips();
+          return;
+        }
         const got = await grabFrames(clip, (i, n) => setBusy("Watching your film " + Math.round(i / n * 100) + "%"), fast);
+        onUse();
         parts = got.frames.map(IMG);
-        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + (fast ? " Keep it tight: under 220 words, no preamble." : " Under 500 words.")));
+        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
@@ -3387,18 +3627,22 @@ function Train({
     onClick: function () {
       pickMode("quick");
     },
-    title: "Fewer frames, no thinking step"
+    title: "Answers sooner \\u2014 same detail"
   }, "Quick"), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
     "data-on": mode === "deep" ? "1" : "0",
     onClick: function () {
-      pickMode("deep");
+      pro ? pickMode("deep") : onOutOfClips();
     },
-    title: "More frames, more careful"
-  }, "Deep")), /*#__PURE__*/React.createElement("span", {
+    title: pro ? "Reads more of the clip, takes longer" : "Deep mode is part of Pro"
+  }, "Deep", pro ? "" : " \u00b7 Pro")), /*#__PURE__*/React.createElement("span", {
     className: "fr-traydiv",
     "aria-hidden": "true"
-  }), /*#__PURE__*/React.createElement("button", {
+  }), !pro && /*#__PURE__*/React.createElement("button", {
+    className: "fr-trayb fr-left",
+    onClick: onOutOfClips,
+    title: "Film breakdowns left this month"
+  }, Math.max(0, FREE_CLIPS - used), " left"), /*#__PURE__*/React.createElement("button", {
     className: "fr-trayb",
     onClick: newChat,
     title: "Start a new chat"
@@ -3460,10 +3704,7 @@ function Train({
     }), historyList, chatbar);
   }
   return /*#__PURE__*/React.createElement("div", {
-    className: "fr-page",
-    style: {
-      paddingTop: 16
-    }
+    className: "fr-chatpage"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
   }, !ready && /*#__PURE__*/React.createElement(KeyGate, {
@@ -3493,9 +3734,13 @@ function Train({
       display: "none"
     },
     onChange: e => pick(e.target.files[0] || null)
-  }), bar, /*#__PURE__*/React.createElement("p", {
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fr-composer"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-wrap fr-narrow"
+  }, bar, /*#__PURE__*/React.createElement("p", {
     className: "fr-disclaim"
-  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")), historyList, chatbar);
+  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain."))), historyList, chatbar);
 }
 
 /* ------------------------ APP ------------------------ */
@@ -3581,6 +3826,8 @@ function App() {
   const [seed, setSeed] = useState(null);
   const [user, setUser] = useState(loadSession);
   const [saved, setSaved] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -3610,9 +3857,13 @@ function App() {
   useEffect(function () {
     if (!user || !accountsOn()) {
       setSaved([]);
+      setProfile(null);
       return;
     }
-    loadSaved(user).then(setSaved);
+    loadProfile(user).then(function (p) {
+      setSaved(p.saved);
+      setProfile(p);
+    });
   }, [user && user.uid]);
   function toggleSaved(name) {
     if (!user) {
@@ -3720,6 +3971,7 @@ function App() {
     }
   }), showSettings && /*#__PURE__*/React.createElement(Settings, {
     user: user,
+    pro: isPro(user, profile),
     theme: theme,
     setTheme: setTheme,
     sport: sport,
@@ -3737,6 +3989,9 @@ function App() {
       signOut();
       setShowSettings(false);
     }
+  }), showUpgrade && /*#__PURE__*/React.createElement(UpgradeCard, {
+    used: profile && profile.used || 0,
+    onClose: () => setShowUpgrade(false)
   }), showAdmin && isAdmin(user) && /*#__PURE__*/React.createElement(AdminPanel, {
     user: user,
     onClose: () => setShowAdmin(false)
@@ -3764,7 +4019,19 @@ function App() {
   }), top.page === "train" && (accountsOn() && !user && !adminFlags().openCoach ? /*#__PURE__*/React.createElement(LockedTrain, {
     onSignIn: () => setShowSignIn(true)
   }) : /*#__PURE__*/React.createElement(Train, {
-    sport: sport
+    sport: sport,
+    pro: isPro(user, profile),
+    used: profile && profile.used || 0,
+    onUse: function () {
+      const next = (profile && profile.used || 0) + 1;
+      setProfile(Object.assign({}, profile, {
+        used: next
+      }));
+      storeUsage(user, next);
+    },
+    onOutOfClips: function () {
+      setShowUpgrade(true);
+    }
   }))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(Boundary, null, /*#__PURE__*/React.createElement(App, null)));
