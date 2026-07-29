@@ -478,11 +478,58 @@ body { background: #EDF0F2; }
 .fr-or::before, .fr-or::after { content:""; flex:1; height:1px; background:var(--edge); }
 .fr-or span { font-family:'Outfit',sans-serif; font-size:12px; letter-spacing:.1em;
   text-transform:uppercase; color:var(--faint); }
+
+/* --- settings sheet --- */
+.fr-gear { font-family:'Outfit',sans-serif; font-weight:600; font-size:15px; }
+.fr-settings { width:100%; max-width:460px; padding:24px 24px 20px;
+  animation:pop .28s cubic-bezier(.2,.7,.3,1) both; }
+.fr-shead { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.fr-shead h3 { margin:0; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:22px; letter-spacing:-.02em; }
+.fr-x { appearance:none; background:none; border:0; cursor:pointer; color:var(--dim);
+  font-size:26px; line-height:1; padding:0 4px; }
+.fr-x:hover { color:var(--text); }
+.fr-slabel { margin:22px 0 10px; font-family:'Outfit',sans-serif; font-size:11.5px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--faint); }
+.fr-srow { display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:14px 0; border-top:1px solid var(--edge); }
+.fr-srow b { display:block; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:15px; word-break:break-word; }
+.fr-srow span { display:block; margin-top:3px; font-size:13px; color:var(--dim); line-height:1.45; }
+
+/* --- corner nudge --- */
+.fr-nudge { position:fixed; left:16px; bottom:16px; z-index:70; width:290px;
+  padding:18px 18px 16px; animation:slideUp .4s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes slideUp { from { opacity:0; transform:translate3d(0,16px,0); } }
+.fr-nudge b { display:block; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:16px; letter-spacing:-.01em; padding-right:22px; }
+.fr-nudge p { margin:6px 0 14px; font-size:13.5px; line-height:1.5; color:var(--dim); }
+.fr-nudge .fr-x { position:absolute; top:10px; right:12px; font-size:22px; }
+@media (max-width:520px) { .fr-nudge { left:12px; right:12px; width:auto; } }
+
+/* --- locked coach --- */
+.fr-locked { position:relative; min-height:calc(100vh - 56px);
+  display:grid; place-items:center; padding:40px 20px 90px; }
+.fr-lockedbg { position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px; padding:0 20px;
+  filter:blur(7px); opacity:.55; pointer-events:none; }
+.fr-fakebar { width:min(620px,100%); height:58px; border-radius:999px; }
+.fr-fakemsg { width:min(620px,100%); height:104px; border-radius:18px; }
+.fr-lockcard { position:relative; z-index:1; width:min(440px,100%);
+  padding:32px 28px; text-align:center;
+  animation:pop .35s cubic-bezier(.2,.7,.3,1) both; }
+.fr-lockicon { display:block; font-size:30px; color:var(--amber); margin-bottom:14px; }
+.fr-lockcard h3 { margin:0 0 10px; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:21px; letter-spacing:-.015em; line-height:1.25; }
+.fr-lockcard p { margin:0 0 22px; font-size:14.5px; line-height:1.6; color:var(--dim); }
+@media (prefers-reduced-motion: reduce) {
+  .fr-nudge, .fr-settings, .fr-lockcard { animation:none; }
+}
 </style>
 </head>
 
 <body>
-<div class="fr-build">b34</div>
+<div class="fr-build">b35</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1929,6 +1976,112 @@ function SignIn({
     }
   }, mode === "in" ? "No account yet? Create one" : "Already have an account? Sign in")));
 }
+function Settings({
+  user,
+  theme,
+  setTheme,
+  onSignIn,
+  onSignOut,
+  onClose
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-sheet",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-settings",
+    onClick: function (e) {
+      e.stopPropagation();
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-shead"
+  }, /*#__PURE__*/React.createElement("h3", null, "Settings"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-x",
+    onClick: onClose,
+    "aria-label": "Close"
+  }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Account"), user ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, "Your saved players sync to any device")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: onSignOut
+  }, "Sign out")) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Not signed in"), /*#__PURE__*/React.createElement("span", null, "Create an account to save players and use the coach")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      padding: "11px 20px"
+    },
+    onClick: onSignIn
+  }, "Sign in")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Appearance"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Theme"), /*#__PURE__*/React.createElement("span", null, "Light or dark")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-pills",
+    style: {
+      margin: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": theme === "light" ? "1" : "0",
+    onClick: function () {
+      setTheme("light");
+    }
+  }, "Light"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": theme === "dark" ? "1" : "0",
+    onClick: function () {
+      setTheme("dark");
+    }
+  }, "Dark")))));
+}
+function SignUpNudge({
+  onSignIn,
+  onClose
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-nudge"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-x",
+    onClick: onClose,
+    "aria-label": "Dismiss"
+  }, "\u00D7"), /*#__PURE__*/React.createElement("b", null, "Create an account"), /*#__PURE__*/React.createElement("p", null, "Save players, and unlock the coach that breaks down your film."), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      padding: "11px 20px",
+      width: "100%"
+    },
+    onClick: onSignIn
+  }, "Get started"));
+}
+function LockedTrain({
+  onSignIn
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-locked"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-lockedbg",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakebar"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakemsg"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakemsg",
+    style: {
+      width: "62%"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-lockcard"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-lockicon",
+    "aria-hidden": "true"
+  }, "\u25CE"), /*#__PURE__*/React.createElement("h3", null, "Create an account to use the coach"), /*#__PURE__*/React.createElement("p", null, "Send a clip and get it graded across every skill in it, then the drills that fix it. Free, and it takes about a minute."), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    onClick: onSignIn
+  }, "Create an account")));
+}
 
 /* --------------------- LANDING ----------------------- */
 
@@ -2781,6 +2934,20 @@ function App() {
   const [user, setUser] = useState(loadSession);
   const [saved, setSaved] = useState([]);
   const [showSignIn, setShowSignIn] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [nudged, setNudged] = useState(function () {
+    try {
+      return window.localStorage.getItem("fr-nudged") === "1";
+    } catch (e) {
+      return false;
+    }
+  });
+  function dismissNudge() {
+    setNudged(true);
+    try {
+      window.localStorage.setItem("fr-nudged", "1");
+    } catch (e) {}
+  }
   const top = stack[stack.length - 1];
   useEffect(function () {
     if (!accountsOn()) return;
@@ -2891,23 +3058,34 @@ function App() {
     className: "fr-link",
     "data-on": top.page === n.id ? "1" : "0",
     onClick: () => go(n.id)
-  }, n.label))), accountsOn() && (user ? /*#__PURE__*/React.createElement("button", {
-    className: "fr-sun fr-acct",
-    onClick: signOut,
-    title: user.email + " \u2014 tap to sign out"
-  }, user.email.slice(0, 1).toUpperCase()) : /*#__PURE__*/React.createElement("button", {
-    className: "fr-sun fr-acct",
-    onClick: () => setShowSignIn(true),
-    "aria-label": "Sign in"
-  }, "\u21B3")), /*#__PURE__*/React.createElement("button", {
-    className: "fr-sun",
-    onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
-    "aria-label": "Switch theme"
-  }, theme === "dark" ? "\u2600" : "\u263E"))), showSignIn && /*#__PURE__*/React.createElement(SignIn, {
+  }, n.label))), /*#__PURE__*/React.createElement("button", {
+    className: "fr-sun fr-gear",
+    onClick: () => setShowSettings(true),
+    "aria-label": "Settings"
+  }, user ? user.email.slice(0, 1).toUpperCase() : "\u2699"))), showSignIn && /*#__PURE__*/React.createElement(SignIn, {
     onClose: () => setShowSignIn(false),
     onDone: u => {
       setUser(u);
       setShowSignIn(false);
+      dismissNudge();
+    }
+  }), showSettings && /*#__PURE__*/React.createElement(Settings, {
+    user: user,
+    theme: theme,
+    setTheme: setTheme,
+    onClose: () => setShowSettings(false),
+    onSignIn: () => {
+      setShowSettings(false);
+      setShowSignIn(true);
+    },
+    onSignOut: () => {
+      signOut();
+      setShowSettings(false);
+    }
+  }), accountsOn() && !user && !nudged && !showSignIn && !showSettings && /*#__PURE__*/React.createElement(SignUpNudge, {
+    onClose: dismissNudge,
+    onSignIn: () => {
+      setShowSignIn(true);
     }
   }), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
     go: go
@@ -2924,7 +3102,9 @@ function App() {
   }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
     clearSeed: () => setSeed(null)
-  }), top.page === "train" && /*#__PURE__*/React.createElement(Train, null)));
+  }), top.page === "train" && (accountsOn() && !user ? /*#__PURE__*/React.createElement(LockedTrain, {
+    onSignIn: () => setShowSignIn(true)
+  }) : /*#__PURE__*/React.createElement(Train, null))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(Boundary, null, /*#__PURE__*/React.createElement(App, null)));
   } catch (err) {
