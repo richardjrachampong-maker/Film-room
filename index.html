@@ -570,7 +570,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b39</div>
+<div class="fr-build">b40</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1810,25 +1810,39 @@ async function post(url, body, headers) {
 }
 async function aiGemini(turns, wantJSON, opts) {
   opts = opts || {};
-  const body = {
-    contents: turns.map(t => ({
-      role: t.role === "model" ? "model" : "user",
-      parts: t.parts
-    })),
-    generationConfig: {
-      maxOutputTokens: opts.fast ? 1200 : 3000
+  function build(withExtras) {
+    const body = {
+      contents: turns.map(function (t) {
+        return {
+          role: t.role === "model" ? "model" : "user",
+          parts: t.parts
+        };
+      }),
+      generationConfig: {
+        maxOutputTokens: opts.fast ? 1200 : 3000
+      }
+    };
+    if (wantJSON) body.generationConfig.responseMimeType = "application/json";
+    // The "thinking" step before answering is most of the wait, so Quick turns it off.
+    // Not every model or proxy accepts these, hence the retry below.
+    if (withExtras && opts.fast) {
+      body.generationConfig.thinkingConfig = {
+        thinkingBudget: 0
+      };
+      body.model = "fast";
     }
-  };
-  // the model "thinks" before answering by default, which is most of the wait
-  if (opts.fast) body.generationConfig.thinkingConfig = {
-    thinkingBudget: 0
-  };
-  if (opts.fast) body.model = "fast";
-  if (wantJSON) body.generationConfig.responseMimeType = "application/json";
+    return body;
+  }
   const url = AI_PROXY ? AI_PROXY : "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
-  const data = await post(url, body, AI_PROXY ? null : {
+  const headers = AI_PROXY ? null : {
     "x-goog-api-key": aiKey()
-  });
+  };
+  let data = await post(url, build(true), headers);
+
+  // If the speed settings weren't understood, ask again the plain way.
+  if (data.error && /INVALID_ARGUMENT|Unknown name|not supported/i.test(data.error.message || "")) {
+    data = await post(url, build(false), headers);
+  }
   if (data.error) {
     const m = data.error.message || JSON.stringify(data.error);
     const status = data.error.status ? " (" + data.error.status + ")" : "";
@@ -1836,7 +1850,9 @@ async function aiGemini(turns, wantJSON, opts) {
   }
   const cand = (data.candidates || [])[0];
   if (!cand) throw new Error("Nothing came back. Try again.");
-  return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
+  return ((cand.content || {}).parts || []).map(function (p) {
+    return p.text || "";
+  }).join("");
 }
 async function aiClaude(turns) {
   const messages = turns.map(t => ({
