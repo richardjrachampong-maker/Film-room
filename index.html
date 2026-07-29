@@ -554,7 +554,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b36</div>
+<div class="fr-build">b37</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1483,8 +1483,29 @@ const SG = (n, t, g, q, wiki) => ({
 
 /* ---------------------- SOCCER ---------------------- */
 
-const SO_ROSTER = [SP("Lionel Messi", "Close control", "Forwards"), SP("Cristiano Ronaldo", "Finishing & heading", "Forwards"), SP("Kylian Mbappe", "Running with the ball", "Forwards", "Kylian Mbappé"), SP("Erling Haaland", "Movement in the box", "Forwards"), SP("Vinicius Junior", "One-v-one dribbling", "Forwards", "Vinícius Júnior"), SP("Mohamed Salah", "Cutting inside", "Forwards"), SP("Harry Kane", "Dropping deep", "Forwards"), SP("Robert Lewandowski", "Poacher's timing", "Forwards"), SP("Lamine Yamal", "Wing play", "Forwards"), SP("Bukayo Saka", "Wide attacking", "Forwards"), SP("Jude Bellingham", "Arriving in the box", "Midfielders"), SP("Kevin De Bruyne", "Passing range", "Midfielders"), SP("Rodri", "Screening the back four", "Midfielders"), SP("Pedri", "Receiving under pressure", "Midfielders"), SP("Federico Valverde", "Box to box", "Midfielders"), SP("Declan Rice", "Winning the ball back", "Midfielders"), SP("Phil Foden", "Between the lines", "Midfielders"), SP("Luka Modric", "Turning out of trouble", "Midfielders", "Luka Modrić"), SP("Virgil van Dijk", "Defending the back post", "Defenders"), SP("Ruben Dias", "Reading the game", "Defenders", "Rúben Dias"), SP("Achraf Hakimi", "Overlapping runs", "Defenders"), SP("Alphonso Davies", "Recovery pace", "Defenders"), SP("Alisson", "Sweeping behind", "Keepers", "Alisson Becker"), SP("Thibaut Courtois", "Shot stopping", "Keepers"), SP("Emiliano Martinez", "Penalty saves", "Keepers", "Emiliano Martínez"), SP("Aitana Bonmati", "Half-space play", "Women", "Aitana Bonmatí"), SP("Alexia Putellas", "Arriving late", "Women"), SP("Sam Kerr", "Running in behind", "Women"), SP("Lauren James", "Shot creation", "Women"), SP("Sophia Smith", "Direct running", "Women", "Sophia Wilson"), SP("Trinity Rodman", "Wing dribbling", "Women"), SP("Vivianne Miedema", "Finishing", "Women"), SP("Marta", "Left-foot technique", "Women", "Marta (footballer)"), SP("Pele", "Complete forward play", "Legends", "Pelé"), SP("Diego Maradona", "Dribbling at speed", "Legends"), SP("Zinedine Zidane", "Control and turns", "Legends"), SP("Ronaldinho", "Skill moves", "Legends"), SP("Ronaldo", "Explosive finishing", "Legends", "Ronaldo (Brazilian footballer)"), SP("Thierry Henry", "Cutting in from the left", "Legends"), SP("Johan Cruyff", "Movement and vision", "Legends"), SP("Paolo Maldini", "Defending without fouling", "Legends"), SP("Xavi", "Keeping the ball", "Legends", "Xavi"), SP("Andres Iniesta", "Escaping pressure", "Legends", "Andrés Iniesta"), SC("First Touch", "Technique", "soccer first touch drills tutorial", "Ball control (association football)"), SC("Dribbling", "Technique", "soccer dribbling drills tutorial", "Dribbling"), SC("Passing", "Technique", "soccer passing technique tutorial", "Passing (association football)"), SC("Finishing", "Attacking", "soccer finishing drills tutorial", "Shot (association football)"), SC("Free Kick", "Set pieces", "soccer free kick technique tutorial", "Direct free kick"), SC("Penalty Kick", "Set pieces", "soccer penalty kick technique tutorial", "Penalty kick (association football)"), SC("Crossing", "Attacking", "soccer crossing technique tutorial", "Cross (football)"), SC("Heading", "Technique", "soccer heading technique tutorial", "Header (association football)"), SC("Tackling", "Defending", "soccer tackling technique tutorial", "Tackle (football move)"), SC("Pressing", "Defending", "soccer pressing tactics explained", "Press (association football)"), SC("Goalkeeping", "Keeping", "soccer goalkeeper training drills", "Goalkeeper (association football)"), SC("Step Over", "Skill moves", "soccer step over tutorial", "Step over (football)"), SC("Through Ball", "Attacking", "soccer through ball tutorial", "Through ball"), SC("Offside Trap", "Defending", "soccer offside trap explained", "Offside (association football)")];
+const SO_ROSTER = [SP("Lionel Messi", "Close control", "Forwards"), SP("Cristiano Ronaldo", "Finishing & heading", "Forwards"), SP("Kylian Mbappe", "Running with the ball", "Forwards", "Kylian Mbappé"), SP("Erling Haaland", "Movement in the box", "Forwards"), SP("Vinicius Junior", "One-v-one dribbling", "Forwards", "Vinícius Júnior"), SP("Mohamed Salah", "Cutting inside", "Forwards"), SP("Harry Kane", "Dropping deep", "Forwards"), SP("Robert Lewandowski", "Poacher's timing", "Forwards"), SP("Lamine Yamal", "Wing play", "Forwards"), SP("Bukayo Saka", "Wide attacking", "Forwards"), SP("Jude Bellingham", "Arriving in the box", "Midfielders"), SP("Kevin De Bruyne", "Passing range", "Midfielders"), SP("Rodri", "Screening the back four", "Midfielders"), SP("Pedri", "Receiving under pressure", "Midfielders"), SP("Federico Valverde", "Box to box", "Midfielders"), SP("Declan Rice", "Winning the ball back", "Midfielders"), SP("Phil Foden", "Between the lines", "Midfielders"), SP("Luka Modric", "Turning out of trouble", "Midfielders", "Luka Modrić"), SP("Virgil van Dijk", "Defending the back post", "Defenders"), SP("Ruben Dias", "Reading the game", "Defenders", "Rúben Dias"), SP("Achraf Hakimi", "Overlapping runs", "Defenders"), SP("Alphonso Davies", "Recovery pace", "Defenders"), SP("Alisson", "Sweeping behind", "Keepers", "Alisson Becker"), SP("Thibaut Courtois", "Shot stopping", "Keepers"), SP("Emiliano Martinez", "Penalty saves", "Keepers", "Emiliano Martínez"), SP("Aitana Bonmati", "Half-space play", "Women", "Aitana Bonmatí"), SP("Alexia Putellas", "Arriving late", "Women"), SP("Sam Kerr", "Running in behind", "Women"), SP("Lauren James", "Shot creation", "Women"), SP("Sophia Smith", "Direct running", "Women", "Sophia Wilson"), SP("Trinity Rodman", "Wing dribbling", "Women"), SP("Vivianne Miedema", "Finishing", "Women"), SP("Marta", "Left-foot technique", "Women", "Marta (footballer)"), SP("Pele", "Complete forward play", "Legends", "Pelé"), SP("Diego Maradona", "Dribbling at speed", "Legends"), SP("Zinedine Zidane", "Control and turns", "Legends"), SP("Ronaldinho", "Skill moves", "Legends"), SP("Ronaldo", "Explosive finishing", "Legends", "Ronaldo (Brazilian footballer)"), SP("Thierry Henry", "Cutting in from the left", "Legends"), SP("Johan Cruyff", "Movement and vision", "Legends"), SP("Paolo Maldini", "Defending without fouling", "Legends"), SP("Xavi", "Keeping the ball", "Legends", "Xavi"), SP("Andres Iniesta", "Escaping pressure", "Legends", "Andrés Iniesta"), SC("First Touch", "Technique", "soccer first touch drills tutorial", "Ball control (association football)"), SC("Dribbling", "Technique", "soccer dribbling drills tutorial"), SC("Passing", "Technique", "soccer passing technique tutorial"), SC("Finishing", "Attacking", "soccer finishing drills tutorial", "Shot (association football)"), SC("Free Kick", "Set pieces", "soccer free kick technique tutorial", "Direct free kick"), SC("Penalty Kick", "Set pieces", "soccer penalty kick technique tutorial", "Penalty kick (association football)"), SC("Crossing", "Attacking", "soccer crossing technique tutorial", "Cross (football)"), SC("Heading", "Technique", "soccer heading technique tutorial", "Header (association football)"), SC("Tackling", "Defending", "soccer tackling technique tutorial"), SC("Pressing", "Defending", "soccer pressing tactics explained", "Press (association football)"), SC("Goalkeeping", "Keeping", "soccer goalkeeper training drills", "Goalkeeper (association football)"), SC("Step Over", "Skill moves", "soccer step over tutorial", "Step over (football)"), SC("Through Ball", "Attacking", "soccer through ball tutorial", "Through ball"), SC("Offside Trap", "Defending", "soccer offside trap explained", "Offside (association football)")];
 const SO_GAMES = [SG("Champions League", "Full matches", "Club", "Champions League full match replay", "UEFA Champions League"), SG("Premier League", "Full matches", "Club", "Premier League full match replay", "Premier League"), SG("La Liga", "Full matches", "Club", "La Liga full match replay", "La Liga"), SG("Serie A", "Full matches", "Club", "Serie A full match replay", "Serie A"), SG("Bundesliga", "Full matches", "Club", "Bundesliga full match replay", "Bundesliga"), SG("Ligue 1", "Full matches", "Club", "Ligue 1 full match replay", "Ligue 1"), SG("Europa League", "Full matches", "Club", "Europa League full match replay", "UEFA Europa League"), SG("Copa Libertadores", "Full matches", "Club", "Copa Libertadores full match replay", "Copa Libertadores"), SG("MLS", "Full matches", "Club", "MLS full match replay", "Major League Soccer"), SG("World Cup", "Tournament", "International", "FIFA World Cup full match replay", "FIFA World Cup"), SG("Euros", "Tournament", "International", "UEFA Euro full match replay", "UEFA European Championship"), SG("Copa America", "Tournament", "International", "Copa America full match replay", "Copa América"), SG("AFCON", "Tournament", "International", "Africa Cup of Nations full match replay", "Africa Cup of Nations"), SG("Women's World Cup", "Tournament", "Women", "FIFA Women's World Cup full match replay", "FIFA Women's World Cup"), SG("WSL", "Full matches", "Women", "Women's Super League full match replay", "Women's Super League"), SG("NWSL", "Full matches", "Women", "NWSL full match replay", "National Women's Soccer League")];
+const SO_CLUBS = ("Real Madrid|Barcelona|Manchester City|Liverpool|Arsenal|Manchester United|" + "Chelsea|Tottenham Hotspur|Newcastle United|Aston Villa|West Ham United|Everton|" + "Bayern Munich|Borussia Dortmund|Bayer Leverkusen|RB Leipzig|Atletico Madrid|Sevilla|" + "Real Betis|Villarreal|Athletic Bilbao|Real Sociedad|Valencia|Inter Milan|AC Milan|" + "Juventus|Napoli|Roma|Lazio|Atalanta|Fiorentina|Paris Saint-Germain|Marseille|Lyon|Monaco|" + "Lille|Ajax|PSV Eindhoven|Feyenoord|Benfica|Porto|Sporting CP|Celtic|Rangers|" + "Galatasaray|Fenerbahce|Boca Juniors|River Plate|Flamengo|Palmeiras|Santos|Corinthians|" + "Inter Miami|LA Galaxy|LAFC|Seattle Sounders|Atlanta United|New York City FC|" + "Club America|Chivas|Tigres UANL|Monterrey|Al Hilal|Al Nassr|Urawa Red Diamonds|" + "Kaizer Chiefs|Orlando Pirates|Al Ahly|Wydad Casablanca|Mamelodi Sundowns").split("|").filter(function (v, i, a) {
+  return v && a.indexOf(v) === i;
+});
+const SO_CLUB_ITEMS = SO_CLUBS.map(function (n) {
+  return {
+    n: n,
+    t: "Full matches",
+    g: "Club",
+    kind: "game",
+    q: n + " full match replay"
+  };
+});
+const SO_CLUB_SEARCH = SO_CLUBS.map(function (n) {
+  return {
+    n: n,
+    t: "Club",
+    g: "Clubs",
+    kind: "game",
+    q: n + " full match replay"
+  };
+});
 const SO_MORE = ("Antoine Griezmann|Jamal Musiala|Florian Wirtz|Bruno Fernandes|Martin Odegaard|" + "Son Heung-min|Victor Osimhen|Rafael Leao|Khvicha Kvaratskhelia|Nico Williams|Julian Alvarez|" + "Cole Palmer|Alejandro Garnacho|Eduardo Camavinga|Aurelien Tchouameni|Frenkie de Jong|" + "Joshua Kimmich|Toni Kroos|Ilkay Gundogan|Bernardo Silva|Riyad Mahrez|Sadio Mane|" + "Marcus Rashford|Ollie Watkins|Dominik Szoboszlai|Alexis Mac Allister|Enzo Fernandez|" + "Moises Caicedo|William Saliba|Gabriel Magalhaes|Josko Gvardiol|Trent Alexander-Arnold|" + "Andrew Robertson|Theo Hernandez|Antonio Rudiger|Marquinhos|Ederson|Gianluigi Donnarumma|" + "Jan Oblak|Manuel Neuer|Keylor Navas|Mary Earps|Beth Mead|Leah Williamson|Lucy Bronze|" + "Caitlin Foord|Khadija Shaw|Ewa Pajor|Barbra Banda|Mallory Swanson|Naomi Girma|" + "Catarina Macario|Rose Lavelle|Debinha|Wendie Renard|Ada Hegerberg|Megan Rapinoe|" + "Abby Wambach|Mia Hamm|Michel Platini|Franz Beckenbauer|George Best|Eusebio|" + "Roberto Baggio|Alessandro Del Piero|Francesco Totti|Steven Gerrard|Frank Lampard|" + "Paul Scholes|Roy Keane|Patrick Vieira|Didier Drogba|Samuel Etoo|Kaka|Iker Casillas").split("|").filter(function (v, i, a) {
   return v && a.indexOf(v) === i;
 }).map(function (n) {
@@ -1564,8 +1585,9 @@ const SPORTS = {
     label: "Soccer",
     term: "soccer",
     roster: SO_ROSTER,
-    games: SO_GAMES,
+    games: SO_GAMES.concat(SO_CLUB_ITEMS),
     pool: SO_ROSTER.concat(SO_MORE),
+    gamePool: SO_GAMES.concat(SO_CLUB_ITEMS),
     pre: {},
     playerFilters: ["All", "Forwards", "Midfielders", "Defenders", "Keepers", "Women", "Legends", "Skills"],
     gameFilters: ["All", "Club", "International", "Women"],
@@ -1632,7 +1654,9 @@ async function ytSearch(q, opts) {
   opts = opts || {};
   const key = q + "|" + (opts.duration || "any");
   if (ytCache[key]) return ytCache[key];
-  let url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&maxResults=" + (opts.max || 12) + "&q=" + encodeURIComponent(q) + "&key=" + YT_KEY;
+  // strip out video-game footage, which otherwise floods these searches
+  const clean = q + " -2K -2K26 -2K25 -FIFA -EAFC -simulation -gameplay -mod -roster";
+  let url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&maxResults=" + (opts.max || 12) + "&q=" + encodeURIComponent(clean) + "&key=" + YT_KEY;
   if (opts.duration && opts.duration !== "any") url += "&videoDuration=" + opts.duration;
   const res = await fetch(url);
   const data = await res.json();
@@ -2246,7 +2270,7 @@ function Settings({
       fontSize: 13,
       marginTop: 10
     }
-  }, "Everything follows the sport you pick \\u2014 players, full games, skills and the coach."), /*#__PURE__*/React.createElement("p", {
+  }, "Everything follows the sport you pick — players, full games, skills and the coach."), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Appearance"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
@@ -2350,7 +2374,7 @@ function Landing({
     size: 44
   })), /*#__PURE__*/React.createElement("p", {
     className: "fr-eyeb"
-  }, "Film Room \\u00B7 ", SPORTS[sport].label), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
+  }, "Film Room · ", SPORTS[sport].label), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
     className: "fr-lede"
   }, "Pull tape on any player, skill, or full game. Send your own clip and get it graded across every category in it. Then get the drills that actually fix it."), /*#__PURE__*/React.createElement("div", {
     className: "fr-cta"
@@ -2489,7 +2513,7 @@ function Library({
     style: {
       marginBottom: 16
     }
-  }, "Open it anyway \\u2014 works for any player at any level, right down to your own highlight tape."), /*#__PURE__*/React.createElement("button", {
+  }, "Open it anyway — works for any player at any level, right down to your own highlight tape."), /*#__PURE__*/React.createElement("button", {
     className: "fr-btn",
     onClick: () => onOpen({
       n: term.trim(),
@@ -2523,6 +2547,7 @@ function GamesPage(props) {
     blurb: D.gamesBlurb,
     placeholder: "Search a team or competition",
     items: D.games,
+    pool: D.gamePool || D.games,
     filters: D.gameFilters,
     onOpen: props.onOpen,
     onSearch: props.onSearch
@@ -2735,7 +2760,7 @@ function Film({
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "Pull film"), /*#__PURE__*/React.createElement("p", null, "A player, a team, a concept \\u2014 anything you want to see done right.")), /*#__PURE__*/React.createElement("label", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Pull film"), /*#__PURE__*/React.createElement("p", null, "A player, a team, a concept — anything you want to see done right.")), /*#__PURE__*/React.createElement("label", {
     className: "fr-label",
     htmlFor: "q"
   }, "Search"), /*#__PURE__*/React.createElement("input", {
@@ -3149,7 +3174,7 @@ function Train({
       className: "fr-hint"
     }, "Tap + to send a clip. Any length, and nothing to fill in."), /*#__PURE__*/React.createElement("p", {
       className: "fr-disclaim"
-    }, "The coach can get things wrong. Treat it as a second opinion, not a diagnosis \\u2014 and never train through pain on its say-so."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
+    }, "The coach can get things wrong. Treat it as a second opinion, not a diagnosis — and never train through pain on its say-so."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
       onSaved: () => setReady(true)
     })), /*#__PURE__*/React.createElement("input", {
       ref: input,
@@ -3197,7 +3222,7 @@ function Train({
     onChange: e => pick(e.target.files[0] || null)
   }), bar, /*#__PURE__*/React.createElement("p", {
     className: "fr-disclaim"
-  }, "The coach can get things wrong \\u2014 it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")));
+  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain.")));
 }
 
 /* ------------------------ APP ------------------------ */
