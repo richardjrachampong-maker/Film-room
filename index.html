@@ -6,7 +6,7 @@
 <title>Film Room — see what you're actually doing</title>
 <meta name="description" content="Pull film on any player or concept, break down your own clip frame by frame, and get the drills that fix it." />
 <meta name="theme-color" content="#EDF0F2" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M45.8 15.5 A25 21 -14 1 1 20.5 12.4" fill="none" stroke="%23FFB627" stroke-width="9" stroke-linecap="round"/><circle cx="32" cy="32" r="10" fill="%230B1215"/></svg>" /><text y='.9em' font-size='90'>🏀</text></svg>" />
 
 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -427,11 +427,16 @@ body { background: #EDF0F2; }
 .fr-statpanel p { margin:0 0 16px; font-size:14.5px; line-height:1.6; color:var(--dim); }
 @media (prefers-reduced-motion: reduce) { .fr-statpanel { animation:none; } }
 
+
+/* --- the mark --- */
+.fr-brand { display:inline-flex; align-items:center; gap:9px; }
+.fr-logo { flex:0 0 auto; display:block; }
+.fr-herologo { margin-bottom:20px; color:var(--text); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b21</div>
+<div class="fr-build">b23</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1518,6 +1523,30 @@ function toJSON(text) {
 
 /* --------------------- bits -------------------------- */
 
+function Mark2({
+  size
+}) {
+  const w = size <= 20 ? 8 : size <= 28 ? 7 : 6;
+  const r = size <= 20 ? 10 : size <= 28 ? 9 : 8;
+  return /*#__PURE__*/React.createElement("svg", {
+    className: "fr-logo",
+    width: size,
+    height: size,
+    viewBox: "0 0 64 64",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M45.8 15.5 A25 21 -14 1 1 20.5 12.4",
+    fill: "none",
+    stroke: "var(--amber)",
+    strokeWidth: w,
+    strokeLinecap: "round"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "32",
+    cy: "32",
+    r: r,
+    fill: "currentColor"
+  }));
+}
 function Mark({
   n,
   color
@@ -1649,7 +1678,11 @@ function Landing({
     className: "fr-wrap"
   }, /*#__PURE__*/React.createElement("section", {
     className: "fr-hero"
-  }, /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-herologo"
+  }, /*#__PURE__*/React.createElement(Mark2, {
+    size: 44
+  })), /*#__PURE__*/React.createElement("p", {
     className: "fr-eyeb"
   }, "Film Room"), /*#__PURE__*/React.createElement("h1", null, "Film", /*#__PURE__*/React.createElement("br", null), "doesn't", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "lie.")), /*#__PURE__*/React.createElement("p", {
     className: "fr-lede"
@@ -1731,7 +1764,8 @@ function Library({
     });
     const typed = term.trim();
     const exact = hit.some(r => r.n.toLowerCase() === q);
-    const invented = !exact && typed.length > 2 && title === "Players" ? [{
+    const looksLikeAName = /^[A-Za-z][A-Za-z.'\u2019-]+(\s+[A-Za-z][A-Za-z.'\u2019-]+)+$/.test(typed);
+    const invented = !exact && looksLikeAName && title === "Players" ? [{
       n: typed,
       t: "Player",
       g: "",
@@ -1877,24 +1911,24 @@ function tabsFor(item) {
   const tabs = [{
     id: "study",
     label: "Film study",
-    q: item.g === "College" ? item.n + " college basketball film breakdown" : item.n + " film study breakdown",
+    q: item.g === "College" ? item.n + " college basketball film breakdown" : item.n + " basketball film study breakdown",
     dur: "any"
   }, {
     id: "highlights",
     label: "Highlights",
-    q: item.n + " highlights",
+    q: item.n + " basketball highlights",
     dur: "any"
   }, {
     id: "games",
     label: "Full games",
-    q: item.n + " full game",
+    q: item.n + " basketball full game",
     dur: "long"
   }];
   const pre = item.g === "College" ? null : PRE[item.n];
   if (pre) tabs.push({
     id: "pre",
     label: "Before the pros",
-    q: item.n + " " + pre + " highlights",
+    q: item.n + " " + pre + " basketball highlights",
     dur: "any"
   });
   return tabs;
@@ -1932,7 +1966,9 @@ function Player({
         return n;
       });
       setActive(list[0] || null);
-      if (!list.length) setErr("No " + t.label.toLowerCase() + " came back for " + player.n + ".");
+      if (!list.length) {
+        setErr(id === "study" ? "Couldn't find any basketball film for \u201C" + player.n + "\u201D. Check the spelling, or try their full name." : "No " + t.label.toLowerCase() + " came back for " + player.n + ".");
+      }
     } catch (e) {
       setErr(e.message || "Something went wrong.");
     }
@@ -2526,7 +2562,9 @@ function App() {
   }, "\u2190")), /*#__PURE__*/React.createElement("button", {
     className: "fr-brand",
     onClick: () => go("home")
-  }, /*#__PURE__*/React.createElement("i", null), "Film Room"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(Mark2, {
+    size: 22
+  }), "Film Room"), /*#__PURE__*/React.createElement("div", {
     className: "fr-links"
   }, NAV.map(n => /*#__PURE__*/React.createElement("button", {
     key: n.id,
