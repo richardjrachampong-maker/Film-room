@@ -518,6 +518,10 @@ body { background: #EDF0F2; }
 .fr-lockcard { position:relative; z-index:1; width:min(440px,100%);
   padding:32px 28px; text-align:center;
   animation:pop .35s cubic-bezier(.2,.7,.3,1) both; }
+.fr-lockback { display:block; margin:14px auto 0; border:0; background:none;
+  color:var(--dim); font-size:13.5px; cursor:pointer; padding:6px 10px;
+  border-radius:999px; font-family:inherit; }
+.fr-lockback:hover { color:var(--ink); }
 .fr-lockicon { display:block; font-size:30px; color:var(--amber); margin-bottom:14px; }
 .fr-lockcard h3 { margin:0 0 10px; font-family:'Outfit',sans-serif; font-weight:600;
   font-size:21px; letter-spacing:-.015em; line-height:1.25; }
@@ -623,7 +627,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b46</div>
+<div class="fr-build">b47</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2458,6 +2462,38 @@ function LockedTrain({
   }, "Create an account")));
 }
 
+function LockedDeep({
+  onGoPro,
+  onBack
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-locked"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-lockedbg",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakebar"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakemsg"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-fakemsg",
+    style: {
+      width: "62%"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-lockcard"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-lockicon",
+    "aria-hidden": "true"
+  }, "\u25CE"), /*#__PURE__*/React.createElement("h3", null, "Deep is part of Pro"), /*#__PURE__*/React.createElement("p", null, "Deep reads far more of each clip and takes longer on it. Quick stays free and unlimited, and so does asking the coach questions."), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    onClick: onGoPro
+  }, "Go Pro"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-lockback",
+    onClick: onBack
+  }, "Stay on Quick")));
+}
+
 /* ------------------------- PRO ----------------------- */
 
 function thisMonth() {
@@ -2565,7 +2601,7 @@ function UpgradeCard({
     style: {
       margin: "0 0 20px"
     }
-  }, "You have used all ", FREE_CLIPS, " film breakdowns this month. It resets on the first."), /*#__PURE__*/React.createElement("ul", {
+  }, used >= FREE_CLIPS ? "You have used all " + FREE_CLIPS + " film breakdowns this month. It resets on the first." : "You have " + Math.max(0, FREE_CLIPS - used) + " of " + FREE_CLIPS + " film breakdowns left this month. It resets on the first."), /*#__PURE__*/React.createElement("ul", {
     className: "fr-perks"
   }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Unlimited film"), /*#__PURE__*/React.createElement("span", null, "Send as many clips as you want")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Deep mode on every clip"), /*#__PURE__*/React.createElement("span", null, "Reads far more of the footage")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Longer clips"), /*#__PURE__*/React.createElement("span", null, "Full drills and possessions, not just moments"))), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
@@ -2588,7 +2624,7 @@ function UpgradeCard({
     style: {
       marginTop: 12
     }
-  }, "Test checkout \\u2014 no real payment is taken, and Pro is switched on by hand afterwards.")) : /*#__PURE__*/React.createElement("p", {
+  }, "Test checkout \u2014 no real payment is taken, and Pro is switched on by hand afterwards.")) : /*#__PURE__*/React.createElement("p", {
     className: "fr-adminnote",
     style: {
       marginTop: 20
@@ -2740,7 +2776,7 @@ function AdminPanel({
     className: "fr-slabel"
   }, "Pricing"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Everything free for everyone"), /*#__PURE__*/React.createElement("span", null, "Switches Pro off entirely \\u2014 unlimited film and Deep mode for every account, no limits, no upgrade screen")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Everything free for everyone"), /*#__PURE__*/React.createElement("span", null, "Switches Pro off entirely \u2014 unlimited film and Deep mode for every account, no limits, no upgrade screen")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
     "data-on": flags.allFree ? "1" : "0",
     onClick: function () {
@@ -2753,7 +2789,7 @@ function AdminPanel({
     style: {
       margin: "0 0 10px"
     }
-  }, "Paste someone's user id from Firebase \\u2192 Authentication \\u2192 Users. Your own account is always Pro."), /*#__PURE__*/React.createElement("input", {
+  }, "Paste someone's user id from Firebase \u2192 Authentication \u2192 Users. Your own account is always Pro."), /*#__PURE__*/React.createElement("input", {
     className: "fr-input",
     value: uid,
     placeholder: "User id",
@@ -2800,7 +2836,7 @@ function AdminPanel({
     className: "fr-slabel"
   }, "Build"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, SPORTS[SPORT].label), /*#__PURE__*/React.createElement("span", null, D.pool.length, " searchable names \\u00b7 ", D.roster.length, " on the front page \\u00b7 ", D.games.length, " game tiles"))), note && /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, SPORTS[SPORT].label), /*#__PURE__*/React.createElement("span", null, D.pool.length, " searchable names \u00b7 ", D.roster.length, " on the front page \u00b7 ", D.games.length, " game tiles"))), note && /*#__PURE__*/React.createElement("p", {
     className: "fr-adminnote"
   }, note)));
 }
@@ -3468,13 +3504,16 @@ function Train({
       return "quick";
     }
   });
+  const [locked, setLocked] = useState(false);
   function pickMode(m) {
     setMode(m);
     try {
       window.localStorage.setItem("fr-mode", m);
     } catch (e) {}
   }
-  const fast = mode === "quick" || !pro;
+  // a free account is always on quick, whatever localStorage remembers
+  const effMode = pro ? mode : "quick";
+  const fast = effMode !== "deep";
   const [msgs, setMsgs] = useState([]);
   const [history, setHistory] = useState([]);
   const [text, setText] = useState("");
@@ -3623,16 +3662,16 @@ function Train({
     "aria-label": "Answer speed"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
-    "data-on": mode === "quick" ? "1" : "0",
+    "data-on": effMode === "quick" ? "1" : "0",
     onClick: function () {
       pickMode("quick");
     },
-    title: "Answers sooner \\u2014 same detail"
+    title: "Answers sooner \u2014 same detail"
   }, "Quick"), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
-    "data-on": mode === "deep" ? "1" : "0",
+    "data-on": effMode === "deep" ? "1" : "0",
     onClick: function () {
-      pro ? pickMode("deep") : onOutOfClips();
+      pro ? pickMode("deep") : setLocked(true);
     },
     title: pro ? "Reads more of the clip, takes longer" : "Deep mode is part of Pro"
   }, "Deep", pro ? "" : " \u00b7 Pro")), /*#__PURE__*/React.createElement("span", {
@@ -3677,6 +3716,17 @@ function Train({
       "aria-label": "Delete this chat"
     }, "\u00D7"));
   })));
+  if (locked && !pro) {
+    return /*#__PURE__*/React.createElement(LockedDeep, {
+      onGoPro: function () {
+        setLocked(false);
+        onOutOfClips();
+      },
+      onBack: function () {
+        setLocked(false);
+      }
+    });
+  }
   if (empty) {
     return /*#__PURE__*/React.createElement("div", {
       className: "fr-blank"
