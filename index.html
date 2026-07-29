@@ -392,7 +392,7 @@ body { background: #EDF0F2; }
 .fr-build { position:fixed; bottom:6px; right:10px; font-size:10px; letter-spacing:.1em; color:var(--faint); pointer-events:none; z-index:60; }
 
 /* --- team crests sit inside the tile, not cropped --- */
-.fr-tile[data-logo="1"] .fr-face { object-fit:contain; padding:20px 20px 46px;
+.fr-tile[data-logo="1"] .fr-face { object-fit:contain; padding:24px 22px 48px;
   background:var(--glass-2); object-position:center; }
 .fr-tile[data-logo="1"] .fr-scrim {
   background:linear-gradient(to top, rgba(5,9,12,.86) 0%, rgba(5,9,12,.30) 34%, rgba(5,9,12,0) 62%); }
@@ -436,7 +436,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b24</div>
+<div class="fr-build">b26</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -919,38 +919,30 @@ const GAMES = [{
   n: "March Madness",
   t: "Tournament",
   g: "College",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/March%20Madness%20logo.svg?width=400",
   q: "March Madness full game replay",
   wiki: "NCAA Division I men's basketball tournament"
 }, {
   n: "NCAA Men",
   t: "Full games",
   g: "College",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/NCAA%20logo.svg?width=400",
   q: "NCAA mens basketball full game replay",
   wiki: "NCAA Division I men's basketball"
 }, {
   n: "NCAA Women",
   t: "Full games",
   g: "College",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/NCAA%20logo.svg?width=400",
   q: "NCAA womens basketball full game replay",
   wiki: "NCAA Division I women's basketball"
 }, {
   n: "Final Four",
   t: "Tournament",
   g: "College",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/1980%20Final%20Four%20logo.svg?width=400",
   q: "Final Four full game replay basketball",
   wiki: "Final Four"
-}, {
-  n: "UConn",
-  t: "Full games",
-  g: "College",
-  q: "UConn basketball full game replay",
-  wiki: "UConn Huskies"
-}, {
-  n: "Duke",
-  t: "Full games",
-  g: "College",
-  q: "Duke basketball full game replay",
-  wiki: "Duke Blue Devils men's basketball"
 }, {
   n: "EuroLeague",
   t: "Full games",
@@ -961,12 +953,14 @@ const GAMES = [{
   n: "Olympics",
   t: "Full games",
   g: "World",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/Olympic%20flag.svg?width=400",
   q: "Olympic basketball full game replay",
   wiki: "Basketball at the Summer Olympics"
 }, {
   n: "FIBA World Cup",
   t: "Full games",
   g: "World",
+  img: "https://commons.wikimedia.org/wiki/Special:FilePath/FIBA%20Basketball%20World%20Cup%20logo.svg?width=400",
   q: "FIBA World Cup full game replay",
   wiki: "FIBA Basketball World Cup"
 }, {
@@ -1240,6 +1234,12 @@ const GAMES = [{
   g: "College",
   img: "https://a.espncdn.com/i/teamlogos/ncaa/500/239.png",
   q: "Baylor basketball full game"
+}, {
+  n: "UConn",
+  t: "Men's program",
+  img: "https://a.espncdn.com/i/teamlogos/ncaa/500/41.png",
+  g: "College",
+  q: "UConn basketball full game"
 }, {
   n: "UConn Women",
   t: "Women's program",
