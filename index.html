@@ -550,11 +550,20 @@ body { background: #EDF0F2; }
 .fr-histrow .fr-x { font-size:20px; padding:0 10px; }
 .fr-disclaim { margin:16px 0 0; font-size:12.5px; line-height:1.55; color:var(--faint);
   text-align:center; }
+
+/* --- admin panel --- */
+.fr-admin { max-width:520px; max-height:82vh; overflow-y:auto; }
+.fr-admin .fr-area { min-height:70px; font-size:14px; }
+.fr-adminbtns { display:flex; flex-wrap:wrap; gap:8px; padding-top:14px;
+  border-top:1px solid var(--edge); }
+.fr-adminnote { margin:16px 0 0; padding:11px 14px; border-radius:12px;
+  background:var(--glass-2); border:1px solid var(--edge);
+  font-size:13.5px; color:var(--text); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b37</div>
+<div class="fr-build">b38</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -902,6 +911,9 @@ const FIREBASE_PROJECT = "filmroom-212bd";
 // For "Continue with Google". Google Cloud > APIs & Services > Credentials >
 // OAuth 2.0 Client IDs > "Web client (auto created by Google Service)"
 const GOOGLE_CLIENT_ID = "";
+
+// The one account that sees the admin panel. Put your own email here.
+const ADMIN_EMAIL = "";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -1836,6 +1848,10 @@ async function aiClaude(turns) {
   if (data.error) throw new Error(AI_OFF);
   return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
+function coachExtra() {
+  const c = adminFlags().coach;
+  return c ? "\n\nAlso follow this standing instruction: " + c : "";
+}
 async function ai(turns, wantJSON) {
   if (aiKey()) return aiGemini(turns, wantJSON);
   if (AI_ENDPOINT) return aiClaude(turns);
@@ -2220,6 +2236,7 @@ function Settings({
   setSport,
   onSignIn,
   onSignOut,
+  onAdmin,
   onClose
 }) {
   return /*#__PURE__*/React.createElement("div", {
@@ -2251,7 +2268,17 @@ function Settings({
       padding: "11px 20px"
     },
     onClick: onSignIn
-  }, "Sign in")), /*#__PURE__*/React.createElement("p", {
+  }, "Sign in")), isAdmin(user) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Admin"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Admin controls"), /*#__PURE__*/React.createElement("span", null, "Only you can see this")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      padding: "11px 20px"
+    },
+    onClick: onAdmin
+  }, "Open"))), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Sport"), /*#__PURE__*/React.createElement("div", {
     className: "fr-sports"
@@ -2338,6 +2365,161 @@ function LockedTrain({
     className: "fr-btn",
     onClick: onSignIn
   }, "Create an account")));
+}
+
+/* ------------------------ ADMIN ---------------------- */
+
+function isAdmin(user) {
+  return !!(user && ADMIN_EMAIL && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+}
+function adminFlags() {
+  try {
+    return JSON.parse(window.localStorage.getItem("fr-admin") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+function setAdminFlag(key, value) {
+  const f = adminFlags();
+  f[key] = value;
+  try {
+    window.localStorage.setItem("fr-admin", JSON.stringify(f));
+  } catch (e) {}
+  return f;
+}
+function AdminPanel({
+  user,
+  onClose
+}) {
+  const [flags, setFlags] = useState(adminFlags);
+  const [note, setNote] = useState("");
+  const [coach, setCoach] = useState(function () {
+    return adminFlags().coach || "";
+  });
+  function flip(key) {
+    setFlags(setAdminFlag(key, !flags[key]));
+  }
+  function say(msg) {
+    setNote(msg);
+    setTimeout(function () {
+      setNote("");
+    }, 2600);
+  }
+  function clearChats(all) {
+    try {
+      if (all) {
+        SPORT_KEYS.forEach(function (k) {
+          window.localStorage.removeItem(chatKey(k));
+        });
+        say("Cleared every chat, in every sport.");
+      } else {
+        window.localStorage.removeItem(chatKey(SPORT));
+        say("Cleared the " + SPORTS[SPORT].label.toLowerCase() + " chats.");
+      }
+    } catch (e) {}
+  }
+  function resetNudge() {
+    try {
+      window.localStorage.removeItem("fr-nudged");
+    } catch (e) {}
+    say("The sign-up prompt will show again.");
+  }
+  function wipeLocal() {
+    try {
+      const keep = window.localStorage.getItem("fr-user");
+      window.localStorage.clear();
+      if (keep) window.localStorage.setItem("fr-user", keep);
+      say("Local data wiped. You are still signed in.");
+    } catch (e) {}
+  }
+  function saveCoach() {
+    setFlags(setAdminFlag("coach", coach.trim()));
+    say(coach.trim() ? "Extra coaching instructions saved." : "Extra instructions removed.");
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-sheet",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-settings fr-admin",
+    onClick: function (e) {
+      e.stopPropagation();
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-shead"
+  }, /*#__PURE__*/React.createElement("h3", null, "Admin"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-x",
+    onClick: onClose,
+    "aria-label": "Close"
+  }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "0 0 4px"
+    }
+  }, "Only visible to ", user.email, ". These settings live on this device."), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Access"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Open the coach to everyone"), /*#__PURE__*/React.createElement("span", null, "Removes the account wall on Train")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": flags.openCoach ? "1" : "0",
+    onClick: function () {
+      flip("openCoach");
+    }
+  }, flags.openCoach ? "On" : "Off")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Hide the sign-up prompt"), /*#__PURE__*/React.createElement("span", null, "For screenshots and demos")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": flags.hideNudge ? "1" : "0",
+    onClick: function () {
+      flip("hideNudge");
+    }
+  }, flags.hideNudge ? "On" : "Off")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Coach"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "0 0 10px"
+    }
+  }, "Anything here is added to the coach's instructions on every reply."), /*#__PURE__*/React.createElement("textarea", {
+    className: "fr-area",
+    value: coach,
+    placeholder: "e.g. Always give metric measurements.",
+    onChange: function (e) {
+      setCoach(e.target.value);
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    style: {
+      marginTop: 10
+    },
+    onClick: saveCoach
+  }, "Save instructions"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Data"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-adminbtns"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      clearChats(false);
+    }
+  }, "Clear ", SPORTS[SPORT].label, " chats"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      clearChats(true);
+    }
+  }, "Clear all chats"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: resetNudge
+  }, "Reset sign-up prompt"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: wipeLocal
+  }, "Wipe local data")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Build"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, SPORTS[SPORT].label), /*#__PURE__*/React.createElement("span", null, D.pool.length, " searchable names \\u00b7 ", D.roster.length, " on the front page \\u00b7 ", D.games.length, " game tiles"))), note && /*#__PURE__*/React.createElement("p", {
+    className: "fr-adminnote"
+  }, note)));
 }
 
 /* --------------------- LANDING ----------------------- */
@@ -2988,20 +3170,11 @@ function Train({
   const [chats, setChats] = useState(function () {
     return loadChats(sport);
   });
-  const [chatId, setChatId] = useState(function () {
-    const c = loadChats(sport);
-    return c.length ? c[0].id : null;
-  });
+  // a reload always starts clean; the old conversation is safe in history
+  const [chatId, setChatId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  const current = chats.filter(function (c) {
-    return c.id === chatId;
-  })[0];
-  const [msgs, setMsgs] = useState(function () {
-    return current && current.msgs || [];
-  });
-  const [history, setHistory] = useState(function () {
-    return current && current.history || [];
-  });
+  const [msgs, setMsgs] = useState([]);
+  const [history, setHistory] = useState([]);
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState("");
@@ -3079,7 +3252,7 @@ function Train({
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words.")];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra())];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
@@ -3310,6 +3483,7 @@ function App() {
   const [saved, setSaved] = useState([]);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [nudged, setNudged] = useState(function () {
     try {
       return window.localStorage.getItem("fr-nudged") === "1";
@@ -3455,11 +3629,18 @@ function App() {
       setShowSettings(false);
       setShowSignIn(true);
     },
+    onAdmin: () => {
+      setShowSettings(false);
+      setShowAdmin(true);
+    },
     onSignOut: () => {
       signOut();
       setShowSettings(false);
     }
-  }), accountsOn() && !user && !nudged && !showSignIn && !showSettings && /*#__PURE__*/React.createElement(SignUpNudge, {
+  }), showAdmin && isAdmin(user) && /*#__PURE__*/React.createElement(AdminPanel, {
+    user: user,
+    onClose: () => setShowAdmin(false)
+  }), accountsOn() && !user && !nudged && !adminFlags().hideNudge && !showSignIn && !showSettings && /*#__PURE__*/React.createElement(SignUpNudge, {
     onClose: dismissNudge,
     onSignIn: () => {
       setShowSignIn(true);
@@ -3480,7 +3661,7 @@ function App() {
   }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
     clearSeed: () => setSeed(null)
-  }), top.page === "train" && (accountsOn() && !user ? /*#__PURE__*/React.createElement(LockedTrain, {
+  }), top.page === "train" && (accountsOn() && !user && !adminFlags().openCoach ? /*#__PURE__*/React.createElement(LockedTrain, {
     onSignIn: () => setShowSignIn(true)
   }) : /*#__PURE__*/React.createElement(Train, {
     sport: sport
