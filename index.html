@@ -393,7 +393,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b14</div>
+<div class="fr-build">b15</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1014,6 +1014,76 @@ async function ytSearch(q, opts) {
   return ((cand.content || {}).parts || []).map(p => p.text || "").join("");
 }
 
+/* --------------------- Wikipedia --------------------- */
+
+const photoCache = {};
+const bioCache = {};
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+async function wikiPhotos(titles) {
+  const need = titles.filter(t => t && !(t in photoCache));
+  if (!need.length) return photoCache;
+  const batches = chunk(need, 40);
+  for (let b = 0; b < batches.length; b++) {
+    const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=400" + "&titles=" + encodeURIComponent(batches[b].join("|"));
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const q = data.query || {};
+      const alias = {};
+      (q.normalized || []).forEach(n => {
+        alias[n.from] = n.to;
+      });
+      (q.redirects || []).forEach(r => {
+        alias[r.from] = r.to;
+      });
+      const resolve = t => {
+        let cur = t,
+          i = 0;
+        while (alias[cur] && i++ < 5) cur = alias[cur];
+        return cur;
+      };
+      const byTitle = {};
+      Object.keys(q.pages || {}).forEach(k => {
+        const p = q.pages[k];
+        if (p && p.thumbnail && p.thumbnail.source) byTitle[p.title] = p.thumbnail.source;
+      });
+      batches[b].forEach(t => {
+        photoCache[t] = byTitle[resolve(t)] || null;
+      });
+    } catch (e) {
+      batches[b].forEach(t => {
+        photoCache[t] = null;
+      });
+    }
+  }
+  return photoCache;
+}
+async function wikiBio(title) {
+  if (title in bioCache) return bioCache[title];
+  const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" + "&redirects=1&prop=extracts|pageimages&exintro=1&explaintext=1" + "&piprop=thumbnail&pithumbsize=600&titles=" + encodeURIComponent(title);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = (data.query || {}).pages || {};
+    const first = pages[Object.keys(pages)[0]] || {};
+    const text = (first.extract || "").split("\n")[0];
+    bioCache[title] = {
+      text: text.length > 430 ? text.slice(0, 430).replace(/\s+\S*$/, "") + "\u2026" : text,
+      photo: first.thumbnail ? first.thumbnail.source : null
+    };
+  } catch (e) {
+    bioCache[title] = {
+      text: "",
+      photo: null
+    };
+  }
+  return bioCache[title];
+}
+
 /* ------------------------ AI ------------------------- */
 
 let storedKey = "";
@@ -1325,6 +1395,21 @@ function Library({
   const [filter, setFilter] = useState("All");
   const [term, setTerm] = useState("");
   const [photos, setPhotos] = useState({});
+  const q = term.trim().toLowerCase();
+  const searchable = pool || items;
+  let list = filter === "All" ? items : items.filter(r => r.g === filter);
+  if (q) {
+    const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
+    hit.sort((a, b) => {
+      const ai = a.n.toLowerCase().indexOf(q),
+        bi = b.n.toLowerCase().indexOf(q);
+      if (ai !== bi) return ai - bi;
+      const ax = a.g === "More" ? 1 : 0,
+        bx = b.g === "More" ? 1 : 0;
+      return ax - bx;
+    });
+    list = hit.slice(0, 40);
+  }
   useEffect(() => {
     let alive = true;
     const sync = () => {
@@ -1355,21 +1440,6 @@ function Library({
       alive = false;
     };
   }, [term]);
-  const q = term.trim().toLowerCase();
-  const searchable = pool || items;
-  let list = filter === "All" ? items : items.filter(r => r.g === filter);
-  if (q) {
-    const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (PRE[r.n] || "").toLowerCase().indexOf(q) > -1);
-    hit.sort((a, b) => {
-      const ai = a.n.toLowerCase().indexOf(q),
-        bi = b.n.toLowerCase().indexOf(q);
-      if (ai !== bi) return ai - bi;
-      const ax = a.g === "More" ? 1 : 0,
-        bx = b.g === "More" ? 1 : 0;
-      return ax - bx;
-    });
-    list = hit.slice(0, 40);
-  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
   }, /*#__PURE__*/React.createElement("div", {
