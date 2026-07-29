@@ -397,21 +397,40 @@ body { background: #EDF0F2; }
 .fr-tile[data-logo="1"] .fr-scrim {
   background:linear-gradient(to top, rgba(5,9,12,.86) 0%, rgba(5,9,12,.30) 34%, rgba(5,9,12,0) 62%); }
 
-/* --- stats link on a player page --- */
-.fr-profile { position:relative; padding-right:96px; }
-.fr-stats { position:absolute; top:0; right:0; text-decoration:none;
+
+/* --- stats button, hard into the corner --- */
+.fr-profile { position:relative; padding-right:0; }
+.fr-stats { position:fixed; top:70px; right:16px; z-index:45;
+  appearance:none; cursor:pointer;
   background:var(--glass-2); border:1px solid var(--edge); color:var(--text);
-  border-radius:999px; padding:8px 14px; font-family:'Outfit',sans-serif;
+  border-radius:999px; padding:9px 16px; font-family:'Outfit',sans-serif;
   font-size:12.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  transition:border-color .2s, color .2s; white-space:nowrap; }
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);
+  transition:border-color .2s, color .2s; }
 .fr-stats:hover { border-color:var(--amber); color:var(--amber); }
-.fr-stats span { font-size:11px; margin-left:2px; }
+.fr-stats:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* --- the panel it opens --- */
+.fr-statpanel { margin-top:20px; padding:20px 22px;
+  animation:statIn .3s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes statIn { from { opacity:0; transform:translate3d(0,-8px,0); } }
+.fr-statpanel h4 { margin:0 0 14px; font-family:'Outfit',sans-serif;
+  font-weight:600; font-size:18px; letter-spacing:-.01em; }
+.fr-statpanel dl { margin:0 0 16px; display:flex; flex-direction:column; gap:0; }
+.fr-statpanel dl > div { display:flex; justify-content:space-between; gap:16px;
+  padding:11px 0; border-bottom:1px solid var(--edge); }
+.fr-statpanel dl > div:first-child { border-top:1px solid var(--edge); }
+.fr-statpanel dt { font-family:'Outfit',sans-serif; font-size:12px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--dim); }
+.fr-statpanel dd { margin:0; font-size:15px; font-weight:500; text-align:right; }
+.fr-statpanel p { margin:0 0 16px; font-size:14.5px; line-height:1.6; color:var(--dim); }
+@media (prefers-reduced-motion: reduce) { .fr-statpanel { animation:none; } }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b17</div>
+<div class="fr-build">b18</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -770,7 +789,7 @@ const C = (n, t, q, wiki) => ({
   wiki: wiki,
   kind: "concept"
 });
-const ROSTER = [P("Stephen Curry", "Off-ball movement", "Guards"), P("Kyrie Irving", "Handle & finishing", "Guards"), P("Shai Gilgeous-Alexander", "Deceleration", "Guards"), P("Luka Doncic", "Pace & step-back", "Guards", "Luka Don\u010di\u0107"), P("Tyrese Haliburton", "Passing reads", "Guards"), P("Ja Morant", "Explosive finishing", "Guards"), P("Damian Lillard", "Screen usage", "Guards"), P("Jalen Brunson", "Footwork", "Guards"), P("Trae Young", "Pick and roll", "Guards"), P("Anthony Edwards", "Downhill scoring", "Guards"), P("Donovan Mitchell", "Shot creation", "Guards"), P("De'Aaron Fox", "Speed with control", "Guards"), P("Chris Paul", "Pace & midrange", "Guards"), P("Jrue Holiday", "On-ball defense", "Guards"), P("Derrick White", "Two-way guard play", "Guards"), P("Cade Cunningham", "Size at guard", "Guards"), P("LaMelo Ball", "Vision & passing", "Guards"), P("Darius Garland", "Change of pace", "Guards"), P("Caitlin Clark", "Deep pull-up", "Guards"), P("Sabrina Ionescu", "Shooting off movement", "Guards"), P("Paige Bueckers", "Shot creation", "Guards"), P("Kelsey Plum", "Off-ball scoring", "Guards"), P("Arike Ogunbowale", "Shot making", "Guards"), P("Jewell Loyd", "Midrange craft", "Guards"), P("Chelsea Gray", "Point guard reads", "Guards"), P("LeBron James", "Reading defenses", "Wings"), P("Kevin Durant", "Shooting mechanics", "Wings"), P("Jayson Tatum", "Shot creation", "Wings"), P("Kawhi Leonard", "Two-way footwork", "Wings"), P("Jimmy Butler", "Drawing fouls", "Wings"), P("Devin Booker", "Midrange scoring", "Wings"), P("Jaylen Brown", "Downhill attacking", "Wings"), P("Paul George", "Closeout defense", "Wings"), P("Mikal Bridges", "Wing defense", "Wings"), P("OG Anunoby", "Point of attack D", "Wings"), P("Franz Wagner", "Craft & finishing", "Wings"), P("Scottie Barnes", "Versatility", "Wings"), P("Brandon Ingram", "Length & pull-up", "Wings"), P("DeMar DeRozan", "Midrange footwork", "Wings"), P("Zion Williamson", "Power finishing", "Wings"), P("Breanna Stewart", "Length & versatility", "Wings"), P("Napheesa Collier", "Two-way forward", "Wings"), P("Satou Sabally", "Positional size", "Wings"), P("Kahleah Copper", "Slashing", "Wings"), P("Nneka Ogwumike", "Efficient scoring", "Wings"), P("Angel Reese", "Rebounding motor", "Wings"), P("Nikola Jokic", "Post reads & passing", "Bigs", "Nikola Joki\u0107"), P("Giannis Antetokounmpo", "Downhill force", "Bigs"), P("Joel Embiid", "Face-up game", "Bigs"), P("Victor Wembanyama", "Length everywhere", "Bigs"), P("Anthony Davis", "Two-way big", "Bigs"), P("Bam Adebayo", "Switch defense", "Bigs"), P("Draymond Green", "Help defense", "Bigs"), P("Rudy Gobert", "Rim protection", "Bigs"), P("Domantas Sabonis", "Rebounding & passing", "Bigs"), P("Alperen Sengun", "Post craft", "Bigs", "Alperen \u015Eeng\u00FCn"), P("Chet Holmgren", "Stretch & block", "Bigs"), P("Evan Mobley", "Mobile defense", "Bigs"), P("Karl-Anthony Towns", "Shooting big", "Bigs"), P("Jarrett Allen", "Vertical spacing", "Bigs"), P("A'ja Wilson", "Post scoring", "Bigs"), P("Aliyah Boston", "Post positioning", "Bigs"), P("Alyssa Thomas", "Playmaking forward", "Bigs"), P("Brittney Griner", "Rim finishing", "Bigs"), P("Michael Jordan", "Midrange craft", "Legends"), P("Kobe Bryant", "Footwork", "Legends"), P("Hakeem Olajuwon", "Post footwork", "Legends"), P("Tim Duncan", "Fundamentals", "Legends"), P("Magic Johnson", "Open court passing", "Legends"), P("Larry Bird", "Reading the game", "Legends"), P("Shaquille O'Neal", "Post power", "Legends"), P("Kareem Abdul-Jabbar", "The skyhook", "Legends"), P("Allen Iverson", "Handle & crossover", "Legends"), P("Steve Nash", "Pick and roll mastery", "Legends"), P("Dirk Nowitzki", "One-leg fadeaway", "Legends"), P("Manu Ginobili", "Euro step", "Legends", "Manu Gin\u00F3bili"), P("Dwyane Wade", "Body control", "Legends"), P("Tracy McGrady", "Shot creation", "Legends"), P("Ray Allen", "Shooting form", "Legends"), P("Reggie Miller", "Off-ball movement", "Legends"), P("Bill Russell", "Defensive timing", "Legends"), P("Diana Taurasi", "Shot making", "Legends"), P("Lisa Leslie", "Post dominance", "Legends"), P("Maya Moore", "Complete scoring", "Legends"), P("Sue Bird", "Running an offense", "Legends"), P("Tamika Catchings", "Two-way motor", "Legends"), C("Jump Shot", "Shooting", "basketball jump shot form tutorial", "Jump shot (basketball)"), C("Free Throw", "Shooting", "free throw shooting technique tutorial", "Free throw"), C("Three Pointer", "Shooting", "three point shooting form tutorial basketball", "Three-point field goal"), C("Layup", "Finishing", "layup technique tutorial basketball", "Layup"), C("Floater", "Finishing", "floater package tutorial basketball", "Layup"), C("Euro Step", "Finishing", "euro step tutorial breakdown basketball", "Euro step"), C("Slam Dunk", "Finishing", "how to dunk tutorial basketball", "Slam dunk"), C("Crossover", "Handle", "crossover dribble tutorial basketball", "Crossover dribble"), C("Dribbling", "Handle", "ball handling drills basketball tutorial", "Dribbling"), C("Change of Pace", "Handle", "change of pace dribbling basketball tutorial", "Dribbling"), C("Post Up", "Inside", "post up moves tutorial basketball", "Post (basketball)"), C("Boxing Out", "Inside", "rebounding box out technique basketball", "Rebound (basketball)"), C("Pick and Roll", "Team", "pick and roll reads tutorial basketball", "Pick and roll"), C("Off-ball Screens", "Team", "using off ball screens basketball tutorial", "Screen (basketball)"), C("Fast Break", "Team", "fast break fundamentals basketball", "Fast break"), C("Closeouts", "Defense", "how to close out properly basketball defense drill", "Basketball"), C("Man Defense", "Defense", "man to man defense fundamentals basketball", "Man-to-man defense"), C("Zone Defense", "Defense", "zone defense basketball tutorial", "Zone defense"), C("Steals", "Defense", "how to get steals basketball defense tutorial", "Steal (basketball)"), C("Blocking", "Defense", "shot blocking technique basketball", "Block (basketball)")];
+const ROSTER = [P("Stephen Curry", "Off-ball movement", "Guards"), P("Kyrie Irving", "Handle & finishing", "Guards"), P("Shai Gilgeous-Alexander", "Deceleration", "Guards"), P("Luka Doncic", "Pace & step-back", "Guards", "Luka Don\u010di\u0107"), P("Tyrese Haliburton", "Passing reads", "Guards"), P("Ja Morant", "Explosive finishing", "Guards"), P("Damian Lillard", "Screen usage", "Guards"), P("Jalen Brunson", "Footwork", "Guards"), P("Trae Young", "Pick and roll", "Guards"), P("Anthony Edwards", "Downhill scoring", "Guards", "Anthony Edwards (basketball)"), P("Donovan Mitchell", "Shot creation", "Guards"), P("De'Aaron Fox", "Speed with control", "Guards"), P("Chris Paul", "Pace & midrange", "Guards"), P("Jrue Holiday", "On-ball defense", "Guards"), P("Derrick White", "Two-way guard play", "Guards"), P("Cade Cunningham", "Size at guard", "Guards"), P("LaMelo Ball", "Vision & passing", "Guards"), P("Darius Garland", "Change of pace", "Guards"), P("Caitlin Clark", "Deep pull-up", "Guards"), P("Sabrina Ionescu", "Shooting off movement", "Guards"), P("Paige Bueckers", "Shot creation", "Guards"), P("Kelsey Plum", "Off-ball scoring", "Guards"), P("Arike Ogunbowale", "Shot making", "Guards"), P("Jewell Loyd", "Midrange craft", "Guards"), P("Chelsea Gray", "Point guard reads", "Guards"), P("LeBron James", "Reading defenses", "Wings"), P("Kevin Durant", "Shooting mechanics", "Wings"), P("Jayson Tatum", "Shot creation", "Wings"), P("Kawhi Leonard", "Two-way footwork", "Wings"), P("Jimmy Butler", "Drawing fouls", "Wings"), P("Devin Booker", "Midrange scoring", "Wings"), P("Jaylen Brown", "Downhill attacking", "Wings"), P("Paul George", "Closeout defense", "Wings"), P("Mikal Bridges", "Wing defense", "Wings"), P("OG Anunoby", "Point of attack D", "Wings"), P("Franz Wagner", "Craft & finishing", "Wings"), P("Scottie Barnes", "Versatility", "Wings"), P("Brandon Ingram", "Length & pull-up", "Wings"), P("DeMar DeRozan", "Midrange footwork", "Wings"), P("Zion Williamson", "Power finishing", "Wings"), P("Breanna Stewart", "Length & versatility", "Wings"), P("Napheesa Collier", "Two-way forward", "Wings"), P("Satou Sabally", "Positional size", "Wings"), P("Kahleah Copper", "Slashing", "Wings"), P("Nneka Ogwumike", "Efficient scoring", "Wings"), P("Angel Reese", "Rebounding motor", "Wings"), P("Nikola Jokic", "Post reads & passing", "Bigs", "Nikola Joki\u0107"), P("Giannis Antetokounmpo", "Downhill force", "Bigs"), P("Joel Embiid", "Face-up game", "Bigs"), P("Victor Wembanyama", "Length everywhere", "Bigs"), P("Anthony Davis", "Two-way big", "Bigs"), P("Bam Adebayo", "Switch defense", "Bigs"), P("Draymond Green", "Help defense", "Bigs"), P("Rudy Gobert", "Rim protection", "Bigs"), P("Domantas Sabonis", "Rebounding & passing", "Bigs"), P("Alperen Sengun", "Post craft", "Bigs", "Alperen \u015Eeng\u00FCn"), P("Chet Holmgren", "Stretch & block", "Bigs"), P("Evan Mobley", "Mobile defense", "Bigs"), P("Karl-Anthony Towns", "Shooting big", "Bigs"), P("Jarrett Allen", "Vertical spacing", "Bigs"), P("A'ja Wilson", "Post scoring", "Bigs"), P("Aliyah Boston", "Post positioning", "Bigs"), P("Alyssa Thomas", "Playmaking forward", "Bigs"), P("Brittney Griner", "Rim finishing", "Bigs"), P("Michael Jordan", "Midrange craft", "Legends"), P("Kobe Bryant", "Footwork", "Legends"), P("Hakeem Olajuwon", "Post footwork", "Legends"), P("Tim Duncan", "Fundamentals", "Legends"), P("Magic Johnson", "Open court passing", "Legends"), P("Larry Bird", "Reading the game", "Legends"), P("Shaquille O'Neal", "Post power", "Legends"), P("Kareem Abdul-Jabbar", "The skyhook", "Legends"), P("Allen Iverson", "Handle & crossover", "Legends"), P("Steve Nash", "Pick and roll mastery", "Legends"), P("Dirk Nowitzki", "One-leg fadeaway", "Legends"), P("Manu Ginobili", "Euro step", "Legends", "Manu Gin\u00F3bili"), P("Dwyane Wade", "Body control", "Legends"), P("Tracy McGrady", "Shot creation", "Legends"), P("Ray Allen", "Shooting form", "Legends"), P("Reggie Miller", "Off-ball movement", "Legends"), P("Bill Russell", "Defensive timing", "Legends"), P("Diana Taurasi", "Shot making", "Legends"), P("Lisa Leslie", "Post dominance", "Legends"), P("Maya Moore", "Complete scoring", "Legends"), P("Sue Bird", "Running an offense", "Legends"), P("Tamika Catchings", "Two-way motor", "Legends"), C("Jump Shot", "Shooting", "basketball jump shot form tutorial", "Jump shot (basketball)"), C("Free Throw", "Shooting", "free throw shooting technique tutorial", "Free throw"), C("Three Pointer", "Shooting", "three point shooting form tutorial basketball", "Three-point field goal"), C("Layup", "Finishing", "layup technique tutorial basketball", "Layup"), C("Floater", "Finishing", "floater package tutorial basketball", "Layup"), C("Euro Step", "Finishing", "euro step tutorial breakdown basketball", "Euro step"), C("Slam Dunk", "Finishing", "how to dunk tutorial basketball", "Slam dunk"), C("Crossover", "Handle", "crossover dribble tutorial basketball", "Crossover dribble"), C("Dribbling", "Handle", "ball handling drills basketball tutorial", "Dribbling"), C("Change of Pace", "Handle", "change of pace dribbling basketball tutorial", "Dribbling"), C("Post Up", "Inside", "post up moves tutorial basketball", "Post (basketball)"), C("Boxing Out", "Inside", "rebounding box out technique basketball", "Rebound (basketball)"), C("Pick and Roll", "Team", "pick and roll reads tutorial basketball", "Pick and roll"), C("Off-ball Screens", "Team", "using off ball screens basketball tutorial", "Screen (basketball)"), C("Fast Break", "Team", "fast break fundamentals basketball", "Fast break"), C("Closeouts", "Defense", "how to close out properly basketball defense drill", "Basketball"), C("Man Defense", "Defense", "man to man defense fundamentals basketball", "Man-to-man defense"), C("Zone Defense", "Defense", "zone defense basketball tutorial", "Zone defense"), C("Steals", "Defense", "how to get steals basketball defense tutorial", "Steal (basketball)"), C("Blocking", "Defense", "shot blocking technique basketball", "Block (basketball)")];
 
 /* Where each player came from, for the "Before the pros" tab. */
 const PRE = {
@@ -896,62 +915,6 @@ const GAMES = [{
   q: "WNBA full game replay",
   wiki: "Women's National Basketball Association"
 }, {
-  n: "Lakers",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
-  q: "Lakers full game replay",
-  wiki: "Los Angeles Lakers"
-}, {
-  n: "Celtics",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
-  q: "Celtics full game replay",
-  wiki: "Boston Celtics"
-}, {
-  n: "Warriors",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
-  q: "Warriors full game replay",
-  wiki: "Golden State Warriors"
-}, {
-  n: "Knicks",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
-  q: "Knicks full game replay",
-  wiki: "New York Knicks"
-}, {
-  n: "Nuggets",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
-  q: "Nuggets full game replay",
-  wiki: "Denver Nuggets"
-}, {
-  n: "Thunder",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
-  q: "Thunder full game replay",
-  wiki: "Oklahoma City Thunder"
-}, {
-  n: "Bucks",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
-  q: "Bucks full game replay",
-  wiki: "Milwaukee Bucks"
-}, {
-  n: "Heat",
-  t: "Full games",
-  g: "Pro",
-  img: "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
-  q: "Heat full game replay",
-  wiki: "Miami Heat"
-}, {
   n: "March Madness",
   t: "Tournament",
   g: "College",
@@ -1011,6 +974,186 @@ const GAMES = [{
   g: "World",
   q: "classic NBA full game replay",
   wiki: "National Basketball Association"
+}, {
+  n: "Hawks",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+  q: "Hawks full game replay"
+}, {
+  n: "Celtics",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+  q: "Celtics full game replay"
+}, {
+  n: "Nets",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+  q: "Nets full game replay"
+}, {
+  n: "Hornets",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+  q: "Hornets full game replay"
+}, {
+  n: "Bulls",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+  q: "Bulls full game replay"
+}, {
+  n: "Cavaliers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+  q: "Cavaliers full game replay"
+}, {
+  n: "Mavericks",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+  q: "Mavericks full game replay"
+}, {
+  n: "Nuggets",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+  q: "Nuggets full game replay"
+}, {
+  n: "Pistons",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+  q: "Pistons full game replay"
+}, {
+  n: "Warriors",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+  q: "Warriors full game replay"
+}, {
+  n: "Rockets",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+  q: "Rockets full game replay"
+}, {
+  n: "Pacers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+  q: "Pacers full game replay"
+}, {
+  n: "Clippers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+  q: "Clippers full game replay"
+}, {
+  n: "Lakers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+  q: "Lakers full game replay"
+}, {
+  n: "Grizzlies",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+  q: "Grizzlies full game replay"
+}, {
+  n: "Heat",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+  q: "Heat full game replay"
+}, {
+  n: "Bucks",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+  q: "Bucks full game replay"
+}, {
+  n: "Timberwolves",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+  q: "Timberwolves full game replay"
+}, {
+  n: "Pelicans",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+  q: "Pelicans full game replay"
+}, {
+  n: "Knicks",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+  q: "Knicks full game replay"
+}, {
+  n: "Thunder",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+  q: "Thunder full game replay"
+}, {
+  n: "Magic",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+  q: "Magic full game replay"
+}, {
+  n: "76ers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+  q: "76ers full game replay"
+}, {
+  n: "Suns",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+  q: "Suns full game replay"
+}, {
+  n: "Trail Blazers",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+  q: "Trail Blazers full game replay"
+}, {
+  n: "Kings",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+  q: "Kings full game replay"
+}, {
+  n: "Spurs",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
+  q: "Spurs full game replay"
+}, {
+  n: "Raptors",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+  q: "Raptors full game replay"
+}, {
+  n: "Jazz",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+  q: "Jazz full game replay"
+}, {
+  n: "Wizards",
+  t: "Full games",
+  g: "Pro",
+  img: "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
+  q: "Wizards full game replay"
 }];
 const GAME_GROUPS = ["All", "Pro", "College", "World"];
 
@@ -1615,6 +1758,7 @@ function Player({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [active, setActive] = useState(null);
+  const [stats, setStats] = useState(false);
   async function load(id, cache) {
     setTab(id);
     const have = cache || byTab;
@@ -1659,14 +1803,11 @@ function Player({
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-profile"
-  }, player.kind === "player" && /*#__PURE__*/React.createElement("a", {
+  }, player.kind === "player" && /*#__PURE__*/React.createElement("button", {
     className: "fr-stats",
-    target: "_blank",
-    rel: "noreferrer",
-    href: "https://www.basketball-reference.com/search/search.fcgi?search=" + encodeURIComponent(player.n)
-  }, "Stats ", /*#__PURE__*/React.createElement("span", {
-    "aria-hidden": "true"
-  }, "\u2197")), photo ? /*#__PURE__*/React.createElement("img", {
+    onClick: () => setStats(!stats),
+    "aria-expanded": stats ? "true" : "false"
+  }, stats ? "Close" : "Stats"), photo ? /*#__PURE__*/React.createElement("img", {
     src: photo,
     alt: "",
     className: "fr-avatar"
@@ -1676,7 +1817,18 @@ function Player({
     className: "fr-pname"
   }, player.n), /*#__PURE__*/React.createElement("p", {
     className: "fr-dose"
-  }, player.t, player.g ? " \u00B7 " + player.g : "", PRE[player.n] ? " \u00B7 " + PRE[player.n] : ""))), bio && bio.text && /*#__PURE__*/React.createElement("p", {
+  }, player.t, player.g ? " \u00B7 " + player.g : "", PRE[player.n] ? " \u00B7 " + PRE[player.n] : ""))), stats && player.kind === "player" && /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-statpanel"
+  }, /*#__PURE__*/React.createElement("h4", null, player.n), /*#__PURE__*/React.createElement("dl", null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Known for"), /*#__PURE__*/React.createElement("dd", null, player.t)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Position group"), /*#__PURE__*/React.createElement("dd", null, player.g)), PRE[player.n] && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("dt", null, "Came from"), /*#__PURE__*/React.createElement("dd", null, PRE[player.n]))), bio && bio.text && /*#__PURE__*/React.createElement("p", null, bio.text), /*#__PURE__*/React.createElement("a", {
+    className: "fr-pill",
+    style: {
+      textDecoration: "none",
+      display: "inline-block"
+    },
+    target: "_blank",
+    rel: "noreferrer",
+    href: "https://www.basketball-reference.com/search/search.fcgi?search=" + encodeURIComponent(player.n)
+  }, "Full career stats")), bio && bio.text && !stats && /*#__PURE__*/React.createElement("p", {
     className: "fr-note fr-solid",
     style: {
       marginTop: 18
