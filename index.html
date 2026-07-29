@@ -432,11 +432,57 @@ body { background: #EDF0F2; }
 .fr-brand { display:inline-flex; align-items:center; gap:9px; }
 .fr-logo { flex:0 0 auto; display:block; }
 .fr-herologo { margin-bottom:20px; color:var(--text); }
+
+/* --- accounts --- */
+.fr-acct { font-family:'Outfit',sans-serif; font-weight:600; font-size:13px; }
+.fr-sheet { position:fixed; inset:0; z-index:80; display:grid; place-items:center;
+  padding:24px; background:rgba(6,10,13,.42);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  animation:fade .22s ease both; }
+@keyframes fade { from { opacity:0; } }
+.fr-signin { width:100%; max-width:380px; padding:26px 26px 22px;
+  animation:pop .28s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes pop { from { opacity:0; transform:translate3d(0,12px,0) scale(.98); } }
+.fr-signin h3 { margin:0 0 6px; font-family:'Outfit',sans-serif; font-weight:600;
+  font-size:22px; letter-spacing:-.02em; }
+.fr-signin > .fr-note { margin:0 0 20px; }
+.fr-swap { display:block; width:100%; margin-top:14px; background:none; border:0;
+  cursor:pointer; color:var(--dim); font-family:'Barlow',sans-serif; font-size:14px;
+  text-decoration:underline; text-underline-offset:3px; }
+.fr-swap:hover { color:var(--text); }
+
+.fr-save { position:fixed; top:70px; right:104px; z-index:45; appearance:none; cursor:pointer;
+  background:var(--glass-2); border:1px solid var(--edge); color:var(--amber);
+  border-radius:999px; width:40px; height:40px; font-size:17px; line-height:1;
+  display:grid; place-items:center;
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  box-shadow:0 6px 20px rgba(0,0,0,.12); transition:border-color .2s, transform .2s; }
+.fr-save:hover { border-color:var(--amber); transform:translateY(-1px); }
+.fr-save:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) {
+  .fr-sheet, .fr-signin { animation:none; }
+  .fr-save:hover { transform:none; }
+}
+
+/* --- continue with google --- */
+.fr-google { display:flex; align-items:center; justify-content:center; gap:10px;
+  width:100%; cursor:pointer; border-radius:999px; padding:13px 20px;
+  background:var(--glass-2); border:1px solid var(--edge); color:var(--text);
+  font-family:'Outfit',sans-serif; font-weight:600; font-size:15px;
+  transition:border-color .2s, background .2s; }
+.fr-google:hover { border-color:var(--edge-2); }
+.fr-g { display:grid; place-items:center; width:22px; height:22px; border-radius:50%;
+  background:#fff; color:#4285F4; font-weight:700; font-size:13px; line-height:1;
+  border:1px solid rgba(0,0,0,.10); }
+.fr-or { display:flex; align-items:center; gap:12px; margin:18px 0 4px; }
+.fr-or::before, .fr-or::after { content:""; flex:1; height:1px; background:var(--edge); }
+.fr-or span { font-family:'Outfit',sans-serif; font-size:12px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint); }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b31</div>
+<div class="fr-build">b34</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -774,6 +820,16 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 const AI_PROXY = "https://filmroom.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Firebase, for accounts. Both of these are safe to be public — Firebase is built
+// that way, and your data is protected by security rules instead.
+// Firebase console > Project settings > Your apps > Web
+const FIREBASE_KEY = "AIzaSyDJaxhuPWap3QMNCcxBQJ6urx8nZa96cbI";
+const FIREBASE_PROJECT = "filmroom-212bd";
+
+// For "Continue with Google". Google Cloud > APIs & Services > Credentials >
+// OAuth 2.0 Client IDs > "Web client (auto created by Google Service)"
+const GOOGLE_CLIENT_ID = "";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -1653,6 +1709,227 @@ function VideoList({
   }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", null, v.title), /*#__PURE__*/React.createElement("p", null, v.channel))))));
 }
 
+/* ----------------------- ACCOUNTS -------------------- */
+
+const AUTH_URL = "https://identitytoolkit.googleapis.com/v1/accounts:";
+const FS_URL = "https://firestore.googleapis.com/v1/projects/";
+function accountsOn() {
+  return !!(FIREBASE_KEY && FIREBASE_PROJECT);
+}
+function loadSession() {
+  try {
+    return JSON.parse(window.localStorage.getItem("fr-user") || "null");
+  } catch (e) {
+    return null;
+  }
+}
+function saveSession(u) {
+  try {
+    if (u) window.localStorage.setItem("fr-user", JSON.stringify(u));else window.localStorage.removeItem("fr-user");
+  } catch (e) {}
+}
+async function authCall(mode, email, password) {
+  const res = await fetch(AUTH_URL + mode + "?key=" + FIREBASE_KEY, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email: email,
+      password: password,
+      returnSecureToken: true
+    })
+  });
+  const data = await res.json();
+  if (data.error) {
+    const m = (data.error.message || "").replace(/_/g, " ").toLowerCase();
+    if (m.indexOf("email exists") > -1) throw new Error("There's already an account with that email. Try signing in.");
+    if (m.indexOf("invalid login") > -1 || m.indexOf("invalid password") > -1) throw new Error("That email and password don't match.");
+    if (m.indexOf("email not found") > -1) throw new Error("No account with that email yet. Create one instead.");
+    if (m.indexOf("weak password") > -1) throw new Error("Password needs to be at least 6 characters.");
+    if (m.indexOf("invalid email") > -1) throw new Error("That doesn't look like an email address.");
+    throw new Error(data.error.message || "Sign in failed.");
+  }
+  return {
+    uid: data.localId,
+    email: data.email,
+    token: data.idToken
+  };
+}
+function docPath(uid) {
+  return FS_URL + FIREBASE_PROJECT + "/databases/(default)/documents/users/" + uid;
+}
+async function loadSaved(user) {
+  try {
+    const res = await fetch(docPath(user.uid), {
+      headers: {
+        Authorization: "Bearer " + user.token
+      }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const arr = (((data.fields || {}).saved || {}).arrayValue || {}).values || [];
+    return arr.map(function (v) {
+      return v.stringValue;
+    }).filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+async function storeSaved(user, names) {
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=saved", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          saved: {
+            arrayValue: {
+              values: names.map(function (n) {
+                return {
+                  stringValue: n
+                };
+              })
+            }
+          }
+        }
+      })
+    });
+  } catch (e) {}
+}
+function googleOn() {
+  return accountsOn() && !!GOOGLE_CLIENT_ID;
+}
+function startGoogle() {
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try {
+    window.sessionStorage.setItem("fr-nonce", nonce);
+  } catch (e) {}
+  const redirect = window.location.origin + window.location.pathname;
+  const url = "https://accounts.google.com/o/oauth2/v2/auth" + "?client_id=" + encodeURIComponent(GOOGLE_CLIENT_ID) + "&redirect_uri=" + encodeURIComponent(redirect) + "&response_type=id_token" + "&scope=" + encodeURIComponent("openid email profile") + "&nonce=" + encodeURIComponent(nonce) + "&prompt=select_account";
+  window.location.href = url;
+}
+
+/* If Google just sent us back, the token is sitting in the address bar. */
+async function finishGoogle() {
+  const hash = window.location.hash || "";
+  if (hash.indexOf("id_token=") === -1) return null;
+  const token = decodeURIComponent((hash.match(/id_token=([^&]+)/) || [])[1] || "");
+  try {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  } catch (e) {}
+  if (!token) return null;
+  const res = await fetch(AUTH_URL + "signInWithIdp?key=" + FIREBASE_KEY, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      postBody: "id_token=" + token + "&providerId=google.com",
+      requestUri: window.location.origin + window.location.pathname,
+      returnIdpCredential: true,
+      returnSecureToken: true
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "Google sign in failed.");
+  return {
+    uid: data.localId,
+    email: data.email,
+    token: data.idToken
+  };
+}
+function SignIn({
+  onDone,
+  onClose
+}) {
+  const [mode, setMode] = useState("in");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function go() {
+    if (!email.trim() || !pw) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const u = await authCall(mode === "in" ? "signInWithPassword" : "signUp", email.trim(), pw);
+      saveSession(u);
+      onDone(u);
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-sheet",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-signin",
+    onClick: function (e) {
+      e.stopPropagation();
+    }
+  }, /*#__PURE__*/React.createElement("h3", null, mode === "in" ? "Sign in" : "Create an account"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "Your saved players follow you to any device."), googleOn() && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "fr-google",
+    onClick: startGoogle
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-g",
+    "aria-hidden": "true"
+  }, "G"), "Continue with Google"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-or"
+  }, /*#__PURE__*/React.createElement("span", null, "or"))), /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "fr-email"
+  }, "Email"), /*#__PURE__*/React.createElement("input", {
+    id: "fr-email",
+    className: "fr-input",
+    type: "email",
+    value: email,
+    autoComplete: "email",
+    onChange: function (e) {
+      setEmail(e.target.value);
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    className: "fr-label",
+    htmlFor: "fr-pw",
+    style: {
+      marginTop: 14
+    }
+  }, "Password"), /*#__PURE__*/React.createElement("input", {
+    id: "fr-pw",
+    className: "fr-input",
+    type: "password",
+    value: pw,
+    autoComplete: mode === "in" ? "current-password" : "new-password",
+    onChange: function (e) {
+      setPw(e.target.value);
+    },
+    onKeyDown: function (e) {
+      if (e.key === "Enter") go();
+    }
+  }), err && /*#__PURE__*/React.createElement("p", {
+    className: "fr-err",
+    style: {
+      marginTop: 16
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-full",
+    onClick: go,
+    disabled: busy || !email.trim() || !pw
+  }, busy ? "Working" : mode === "in" ? "Sign in" : "Create account"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-swap",
+    onClick: function () {
+      setMode(mode === "in" ? "up" : "in");
+      setErr("");
+    }
+  }, mode === "in" ? "No account yet? Create one" : "Already have an account? Sign in")));
+}
+
 /* --------------------- LANDING ----------------------- */
 
 function Landing({
@@ -1868,7 +2145,7 @@ function Library({
 function Players(props) {
   return /*#__PURE__*/React.createElement(Library, {
     title: "Players",
-    blurb: ROSTER.length + " players, college programs and skills. Tap a player for film study, highlights, full games and their college tape.",
+    blurb: "Search " + SEARCH_POOL.length + " players by name, or browse the shortlist below. Tap anyone for film study, highlights, full games and their college tape.",
     placeholder: "Search a player, school, or skill",
     items: ROSTER,
     pool: SEARCH_POOL,
@@ -1936,7 +2213,9 @@ function tabsFor(item) {
   return tabs;
 }
 function Player({
-  player
+  player,
+  saved,
+  onSave
 }) {
   const PT = tabsFor(player);
   const [bio, setBio] = useState(null);
@@ -1992,7 +2271,11 @@ function Player({
     className: "fr-wrap fr-narrow"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-profile"
-  }, player.kind === "player" && /*#__PURE__*/React.createElement("button", {
+  }, player.kind === "player" && accountsOn() && /*#__PURE__*/React.createElement("button", {
+    className: "fr-save",
+    onClick: onSave,
+    title: saved ? "Saved" : "Save this player"
+  }, saved ? "\u2605" : "\u2606"), player.kind === "player" && /*#__PURE__*/React.createElement("button", {
     className: "fr-stats",
     onClick: () => setStats(!stats),
     "aria-expanded": stats ? "true" : "false"
@@ -2495,7 +2778,42 @@ function App() {
   }]);
   const [theme, setTheme] = useState("light");
   const [seed, setSeed] = useState(null);
+  const [user, setUser] = useState(loadSession);
+  const [saved, setSaved] = useState([]);
+  const [showSignIn, setShowSignIn] = useState(false);
   const top = stack[stack.length - 1];
+  useEffect(function () {
+    if (!accountsOn()) return;
+    finishGoogle().then(function (u) {
+      if (u) {
+        saveSession(u);
+        setUser(u);
+      }
+    }).catch(function () {});
+  }, []);
+  useEffect(function () {
+    if (!user || !accountsOn()) {
+      setSaved([]);
+      return;
+    }
+    loadSaved(user).then(setSaved);
+  }, [user && user.uid]);
+  function toggleSaved(name) {
+    if (!user) {
+      setShowSignIn(true);
+      return;
+    }
+    const next = saved.indexOf(name) > -1 ? saved.filter(function (n) {
+      return n !== name;
+    }) : saved.concat([name]);
+    setSaved(next);
+    storeSaved(user, next);
+  }
+  function signOut() {
+    saveSession(null);
+    setUser(null);
+    setSaved([]);
+  }
   function push(entry) {
     setStack(s => s.concat([entry]));
     window.scrollTo({
@@ -2573,11 +2891,25 @@ function App() {
     className: "fr-link",
     "data-on": top.page === n.id ? "1" : "0",
     onClick: () => go(n.id)
-  }, n.label))), /*#__PURE__*/React.createElement("button", {
+  }, n.label))), accountsOn() && (user ? /*#__PURE__*/React.createElement("button", {
+    className: "fr-sun fr-acct",
+    onClick: signOut,
+    title: user.email + " \u2014 tap to sign out"
+  }, user.email.slice(0, 1).toUpperCase()) : /*#__PURE__*/React.createElement("button", {
+    className: "fr-sun fr-acct",
+    onClick: () => setShowSignIn(true),
+    "aria-label": "Sign in"
+  }, "\u21B3")), /*#__PURE__*/React.createElement("button", {
     className: "fr-sun",
     onClick: () => setTheme(theme === "dark" ? "light" : "dark"),
     "aria-label": "Switch theme"
-  }, theme === "dark" ? "\u2600" : "\u263E"))), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
+  }, theme === "dark" ? "\u2600" : "\u263E"))), showSignIn && /*#__PURE__*/React.createElement(SignIn, {
+    onClose: () => setShowSignIn(false),
+    onDone: u => {
+      setUser(u);
+      setShowSignIn(false);
+    }
+  }), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
     go: go
   }), top.page === "players" && /*#__PURE__*/React.createElement(Players, {
     onOpen: openItem,
@@ -2586,7 +2918,9 @@ function App() {
     onOpen: openItem,
     onSearch: query => openFilm(query, "long")
   }), top.page === "player" && /*#__PURE__*/React.createElement(Player, {
-    player: top.player
+    player: top.player,
+    saved: saved.indexOf(top.player.n) > -1,
+    onSave: () => toggleSaved(top.player.n)
   }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
     clearSeed: () => setSeed(null)
