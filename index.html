@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Film Room — see what you're actually doing</title>
+<title>Film Room</title>
 <meta name="description" content="Pull film on any player or concept, break down your own clip frame by frame, and get the drills that fix it." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23FFB627'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
 <meta name="theme-color" content="#EDF0F2" />
@@ -624,21 +624,19 @@ body { background: #EDF0F2; }
 .fr-trayb.fr-left { color:var(--amber); }
 .fr-trayb.fr-left:hover { background:var(--glass-2); }
 
-/* --- the tray is pinned to the top left and stays there --- */
-.fr-tray { left:16px; right:auto; top:70px; bottom:auto; }
-.fr-histwrap { left:16px; right:auto; top:124px; bottom:auto; width:290px; }
-/* and the thread starts below it, so nothing sits under the tray */
-.fr-chatpage .fr-thread { padding-top:52px; }
+/* --- the tray sits in the bottom left corner --- */
+.fr-tray { left:16px; right:auto; bottom:16px; top:auto; }
+.fr-histwrap { left:16px; right:auto; bottom:74px; top:auto; width:290px; }
+/* on a narrow screen the composer fills the width, so lift the tray over it */
 @media (max-width:760px) {
-  .fr-tray { left:12px; right:auto; top:64px; }
-  .fr-histwrap { left:12px; right:12px; width:auto; top:118px; }
-  .fr-chatpage .fr-thread { padding-top:46px; }
+  .fr-tray { left:12px; right:auto; bottom:150px; top:auto; }
+  .fr-histwrap { left:12px; right:12px; width:auto; bottom:208px; top:auto; }
 }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b49</div>
+<div class="fr-build">b51</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2534,6 +2532,59 @@ function thisMonth() {
 }
 
 /* Reads the whole profile: saved players, pro status, clips used this month. */
+/* Keeps the account's email on its own doc, so an admin can find it
+   without knowing the user id. Quietly does nothing if it fails. */
+async function stampEmail(user) {
+  if (!user || !user.email) return;
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=email", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          email: {
+            stringValue: String(user.email).trim().toLowerCase()
+          }
+        }
+      })
+    });
+  } catch (e) {}
+}
+
+/* Admin only: find an account's user id from its email. */
+async function uidFromEmail(user, email) {
+  const res = await fetch(FS_URL + FIREBASE_PROJECT + "/databases/(default)/documents:runQuery", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + user.token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "users" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "email" },
+            op: "EQUAL",
+            value: { stringValue: String(email).trim().toLowerCase() }
+          }
+        },
+        limit: 1
+      }
+    })
+  });
+  if (!res.ok) throw new Error("Could not search accounts (" + res.status + ").");
+  const rows = await res.json();
+  const doc = (rows || []).map(function (r) { return r.document; }).filter(Boolean)[0];
+  if (!doc || !doc.name) {
+    throw new Error("No account with that email yet. They need to sign in once first.");
+  }
+  return doc.name.split("/").pop();
+}
+
 async function loadProfile(user) {
   const blank = {
     saved: [],
@@ -2542,6 +2593,7 @@ async function loadProfile(user) {
     month: thisMonth()
   };
   if (!user || !accountsOn()) return blank;
+  stampEmail(user);
   try {
     const res = await fetch(docPath(user.uid), {
       headers: {
@@ -2698,12 +2750,16 @@ function AdminPanel({
   });
   const [uid, setUid] = useState("");
   async function grant(on) {
-    if (!uid.trim()) {
-      say("Paste a user id first.");
+    const typed = uid.trim();
+    if (!typed) {
+      say("Type an email or a user id first.");
       return;
     }
     try {
-      await setProFor(user, uid.trim(), on);
+      say("Working\u2026");
+      // An email needs looking up; a user id can be used as it is.
+      const target = typed.indexOf("@") > -1 ? await uidFromEmail(user, typed) : typed;
+      await setProFor(user, target, on);
       say(on ? "That account is Pro now." : "Pro removed from that account.");
       setUid("");
     } catch (e) {
@@ -2827,7 +2883,7 @@ function AdminPanel({
   }, "Paste someone's user id from Firebase \u2192 Authentication \u2192 Users. Your own account is always Pro."), /*#__PURE__*/React.createElement("input", {
     className: "fr-input",
     value: uid,
-    placeholder: "User id",
+    placeholder: "Email or user id",
     onChange: function (e) {
       setUid(e.target.value);
     }
@@ -4116,6 +4172,12 @@ function App() {
       storeUsage(user, next);
     },
     onOutOfClips: function () {
+      // Checkout has to carry a uid, or Stripe cannot tell us whose
+      // account to turn Pro on for. So sign-up comes first.
+      if (accountsOn() && !user) {
+        setShowSignIn(true);
+        return;
+      }
       setShowUpgrade(true);
     }
   }))));
