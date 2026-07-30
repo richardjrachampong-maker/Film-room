@@ -56,7 +56,7 @@ body { background: #EDF0F2; }
   backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
   box-shadow:0 8px 32px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.10); }
 
-.fr-nav { position:sticky; top:0; z-index:40; background:var(--glass);
+.fr-nav { position:sticky; position:-webkit-sticky; top:0; z-index:40; background:var(--glass);
   backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
   border-bottom:1px solid var(--edge); }
 .fr-navin { max-width:940px; margin:0 auto; padding:11px 20px; display:flex; align-items:center; gap:14px;
@@ -663,8 +663,10 @@ body { background: #EDF0F2; }
   /* A link scrolled past the edge fades instead of being chopped mid-word. */
   .fr-links { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent);
     mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent); }
-  /* Nothing anywhere may make the page wider than the phone. */
-  .fr, .fr-shell { overflow-x:hidden; }
+  /* Nothing anywhere may make the page wider than the phone. This uses
+     clip rather than hidden on purpose: hidden makes an ancestor into a
+     scroll container, which stops the nav sticking to the top. */
+  .fr, .fr-shell { overflow-x:clip; }
   .fr-tray { right:12px; max-width:calc(100vw - 24px); }
   .fr-trayin { overflow-x:auto; scrollbar-width:none; }
   .fr-trayin::-webkit-scrollbar { display:none; }
@@ -695,7 +697,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b68</div>
+<div class="fr-build">b69</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
