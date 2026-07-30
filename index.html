@@ -643,27 +643,50 @@ body { background: #EDF0F2; }
 /* On a phone the nav has to fit the brand, the links and the avatar
    without the avatar ending up against the edge of the glass. */
 @media (max-width:760px) {
-  .fr-navin { padding:10px 14px; gap:8px; }
-  .fr-brand { font-size:13px; letter-spacing:.14em; }
-  .fr-brand i { width:6px; height:6px; margin-right:6px; }
-  .fr-links { gap:2px; }
-  .fr-link { padding:6px 10px; font-size:12px; letter-spacing:.06em; }
-  /* the brand can give up room before the links or the avatar do */
-  .fr-brand { flex:0 1 auto; overflow:hidden; text-overflow:ellipsis; }
-  .fr-meter { margin-right:2px; }
+  /* There is not room for the wordmark, five links and two buttons on a
+     phone. The mark alone still says whose app this is. */
+  /* Edge padding matches on both sides, and respects the rounded corner
+     of the screen on phones that have one. */
+  .fr-navin { gap:6px;
+    padding:10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left)); }
+  .fr-brand { font-size:0; letter-spacing:0; flex:0 0 auto; }
+  .fr-brand i { width:10px; height:10px; margin-right:0; vertical-align:middle; }
+  /* The links take only what is left after the fixed buttons, and scroll
+     inside that. They can never push the avatar off the end. */
+  .fr-links { gap:2px; min-width:0; flex:1 1 0; }
+  .fr-link { padding:6px 9px; font-size:11.5px; letter-spacing:.05em; flex:0 0 auto; }
+  .fr-meter, .fr-sun { flex:0 0 auto; }
+  .fr-meter { margin-right:0; }
+  /* The gear glyph renders wider than its advance on iOS, so it is drawn
+     a little smaller than the circle that holds it. */
+  .fr-gear { font-size:13px; line-height:1; overflow:hidden; }
+  /* A link scrolled past the edge fades instead of being chopped mid-word. */
+  .fr-links { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent);
+    mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent); }
+  /* Nothing anywhere may make the page wider than the phone. */
+  .fr, .fr-shell { overflow-x:hidden; }
+  .fr-tray { right:12px; max-width:calc(100vw - 24px); }
+  .fr-trayin { overflow-x:auto; scrollbar-width:none; }
+  .fr-trayin::-webkit-scrollbar { display:none; }
 
+  /* Blank page: the tray floats in the corner, nothing to clash with. */
   .fr-tray { left:12px; right:auto; bottom:14px; top:auto; }
   .fr-histwrap { left:12px; right:12px; width:auto; bottom:72px; top:auto; }
-  /* only in a live chat does the composer sit along the bottom, so that
-     is the only place the tray needs lifting out of its way */
-  .fr-chatpage .fr-tray { bottom:132px; }
-  .fr-chatpage .fr-histwrap { bottom:190px; }
+
+  /* In a chat it now sits in the composer, so it stacks above the input
+     instead of covering it, whatever height the disclaimer wraps to. */
+  .fr-composer .fr-tray { position:static; left:auto; bottom:auto;
+    margin:0 0 8px; display:flex; }
+  .fr-composer .fr-trayin { width:100%; overflow-x:auto; scrollbar-width:none; }
+  .fr-composer .fr-trayin::-webkit-scrollbar { display:none; }
+  .fr-chatpage .fr-histwrap { bottom:auto; top:64px; }
+  .fr-chatpage .fr-thread { padding-bottom:250px; }
 }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b60</div>
+<div class="fr-build">b63</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4014,9 +4037,9 @@ function Train({
     className: "fr-composer"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
-  }, bar, /*#__PURE__*/React.createElement("p", {
+  }, chatbar, bar, /*#__PURE__*/React.createElement("p", {
     className: "fr-disclaim"
-  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain."))), historyList, chatbar);
+  }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain."))), historyList);
 }
 
 /* ------------------------ APP ------------------------ */
