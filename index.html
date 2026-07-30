@@ -6,6 +6,9 @@
 <title>Film Room</title>
 <meta name="description" content="Pull film on any player or concept, break down your own clip frame by frame, and get the drills that fix it." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23FFB627'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%23EDF0F2'/%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23D68910'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
+<link rel="shortcut icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%23EDF0F2'/%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23D68910'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
+<meta name="apple-mobile-web-app-title" content="Film Room" />
 <meta name="theme-color" content="#EDF0F2" />
 
 
@@ -518,6 +521,13 @@ body { background: #EDF0F2; }
 .fr-lockcard { position:relative; z-index:1; width:min(440px,100%);
   padding:32px 28px; text-align:center;
   animation:pop .35s cubic-bezier(.2,.7,.3,1) both; }
+.fr-meter { position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; margin-right:6px; border:0; background:none; cursor:pointer;
+  color:var(--dim); padding:0; }
+.fr-meter span { position:absolute; font-size:11px; font-weight:600; font-family:inherit;
+  color:var(--text); letter-spacing:-.02em; }
+.fr-meter[data-low="1"] { color:var(--amber); }
+.fr-meter[data-low="1"] span { color:var(--amber); }
 .fr-lockback { display:block; margin:14px auto 0; border:0; background:none;
   color:var(--dim); font-size:13.5px; cursor:pointer; padding:6px 10px;
   border-radius:999px; font-family:inherit; }
@@ -636,7 +646,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b53</div>
+<div class="fr-build">b58</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -989,7 +999,8 @@ const GOOGLE_CLIENT_ID = "";
 const ADMIN_EMAIL = "Richard.jr.achampong@gmail.com";
 
 // How many film analyses a free account gets each month. Text coaching is unlimited.
-const FREE_CLIPS = 5;
+const FREE_CLIPS = 2;   // film breakdowns a day
+const FREE_ASKS = 15;   // questions a day
 
 // Your Stripe Payment Link. Leave empty until you have one and the upgrade
 // screen will ask people to get in touch instead of sending them nowhere.
@@ -2387,7 +2398,7 @@ function Settings({
     className: "fr-slabel"
   }, "Account"), user ? /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, pro ? "Pro \u00b7 unlimited film" : "Free \u00b7 " + FREE_CLIPS + " film breakdowns a month")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, pro ? "Pro \u00b7 unlimited film" : "Free \u00b7 " + FREE_CLIPS + " clips and " + FREE_ASKS + " questions a day")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
     onClick: onSignOut
   }, "Sign out")) : /*#__PURE__*/React.createElement("div", {
@@ -2548,14 +2559,62 @@ function LockedDeep({
   }, "Stay on Quick")));
 }
 
-/* ------------------------- PRO ----------------------- */
-
-function thisMonth() {
-  const d = new Date();
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+/* A ring in the nav showing how much of the month's free asking is left.
+   Hidden for Pro, since there is nothing to count. */
+function AskMeter({
+  asks,
+  onFull
+}) {
+  const left = Math.max(0, FREE_ASKS - asks);
+  const frac = Math.min(1, asks / FREE_ASKS);
+  const low = left <= Math.ceil(FREE_ASKS * 0.1); // the last tenth
+  const out = left <= 0;
+  const r = 13;
+  const c = 2 * Math.PI * r;
+  const label = out ? "No questions left today, they come back tomorrow" : left + " of " + FREE_ASKS + " questions left today";
+  return /*#__PURE__*/React.createElement("button", {
+    className: "fr-meter",
+    "data-low": low ? "1" : "0",
+    onClick: onFull,
+    title: label,
+    "aria-label": label
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "32",
+    height: "32",
+    viewBox: "0 0 32 32",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: r,
+    fill: "none",
+    stroke: "currentColor",
+    strokeOpacity: ".18",
+    strokeWidth: "3"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: r,
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "3",
+    strokeLinecap: "round",
+    strokeDasharray: c,
+    strokeDashoffset: c * (1 - frac),
+    transform: "rotate(-90 16 16)"
+  })), /*#__PURE__*/React.createElement("span", null, left));
 }
 
-/* Reads the whole profile: saved players, pro status, clips used this month. */
+/* ------------------------- PRO ----------------------- */
+
+/* The allowance runs by the day, in the player's own timezone, so it
+   comes back overnight rather than once a month. */
+function thisMonth() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+/* Reads the whole profile: saved players, pro status, clips used today. */
 /* Keeps the account's email on its own doc, so an admin can find it
    without knowing the user id. Quietly does nothing if it fails. */
 async function stampEmail(user) {
@@ -2614,6 +2673,7 @@ async function loadProfile(user) {
     saved: [],
     pro: false,
     used: 0,
+    asks: 0,
     month: thisMonth()
   };
   if (!user || !accountsOn()) return blank;
@@ -2635,6 +2695,7 @@ async function loadProfile(user) {
       pro: (f.pro || {}).booleanValue === true,
       // a new month wipes the count
       used: month === thisMonth() ? Number((f.used || {}).integerValue || 0) : 0,
+      asks: month === thisMonth() ? Number((f.asks || {}).integerValue || 0) : 0,
       month: thisMonth()
     };
   } catch (e) {
@@ -2654,6 +2715,30 @@ async function storeUsage(user, used) {
         fields: {
           used: {
             integerValue: String(used)
+          },
+          month: {
+            stringValue: thisMonth()
+          }
+        }
+      })
+    });
+  } catch (e) {}
+}
+
+/* Questions asked today, saved the same way clips are. */
+async function storeAsks(user, asks) {
+  if (!user || !accountsOn()) return;
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=asks&updateMask.fieldPaths=month", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          asks: {
+            integerValue: String(asks)
           },
           month: {
             stringValue: thisMonth()
@@ -2688,6 +2773,7 @@ function isPro(user, profile) {
 }
 function UpgradeCard({
   used,
+  asks,
   uid,
   onClose
 }) {
@@ -2712,9 +2798,9 @@ function UpgradeCard({
     style: {
       margin: "0 0 20px"
     }
-  }, used >= FREE_CLIPS ? "You have used all " + FREE_CLIPS + " film breakdowns this month. It resets on the first." : "You have " + Math.max(0, FREE_CLIPS - used) + " of " + FREE_CLIPS + " film breakdowns left this month. It resets on the first."), /*#__PURE__*/React.createElement("ul", {
+  }, (asks >= FREE_ASKS ? "You have used all " + FREE_ASKS + " questions for today. " : used >= FREE_CLIPS ? "You have used all " + FREE_CLIPS + " film breakdowns for today. " : "You have " + Math.max(0, FREE_CLIPS - used) + " of " + FREE_CLIPS + " film breakdowns and " + Math.max(0, FREE_ASKS - asks) + " of " + FREE_ASKS + " questions left today. ") + "It all comes back tomorrow."), /*#__PURE__*/React.createElement("ul", {
     className: "fr-perks"
-  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Unlimited film"), /*#__PURE__*/React.createElement("span", null, "Send as many clips as you want")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Deep mode on every clip"), /*#__PURE__*/React.createElement("span", null, "Reads far more of the footage")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Longer clips"), /*#__PURE__*/React.createElement("span", null, "Full drills and possessions, not just moments"))), /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Unlimited film and questions"), /*#__PURE__*/React.createElement("span", null, "No monthly cap on clips or asking the coach")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Deep mode on every clip"), /*#__PURE__*/React.createElement("span", null, "Reads far more of the footage")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Longer clips"), /*#__PURE__*/React.createElement("span", null, "Full drills and possessions, not just moments"))), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
       margin: "18px 0 0"
@@ -3603,6 +3689,8 @@ function Train({
   sport,
   pro,
   used,
+  asks,
+  onAsk,
   onUse,
   onOutOfClips
 }) {
@@ -3692,6 +3780,12 @@ function Train({
     const clip = f || null;
     const said = (note || "").trim();
     if (!clip && !said) return;
+    // Questions are counted; clips are counted separately further down.
+    if (!clip && !pro && (asks || 0) >= FREE_ASKS) {
+      onOutOfClips();
+      return;
+    }
+    if (!clip && !pro) onAsk();
     setText("");
     setMsgs(m => m.concat([{
       who: "you",
@@ -3714,7 +3808,7 @@ function Train({
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer. Never refuse, never say a question is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra())];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra())];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
@@ -3795,7 +3889,7 @@ function Train({
   }), !pro && /*#__PURE__*/React.createElement("button", {
     className: "fr-trayb fr-left",
     onClick: onOutOfClips,
-    title: "Film breakdowns left this month"
+    title: "Film breakdowns left today"
   }, Math.max(0, FREE_CLIPS - used), " left"), /*#__PURE__*/React.createElement("button", {
     className: "fr-trayb",
     onClick: newChat,
@@ -4123,7 +4217,10 @@ function App() {
     className: "fr-link",
     "data-on": top.page === n.id ? "1" : "0",
     onClick: () => go(n.id)
-  }, n.label))), /*#__PURE__*/React.createElement("button", {
+  }, n.label))), user && !isPro(user, profile) && /*#__PURE__*/React.createElement(AskMeter, {
+    asks: profile && profile.asks || 0,
+    onFull: () => setShowUpgrade(true)
+  }), /*#__PURE__*/React.createElement("button", {
     className: "fr-sun fr-gear",
     onClick: () => setShowSettings(true),
     "aria-label": "Settings"
@@ -4156,6 +4253,7 @@ function App() {
     }
   }), showUpgrade && /*#__PURE__*/React.createElement(UpgradeCard, {
     used: profile && profile.used || 0,
+    asks: profile && profile.asks || 0,
     uid: user && user.uid,
     onClose: () => setShowUpgrade(false)
   }), showAdmin && isAdmin(user) && /*#__PURE__*/React.createElement(AdminPanel, {
@@ -4188,6 +4286,14 @@ function App() {
     sport: sport,
     pro: isPro(user, profile),
     used: profile && profile.used || 0,
+    asks: profile && profile.asks || 0,
+    onAsk: function () {
+      const next = (profile && profile.asks || 0) + 1;
+      setProfile(Object.assign({}, profile, {
+        asks: next
+      }));
+      storeAsks(user, next);
+    },
     onUse: function () {
       const next = (profile && profile.used || 0) + 1;
       setProfile(Object.assign({}, profile, {
