@@ -636,7 +636,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b52</div>
+<div class="fr-build">b53</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -994,6 +994,11 @@ const FREE_CLIPS = 5;
 // Your Stripe Payment Link. Leave empty until you have one and the upgrade
 // screen will ask people to get in touch instead of sending them nowhere.
 const STRIPE_LINK = "https://buy.stripe.com/6oU6oH0MZbsZfrZcRO5Rm00";
+/* Stripe's own billing page, where a subscriber can cancel for themselves.
+   Turn it on at Stripe > Settings > Billing > Customer portal, then paste
+   the login link here. Until then, Cancel opens an email instead. */
+const STRIPE_PORTAL = "";
+const SUPPORT_EMAIL = "richard.jr.achampong@gmail.com";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
 const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -2393,7 +2398,26 @@ function Settings({
       padding: "11px 20px"
     },
     onClick: onSignIn
-  }, "Sign in")), isAdmin(user) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+  }, "Sign in")), user && pro && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-slabel"
+  }, "Subscription"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Film Room Pro"), /*#__PURE__*/React.createElement("span", null, "$4.99 a month")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      if (STRIPE_PORTAL) {
+        window.open(STRIPE_PORTAL, "_blank", "noopener");
+        return;
+      }
+      window.location.href = "mailto:" + SUPPORT_EMAIL + "?subject=" + encodeURIComponent("Cancel Film Room Pro") + "&body=" + encodeURIComponent("Please cancel my Film Room Pro subscription. My account email is " + (user.email || "") + ".");
+    }
+  }, "Cancel")), /*#__PURE__*/React.createElement("p", {
+    className: "fr-note",
+    style: {
+      margin: "2px 2px 0",
+      fontSize: "13px"
+    }
+  }, "Cancelling stops the next payment. The month you have already paid for is not refunded, and Pro stays on until it runs out.")), isAdmin(user) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Admin"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
