@@ -676,7 +676,9 @@ body { background: #EDF0F2; }
   /* In a chat it now sits in the composer, so it stacks above the input
      instead of covering it, whatever height the disclaimer wraps to. */
   .fr-composer .fr-tray { position:static; left:auto; right:auto; bottom:auto;
-    max-width:none; margin:0 0 8px; display:flex; }
+    max-width:none; margin:8px 0 0; display:flex; }
+  /* the input and the tray read as one block, so no gap above the input */
+  .fr-composer .fr-bar { padding:0; margin:0; }
   .fr-composer .fr-trayin { width:100%; }
   .fr-chatpage .fr-histwrap { bottom:auto; top:64px; }
   .fr-chatpage .fr-thread { padding-bottom:290px; }
@@ -693,7 +695,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b64</div>
+<div class="fr-build">b65</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4048,7 +4050,7 @@ function Train({
     className: "fr-composer"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap fr-narrow"
-  }, chatbar, bar, /*#__PURE__*/React.createElement("p", {
+  }, bar, chatbar, /*#__PURE__*/React.createElement("p", {
     className: "fr-disclaim"
   }, "The coach can get things wrong — it is reading stills, not watching you play. Treat it as a second opinion, and never train through pain."))), historyList);
 }
