@@ -700,7 +700,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b70</div>
+<div class="fr-build">b71</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3597,6 +3597,36 @@ function lastOpen(sport, chats) {
   }
 }
 
+/* What the coach can remember from before this chat. Newest first, and
+   trimmed, because all of it has to travel with every question. */
+function memoryOf(chats, currentId) {
+  const past = (chats || []).filter(function (c) {
+    return c.id !== currentId && (c.msgs || []).length;
+  });
+  if (!past.length) return "";
+  const blocks = [];
+  let budget = 5200;
+  for (let i = 0; i < past.length && budget > 0; i++) {
+    const c = past[i];
+    let when = "";
+    try {
+      when = new Date(c.at || Date.now()).toLocaleDateString();
+    } catch (e) {}
+    let body = (c.msgs || []).map(function (m) {
+      const who = m.who === "you" ? "Player" : "Coach";
+      const clip = m.clip ? " [sent a clip: " + m.clip + "]" : "";
+      return who + ": " + String(m.text || "").replace(/\s+/g, " ").trim() + clip;
+    }).filter(function (line) {
+      return line.length > 8;
+    }).join("\n");
+    if (body.length > 1400) body = body.slice(0, 1400) + "\u2026";
+    const block = "### " + (c.title || "Untitled") + (when ? " (" + when + ")" : "") + "\n" + body;
+    blocks.push(block);
+    budget -= block.length;
+  }
+  return "\n\nWHAT YOU REMEMBER FROM THIS PLAYER'S EARLIER CHATS, newest first:\n" + blocks.join("\n\n") + "\n\nUse this when they refer back to something, and say which chat you are drawing on. " + "The stills from an old clip are gone, so you have what was written about that film, not the film itself. " + "If they ask you to look at an old clip again, say you kept the breakdown but not the footage, and ask them to send it again. " + "Never pretend to remember something that is not written above.";
+}
+
 /* Images are far too big to keep, so only the words are stored. */
 function slimHistory(history) {
   return history.map(function (turn) {
@@ -3934,9 +3964,9 @@ function Train({
         parts = got.frames.map(IMG);
         parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
       } else if (history.length) {
-        parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)")];
+        parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra())];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra() + memoryOf(chats, chatId))];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
