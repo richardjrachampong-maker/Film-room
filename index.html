@@ -675,18 +675,25 @@ body { background: #EDF0F2; }
 
   /* In a chat it now sits in the composer, so it stacks above the input
      instead of covering it, whatever height the disclaimer wraps to. */
-  .fr-composer .fr-tray { position:static; left:auto; bottom:auto;
-    margin:0 0 8px; display:flex; }
-  .fr-composer .fr-trayin { width:100%; overflow-x:auto; scrollbar-width:none; }
-  .fr-composer .fr-trayin::-webkit-scrollbar { display:none; }
+  .fr-composer .fr-tray { position:static; left:auto; right:auto; bottom:auto;
+    max-width:none; margin:0 0 8px; display:flex; }
+  .fr-composer .fr-trayin { width:100%; }
   .fr-chatpage .fr-histwrap { bottom:auto; top:64px; }
-  .fr-chatpage .fr-thread { padding-bottom:250px; }
+  .fr-chatpage .fr-thread { padding-bottom:290px; }
+
+  /* The row has to fit without scrolling, so the parts of the labels that
+     are only nice to have are dropped. The tooltips still say it all. */
+  .fr-tail { display:none; }
+  .fr-trayin { gap:2px; padding:5px; }
+  .fr-modes .fr-pill { padding:6px 10px; font-size:12px; }
+  .fr-trayb { padding:6px 9px; font-size:12px; }
+  .fr-traydiv { margin:0 2px; }
 }
 </style>
 </head>
 
 <body>
-<div class="fr-build">b63</div>
+<div class="fr-build">b64</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3923,7 +3930,9 @@ function Train({
       pro ? pickMode("deep") : setLocked(true);
     },
     title: pro ? "Reads more of the clip, takes longer" : "Deep mode is part of Pro"
-  }, "Deep", pro ? "" : " \u00b7 Pro")), /*#__PURE__*/React.createElement("span", {
+  }, "Deep", pro ? "" : /*#__PURE__*/React.createElement("span", {
+    className: "fr-tail"
+  }, " \u00b7 Pro"))), /*#__PURE__*/React.createElement("span", {
     className: "fr-traydiv",
     "aria-hidden": "true"
   }), !pro && /*#__PURE__*/React.createElement("button", {
@@ -3941,7 +3950,9 @@ function Train({
     },
     "data-on": showHistory ? "1" : "0",
     title: "Past chats"
-  }, "History", chats.length ? " " + chats.length : "")));
+  }, "History", chats.length ? /*#__PURE__*/React.createElement("span", {
+    className: "fr-tail"
+  }, " " + chats.length) : "")));
   const historyList = showHistory && /*#__PURE__*/React.createElement("div", {
     className: "fr-histwrap"
   }, /*#__PURE__*/React.createElement("div", {
