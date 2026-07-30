@@ -623,11 +623,22 @@ body { background: #EDF0F2; }
 .fr-perks span { display:block; margin-top:3px; font-size:13.5px; color:var(--dim); }
 .fr-trayb.fr-left { color:var(--amber); }
 .fr-trayb.fr-left:hover { background:var(--glass-2); }
+
+/* --- the tray is pinned to the top left and stays there --- */
+.fr-tray { left:16px; right:auto; top:70px; bottom:auto; }
+.fr-histwrap { left:16px; right:auto; top:124px; bottom:auto; width:290px; }
+/* and the thread starts below it, so nothing sits under the tray */
+.fr-chatpage .fr-thread { padding-top:52px; }
+@media (max-width:760px) {
+  .fr-tray { left:12px; right:auto; top:64px; }
+  .fr-histwrap { left:12px; right:12px; width:auto; top:118px; }
+  .fr-chatpage .fr-thread { padding-top:46px; }
+}
 </style>
 </head>
 
 <body>
-<div class="fr-build">b47</div>
+<div class="fr-build">b49</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1901,12 +1912,33 @@ async function aiGemini(turns, wantJSON, opts) {
   const headers = AI_PROXY ? null : {
     "x-goog-api-key": aiKey()
   };
+  // Google throws these when its own servers are loaded. They clear on their own.
+  function busy(d) {
+    if (!d || !d.error) return false;
+    const st = String(d.error.status || "");
+    const code = d.error.code;
+    return st === "UNAVAILABLE" || st === "RESOURCE_EXHAUSTED" || st === "INTERNAL" || code === 429 || code === 500 || code === 503;
+  }
+  async function postRetrying(body) {
+    const waits = [800, 2000, 4500];
+    let d = await post(url, body, headers);
+    for (let i = 0; i < waits.length && busy(d); i++) {
+      await new Promise(function (r) {
+        setTimeout(r, waits[i]);
+      });
+      d = await post(url, body, headers);
+    }
+    return d;
+  }
   let data = null;
   const start = opts.fast ? 2 : 0;
   for (let level = start; level >= 0; level--) {
-    data = await post(url, build(level), headers);
+    data = await postRetrying(build(level));
     if (!data.error) break; // worked
     if (level === 0) break; // nothing left to strip
+  }
+  if (busy(data)) {
+    throw new Error("Google's servers are busy right now. Nothing is wrong with your clip \u2014 give it a minute and send it again.");
   }
   if (data.error) {
     const m = data.error.message || JSON.stringify(data.error);
@@ -2580,8 +2612,11 @@ function isPro(user, profile) {
 }
 function UpgradeCard({
   used,
+  uid,
   onClose
 }) {
+  // Stripe hands this straight back on the webhook, so the Worker knows whose account to flip
+  const payLink = STRIPE_LINK && uid ? STRIPE_LINK + (STRIPE_LINK.indexOf("?") > -1 ? "&" : "?") + "client_reference_id=" + encodeURIComponent(uid) : STRIPE_LINK;
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-sheet",
     onClick: onClose
@@ -2610,7 +2645,7 @@ function UpgradeCard({
     }
   }, "Asking the coach questions stays free and unlimited, and so does everything in Players and Games."), STRIPE_LINK ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("a", {
     className: "fr-btn fr-full",
-    href: STRIPE_LINK,
+    href: payLink,
     target: "_blank",
     rel: "noopener noreferrer",
     style: {
@@ -4041,6 +4076,7 @@ function App() {
     }
   }), showUpgrade && /*#__PURE__*/React.createElement(UpgradeCard, {
     used: profile && profile.used || 0,
+    uid: user && user.uid,
     onClose: () => setShowUpgrade(false)
   }), showAdmin && isAdmin(user) && /*#__PURE__*/React.createElement(AdminPanel, {
     user: user,
