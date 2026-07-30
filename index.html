@@ -695,7 +695,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b67</div>
+<div class="fr-build">b68</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3570,6 +3570,28 @@ function saveChats(sport, chats) {
   } catch (e) {}
 }
 
+/* Leaving Train for Players or Games takes the chat off screen, so the
+   chat that was open is remembered and put back when they return. */
+function openKey(sport) {
+  return "fr-openchat-" + (sport || "basketball");
+}
+function rememberOpen(sport, id) {
+  try {
+    if (id) window.localStorage.setItem(openKey(sport), id);else window.localStorage.removeItem(openKey(sport));
+  } catch (e) {}
+}
+function lastOpen(sport, chats) {
+  try {
+    const id = window.localStorage.getItem(openKey(sport));
+    if (!id) return null;
+    return chats.filter(function (c) {
+      return c.id === id;
+    })[0] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 /* Images are far too big to keep, so only the words are stored. */
 function slimHistory(history) {
   return history.map(function (turn) {
@@ -3784,6 +3806,7 @@ function Train({
   });
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
+  const restored = useRef(false);
   const [showHistory, setShowHistory] = useState(false);
   const [mode, setMode] = useState(function () {
     try {
@@ -3804,6 +3827,17 @@ function Train({
   const fast = effMode !== "deep";
   const [msgs, setMsgs] = useState([]);
   const [history, setHistory] = useState([]);
+  // Put the chat back exactly as it was left, once, on the way in.
+  useEffect(function () {
+    if (restored.current) return;
+    restored.current = true;
+    const c = lastOpen(sport, chats);
+    if (c && (c.msgs || []).length) {
+      setChatId(c.id);
+      setMsgs(c.msgs || []);
+      setHistory(c.history || []);
+    }
+  }, []);
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState("");
@@ -3826,14 +3860,17 @@ function Train({
     }));
     setChats(next);
     saveChats(sport, next);
+    rememberOpen(sport, id);
   }, [msgs.length]);
   function newChat() {
     setChatId(null);
     setMsgs([]);
     setHistory([]);
     setShowHistory(false);
+    rememberOpen(sport, null);
   }
   function openChat(c) {
+    rememberOpen(sport, c.id);
     setChatId(c.id);
     setMsgs(c.msgs || []);
     setHistory(c.history || []);
@@ -3846,6 +3883,7 @@ function Train({
     setChats(next);
     saveChats(sport, next);
     if (id === chatId) newChat();
+    if (id === chatId) rememberOpen(sport, null);
   }
   useEffect(() => {
     if (bottom.current && bottom.current.scrollIntoView) {
