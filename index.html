@@ -700,7 +700,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b71</div>
+<div class="fr-build">b73</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1035,7 +1035,10 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 // Paste a free Gemini key here to switch on Get better and My clip.
 // No credit card needed: aistudio.google.com/apikey
 // The key now lives on the Cloudflare Worker, never in this file.
-const AI_PROXY = "https://filmroom.richardachampong075.workers.dev";
+// The AI worker with model fallback. The old one is still deployed at
+// https://filmroom.richardachampong075.workers.dev if this ever needs
+// swapping back.
+const AI_PROXY = "https://filmroomai2.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -3597,6 +3600,84 @@ function lastOpen(sport, chats) {
   }
 }
 
+/* Chats also live on the account, so signing in on a phone brings over
+   what was said on the iPad. Kept as one JSON string per sport. */
+function chatField(sport) {
+  return "chats_" + String(sport || "basketball").replace(/[^a-z0-9]/gi, "");
+}
+
+/* Trimmed so the account document cannot grow without limit. */
+function packChats(chats) {
+  const out = [];
+  let budget = 260000;
+  for (let i = 0; i < chats.length && i < 30 && budget > 0; i++) {
+    const c = chats[i];
+    const one = JSON.stringify(c);
+    if (one.length > budget) break;
+    budget -= one.length;
+    out.push(c);
+  }
+  return JSON.stringify(out);
+}
+
+async function pullChats(user, sport) {
+  if (!user || !accountsOn()) return null;
+  try {
+    const res = await fetch(docPath(user.uid), {
+      headers: {
+        Authorization: "Bearer " + user.token
+      }
+    });
+    if (!res.ok) return null;
+    const f = (await res.json()).fields || {};
+    const raw = (f[chatField(sport)] || {}).stringValue;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function pushChats(user, sport, chats) {
+  if (!user || !accountsOn()) return;
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=" + chatField(sport), {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: (function () {
+          const o = {};
+          o[chatField(sport)] = {
+            stringValue: packChats(chats)
+          };
+          return o;
+        })()
+      })
+    });
+  } catch (e) {}
+}
+
+/* Two devices, one account: keep every chat, newest wins on a clash. */
+function mergeChats(a, b) {
+  const seen = {};
+  const all = (a || []).concat(b || []);
+  const out = [];
+  all.sort(function (x, y) {
+    return (y.at || 0) - (x.at || 0);
+  });
+  for (let i = 0; i < all.length; i++) {
+    const c = all[i];
+    if (!c || !c.id || seen[c.id]) continue;
+    seen[c.id] = 1;
+    out.push(c);
+  }
+  return out.slice(0, 30);
+}
+
 /* What the coach can remember from before this chat. Newest first, and
    trimmed, because all of it has to travel with every question. */
 function memoryOf(chats, currentId) {
@@ -3842,6 +3923,7 @@ function Train({
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
   const restored = useRef(false);
+  const pushTimer = useRef(null);
   const [showHistory, setShowHistory] = useState(false);
   const [mode, setMode] = useState(function () {
     try {
@@ -3873,6 +3955,22 @@ function Train({
       setHistory(c.history || []);
     }
   }, []);
+
+  // Bring down anything written on another device.
+  useEffect(function () {
+    let dead = false;
+    pullChats(user, sport).then(function (remote) {
+      if (dead || !remote || !remote.length) return;
+      setChats(function (local) {
+        const merged = mergeChats(local, remote);
+        saveChats(sport, merged);
+        return merged;
+      });
+    });
+    return function () {
+      dead = true;
+    };
+  }, [user && user.uid, sport]);
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState("");
@@ -3896,6 +3994,11 @@ function Train({
     setChats(next);
     saveChats(sport, next);
     rememberOpen(sport, id);
+    // Debounced so a fast back and forth is one write, not ten.
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(function () {
+      pushChats(user, sport, next);
+    }, 1500);
   }, [msgs.length]);
   function newChat() {
     setChatId(null);
@@ -3917,6 +4020,7 @@ function Train({
     });
     setChats(next);
     saveChats(sport, next);
+    pushChats(user, sport, next);
     if (id === chatId) newChat();
     if (id === chatId) rememberOpen(sport, null);
   }
