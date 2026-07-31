@@ -717,7 +717,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b78</div>
+<div class="fr-build">b79</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4448,14 +4448,22 @@ function App() {
   // straight back, so Players and Games are never more than a flick away.
   const [navHide, setNavHide] = useState(false);
   useEffect(function () {
+    function top(e) {
+      // Whichever thing is actually scrolling: the page, or a panel inside it.
+      const t = e && e.target;
+      if (t && t.scrollTop !== undefined && t !== document && t !== document.documentElement && t !== document.body) {
+        return t.scrollTop;
+      }
+      return window.scrollY || (document.scrollingElement || document.documentElement).scrollTop || 0;
+    }
     let last = window.scrollY || 0;
     let waiting = false;
-    function onScroll() {
+    function onScroll(e) {
+      const y = top(e);
       if (waiting) return;
       waiting = true;
       window.requestAnimationFrame(function () {
         waiting = false;
-        const y = window.scrollY || 0;
         // Near the top there is nothing to hide for.
         if (y < 64) {
           setNavHide(false);
@@ -4468,11 +4476,23 @@ function App() {
         last = y;
       });
     }
+    // Capture, because a scroll inside a panel does not bubble up.
     window.addEventListener("scroll", onScroll, {
+      passive: true,
+      capture: true
+    });
+    // A new touch always brings it back, so it can never get stuck away.
+    function onTouch() {
+      setNavHide(false);
+    }
+    window.addEventListener("touchstart", onTouch, {
       passive: true
     });
     return function () {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll, {
+        capture: true
+      });
+      window.removeEventListener("touchstart", onTouch);
     };
   }, []);
   const [showSignIn, setShowSignIn] = useState(false);
