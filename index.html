@@ -700,7 +700,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b73</div>
+<div class="fr-build">b74</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3909,6 +3909,7 @@ function KeyGate({
   }, "Stored on this device only. It never goes to us or into your repo."));
 }
 function Train({
+  user,
   sport,
   pro,
   used,
@@ -4581,6 +4582,7 @@ function App() {
   }), top.page === "train" && (accountsOn() && !user && !adminFlags().openCoach ? /*#__PURE__*/React.createElement(LockedTrain, {
     onSignIn: () => setShowSignIn(true)
   }) : /*#__PURE__*/React.createElement(Train, {
+    user: user,
     sport: sport,
     pro: isPro(user, profile),
     used: profile && profile.used || 0,
