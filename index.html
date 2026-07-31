@@ -349,9 +349,16 @@ body { background: #EDF0F2; }
   backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
   box-shadow:0 8px 32px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.10); }
 .fr-barin:focus-within { border-color:var(--edge-2); }
-.fr-attach { display:inline-flex; align-items:center; gap:8px; margin:0 0 8px 6px;
+.fr-attachrow { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px 6px;
+  max-height:104px; overflow-y:auto; scrollbar-width:none; }
+.fr-attachrow::-webkit-scrollbar { display:none; }
+.fr-attachall { appearance:none; cursor:pointer; border:1px solid var(--edge);
+  background:none; color:var(--dim); border-radius:999px; padding:6px 12px;
+  font-family:inherit; font-size:13px; }
+.fr-attachall:hover { color:var(--ink); border-color:var(--edge-2); }
+.fr-attach { display:inline-flex; align-items:center; gap:8px; margin:0;
   padding:6px 8px 6px 12px; border-radius:999px; background:var(--glass);
-  border:1px solid var(--edge); max-width:min(360px, 88%); }
+  border:1px solid var(--edge); max-width:min(280px, 46%); }
 .fr-attachname { font-size:13px; color:var(--dim); overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
 .fr-attachx { appearance:none; border:0; background:none; cursor:pointer;
@@ -710,7 +717,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b76</div>
+<div class="fr-build">b78</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1069,6 +1076,7 @@ const ADMIN_EMAIL = "Richard.jr.achampong@gmail.com";
 const FREE_CLIPS = 2;   // film breakdowns a day
 const FREE_ASKS = 15;   // questions a day
 const FREE_CLIP_SECONDS = 60;   // how long a clip a free account can send
+const MAX_CLIPS = 12;           // clips that can go in one message
 
 // Your Stripe Payment Link. Leave empty until you have one and the upgrade
 // screen will ask people to get in touch instead of sending them nowhere.
@@ -3741,7 +3749,7 @@ function titleOf(msgs) {
 
 /* ------------------------ CLIP ----------------------- */
 
-async function grabFrames(file, onProgress, fast, pro) {
+async function grabFrames(file, onProgress, fast, pro, sharing) {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
@@ -3788,7 +3796,9 @@ async function grabFrames(file, onProgress, fast, pro) {
     }
     // Longer film needs more stills to stay honest about what happened,
     // up to what one request can carry.
-    const count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(8, Math.min(32, Math.round(dur / 12)));
+    let count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(8, Math.min(32, Math.round(dur / 12)));
+    // One request can only carry so many images, however many clips there are.
+    if (sharing && sharing > 1) count = Math.max(3, Math.round(36 / sharing));
     const canvas = document.createElement("canvas");
     const wide = fast ? 400 : 560;
     const scale = wide / video.videoWidth;
@@ -3983,7 +3993,8 @@ function Train({
     };
   }, [user && user.uid, sport]);
   const [text, setText] = useState("");
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  const field = useRef(null);
   const [busy, setBusy] = useState("");
   const [ready, setReady] = useState(!!aiKey());
   const input = useRef(null);
@@ -4045,12 +4056,24 @@ function Train({
   }, [msgs.length, busy]);
   function pick(f) {
     if (!f) return;
-    // Attach it and wait. They may want to say something about it first.
-    setFile(f);
+    // One file or a whole selection, both arrive here.
+    const picked = f.length === undefined ? [f] : Array.prototype.slice.call(f);
+    if (!picked.length) return;
+    // Attach and wait. They may want to say something about them first.
+    setFiles(function (list) {
+      return list.concat(picked).slice(0, MAX_CLIPS);
+    });
+  }
+  // Back to one line, and nothing left hanging in the bar.
+  function clearBar() {
+    setFiles([]);
+    if (input.current) input.current.value = "";
+    if (field.current) field.current.style.height = "auto";
   }
   async function send(f, note) {
     if (busy) return;
-    const clip = f || null;
+    const clips = (f && f.length ? f : []).slice(0, MAX_CLIPS);
+    const clip = clips.length ? clips[0] : null;
     const said = (note || "").trim();
     if (!clip && !said) return;
     // Questions are counted; clips are counted separately further down.
@@ -4060,24 +4083,42 @@ function Train({
     }
     if (!clip && !pro) onAsk();
     setText("");
+    clearBar();
     setMsgs(m => m.concat([{
       who: "you",
       text: said,
-      clip: clip ? clip.name : null
+      clip: clips.length ? clips.map(function (c) {
+        return c.name;
+      }).join(", ") : null
     }]));
     try {
       let parts = [];
       if (clip) {
         setBusy("Watching your film");
-        if (!pro && used >= FREE_CLIPS) {
+        if (!pro && used + clips.length > FREE_CLIPS) {
           setBusy("");
           onOutOfClips();
           return;
         }
-        const got = await grabFrames(clip, (i, n) => setBusy("Watching your film " + Math.round(i / n * 100) + "%"), fast, pro);
-        onUse();
-        parts = got.frames.map(IMG);
-        parts.push(T("You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
+        // Two clips share the frame budget, so neither swamps the other.
+        const grabs = [];
+        for (let ci = 0; ci < clips.length; ci++) {
+          const label = clips.length > 1 ? "clip " + (ci + 1) + " of " + clips.length + " " : "";
+          // The more clips there are, the fewer stills each one can spare.
+          const one = await grabFrames(clips[ci], function (i, nn) {
+            setBusy("Watching your film " + label + Math.round(i / nn * 100) + "%");
+          }, clips.length > 1 ? true : fast, pro, clips.length);
+          grabs.push(one);
+          onUse();
+        }
+        parts = [];
+        for (let gi = 0; gi < grabs.length; gi++) {
+          if (grabs.length > 1) parts.push(T("Clip " + (gi + 1) + " of " + grabs.length + ", " + Math.round(grabs[gi].duration) + " seconds, " + grabs[gi].count + " stills in order:"));
+          parts = parts.concat(grabs[gi].frames.map(IMG));
+        }
+        const got = grabs[0];
+        const many = grabs.length > 1;
+        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
       } else {
@@ -4107,7 +4148,7 @@ function Train({
       }]));
     }
     setBusy("");
-    setFile(null);
+    clearBar();
   }
   const empty = !msgs.length && !busy;
   function grow(el) {
@@ -4118,29 +4159,43 @@ function Train({
   const bar = /*#__PURE__*/React.createElement("div", {
     className: "fr-bar",
     "data-empty": empty ? "1" : "0"
-  }, file && /*#__PURE__*/React.createElement("div", {
-    className: "fr-attach"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "fr-attachname"
-  }, file.name), /*#__PURE__*/React.createElement("button", {
-    className: "fr-attachx",
-    onClick: function () {
-      setFile(null);
-      if (input.current) input.current.value = "";
-    },
-    "aria-label": "Remove clip"
-  }, "\u00d7")), /*#__PURE__*/React.createElement("div", {
+  }, files.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "fr-attachrow"
+  }, files.length > 2 && /*#__PURE__*/React.createElement("button", {
+    className: "fr-attachall",
+    onClick: clearBar
+  }, "Clear all " + files.length), files.map(function (f, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-attach",
+      key: i
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "fr-attachname"
+    }, f.name), /*#__PURE__*/React.createElement("button", {
+      className: "fr-attachx",
+      onClick: function () {
+        setFiles(function (list) {
+          return list.filter(function (x, j) {
+            return j !== i;
+          });
+        });
+        if (input.current) input.current.value = "";
+      },
+      "aria-label": "Remove clip"
+    }, "\u00d7"));
+  })), /*#__PURE__*/React.createElement("div", {
     className: "fr-barin"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-plus",
     onClick: () => input.current.click(),
     "aria-label": "Add a clip",
-    disabled: !!busy
+    disabled: !!busy || files.length >= MAX_CLIPS,
+    title: files.length >= MAX_CLIPS ? MAX_CLIPS + " clips at a time" : "Add a clip"
   }, "+"), /*#__PURE__*/React.createElement("textarea", {
     className: "fr-field",
     rows: 1,
     value: text,
-    placeholder: file ? "Say something about this clip, or just send it" : msgs.length ? "Ask anything about it" : "Analyze my film, or ask me anything",
+    ref: field,
+    placeholder: files.length ? "Say something about " + (files.length > 1 ? "these clips" : "this clip") + ", or just send" : msgs.length ? "Ask anything about it" : "Analyze my film, or ask me anything",
     onChange: e => {
       setText(e.target.value);
       grow(e.target);
@@ -4149,13 +4204,13 @@ function Train({
       // Enter sends. Shift and Enter starts a new line.
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        send(file, text);
+        send(files, text);
       }
     }
   }), /*#__PURE__*/React.createElement("button", {
     className: "fr-send",
-    onClick: () => send(file, text),
-    disabled: !!busy || !text.trim() && !file,
+    onClick: () => send(files, text),
+    disabled: !!busy || !text.trim() && !files.length,
     "aria-label": "Send"
   }, "\u2191")));
   const chatbar = /*#__PURE__*/React.createElement("div", {
@@ -4290,10 +4345,11 @@ function Train({
     ref: input,
     type: "file",
     accept: "video/*",
+    multiple: true,
     style: {
       display: "none"
     },
-    onChange: e => pick(e.target.files[0] || null)
+    onChange: e => pick(e.target.files)
   })), /*#__PURE__*/React.createElement("div", {
     className: "fr-composer"
   }, /*#__PURE__*/React.createElement("div", {
