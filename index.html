@@ -344,13 +344,23 @@ body { background: #EDF0F2; }
 .fr-bar { position:sticky; bottom:0; padding:12px 0 16px; margin-top:8px;
   background:linear-gradient(to top, var(--bg) 60%, transparent); }
 .fr-bar[data-empty="1"] { position:static; background:none; padding:0; margin:0; }
-.fr-barin { display:flex; align-items:center; gap:8px; padding:7px 7px 7px 8px;
-  border-radius:999px; background:var(--glass); border:1px solid var(--edge);
+.fr-barin { display:flex; align-items:flex-end; gap:8px; padding:7px 7px 7px 8px;
+  border-radius:26px; background:var(--glass); border:1px solid var(--edge);
   backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
   box-shadow:0 8px 32px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.10); }
 .fr-barin:focus-within { border-color:var(--edge-2); }
+.fr-attach { display:inline-flex; align-items:center; gap:8px; margin:0 0 8px 6px;
+  padding:6px 8px 6px 12px; border-radius:999px; background:var(--glass);
+  border:1px solid var(--edge); max-width:min(360px, 88%); }
+.fr-attachname { font-size:13px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.fr-attachx { appearance:none; border:0; background:none; cursor:pointer;
+  color:var(--dim); font-size:17px; line-height:1; padding:2px 4px; font-family:inherit; }
+.fr-attachx:hover { color:var(--ink); }
 .fr-field { flex:1; min-width:0; background:none; border:0; outline:none;
-  color:var(--text); font-family:'Barlow',sans-serif; font-size:16px; padding:0 4px; }
+  color:var(--text); font-family:'Barlow',sans-serif; font-size:16px; padding:8px 4px;
+  resize:none; line-height:1.45; max-height:168px; overflow-y:auto; display:block; }
+.fr-field::-webkit-scrollbar { width:0; }
 .fr-field::placeholder { color:var(--faint); }
 .fr-plus, .fr-send { appearance:none; cursor:pointer; flex:0 0 auto;
   width:40px; height:40px; border-radius:999px; display:grid; place-items:center;
@@ -700,7 +710,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b74</div>
+<div class="fr-build">b75</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4035,8 +4045,8 @@ function Train({
   }, [msgs.length, busy]);
   function pick(f) {
     if (!f) return;
+    // Attach it and wait. They may want to say something about it first.
     setFile(f);
-    send(f, text);
   }
   async function send(f, note) {
     if (busy) return;
@@ -4100,28 +4110,52 @@ function Train({
     setFile(null);
   }
   const empty = !msgs.length && !busy;
+  function grow(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 168) + "px";
+  }
   const bar = /*#__PURE__*/React.createElement("div", {
     className: "fr-bar",
     "data-empty": empty ? "1" : "0"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, file && /*#__PURE__*/React.createElement("div", {
+    className: "fr-attach"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-attachname"
+  }, file.name), /*#__PURE__*/React.createElement("button", {
+    className: "fr-attachx",
+    onClick: function () {
+      setFile(null);
+      if (input.current) input.current.value = "";
+    },
+    "aria-label": "Remove clip"
+  }, "\u00d7")), /*#__PURE__*/React.createElement("div", {
     className: "fr-barin"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-plus",
     onClick: () => input.current.click(),
     "aria-label": "Add a clip",
     disabled: !!busy
-  }, "+"), /*#__PURE__*/React.createElement("input", {
+  }, "+"), /*#__PURE__*/React.createElement("textarea", {
     className: "fr-field",
+    rows: 1,
     value: text,
-    placeholder: msgs.length ? "Ask anything about it" : "Analyze my film, or ask me anything",
-    onChange: e => setText(e.target.value),
+    placeholder: file ? "Say something about this clip, or just send it" : msgs.length ? "Ask anything about it" : "Analyze my film, or ask me anything",
+    onChange: e => {
+      setText(e.target.value);
+      grow(e.target);
+    },
     onKeyDown: e => {
-      if (e.key === "Enter") send(null, text);
+      // Enter sends. Shift and Enter starts a new line.
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send(file, text);
+      }
     }
   }), /*#__PURE__*/React.createElement("button", {
     className: "fr-send",
-    onClick: () => send(null, text),
-    disabled: !!busy || !text.trim(),
+    onClick: () => send(file, text),
+    disabled: !!busy || !text.trim() && !file,
     "aria-label": "Send"
   }, "\u2191")));
   const chatbar = /*#__PURE__*/React.createElement("div", {
