@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b89</div>
+<div class="fr-build">b91</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1064,7 +1064,7 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 // The AI worker with model fallback. The old one is still deployed at
 // https://filmroom.richardachampong075.workers.dev if this ever needs
 // swapping back.
-const AI_PROXY = "https://filmroomai4.richardachampong075.workers.dev";
+const AI_PROXY = "https://filmroomai5.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -2118,9 +2118,69 @@ const FD = (uri, mime) => ({
   }
 });
 
-/* The browser sends the bytes to Google itself, so nothing sits in the
-   middle and there is no size limit but Google's own. Falls back to going
-   through the worker if the browser is not allowed to post there. */
+/* Sent to Google a slice at a time, by way of the worker. Google will not
+   accept bytes straight from a web page, and Cloudflare will not take a
+   whole film in one request, so the film is cut into pieces small enough
+   for both. Nothing is held anywhere: each piece passes straight through. */
+const CHUNK = 12 * 1024 * 1024;
+
+async function uploadChunked(file, onProgress, onStage) {
+  const base = AI_PROXY.replace(/\/$/, "");
+  const startRes = await fetch(base + "/upload-url", {
+    method: "POST",
+    headers: {
+      "x-file-size": String(file.size),
+      "x-file-type": file.type || "video/mp4",
+      "x-file-name": file.name || "clip"
+    }
+  });
+  const start = await startRes.json();
+  if (!start || start.error || !start.upload_url) {
+    throw new Error(start && start.error && start.error.message || "Could not start the upload.");
+  }
+
+  let made = null;
+  for (let offset = 0; offset < file.size; offset += CHUNK) {
+    const end = Math.min(offset + CHUNK, file.size);
+    const last = end >= file.size;
+    const res = await fetch(base + "/upload-chunk", {
+      method: "POST",
+      headers: {
+        "x-upload-url": start.upload_url,
+        "x-offset": String(offset),
+        "x-final": last ? "1" : "0"
+      },
+      body: file.slice(offset, end)
+    });
+    const d = await res.json();
+    if (d && d.error) throw new Error(d.error.message || "That upload stopped part way.");
+    if (onProgress) onProgress(end, file.size);
+    if (last) made = d.file;
+  }
+  if (!made || !made.name) throw new Error("Google did not accept that file.");
+
+  // A long video is not readable the moment it lands.
+  let state = made.state || "PROCESSING";
+  let uri = made.uri;
+  let mime = made.mimeType || file.type;
+  for (let i = 0; i < 120 && state === "PROCESSING"; i++) {
+    if (onStage) onStage(i);
+    await new Promise(function (r) {
+      setTimeout(r, 2000);
+    });
+    const look = await fetch(base + "/file-state?name=" + encodeURIComponent(made.name));
+    const d = await look.json();
+    state = d.state || "FAILED";
+    if (d.uri) uri = d.uri;
+    if (d.mime_type) mime = d.mime_type;
+  }
+  if (state !== "ACTIVE") throw new Error("Google could not process that video (" + state + ").");
+  return {
+    file_uri: uri,
+    mime_type: mime
+  };
+}
+
 async function uploadDirect(file, onProgress, onStage) {
   const base = AI_PROXY.replace(/\/$/, "");
   const startRes = await fetch(base + "/upload-url", {
@@ -4382,13 +4442,18 @@ function Train({
     if (id === chatId) rememberOpen(sport, null);
   }
   useEffect(() => {
+    // Only when a message lands or work starts, never on every tick of a
+    // percentage, and never while they have scrolled up to read something.
+    const doc = document.scrollingElement || document.documentElement;
+    const fromBottom = doc.scrollHeight - (window.scrollY + window.innerHeight);
+    if (fromBottom > 260) return;
     if (bottom.current && bottom.current.scrollIntoView) {
       bottom.current.scrollIntoView({
         behavior: "smooth",
         block: "end"
       });
     }
-  }, [msgs.length, busy]);
+  }, [msgs.length, !!busy]);
   function pick(f) {
     if (!f) return;
     // One file or a whole selection, both arrive here.
@@ -4453,26 +4518,13 @@ function Train({
               const secs = Math.round((Date.now() - started) / 1000);
               return secs < 60 ? secs + "s" : Math.floor(secs / 60) + "m " + secs % 60 + "s";
             }
-            setBusy("Uploading your film\u2026");
-            let up = null;
-            try {
-              up = await uploadDirect(one, function (done, all) {
-                setBusy("Uploading your film " + Math.round(done / all * 100) + "% \u00b7 " + mins());
-              }, function () {
-                setBusy("Google is reading your film \u00b7 " + mins());
-              });
-            } catch (e) {
-              // Some browsers will not post straight to Google. Go through
-              // the worker instead, which caps out around 95MB.
-              if (String(e.message).indexOf("direct-blocked") === -1) throw e;
-              if (one.size > VIDEO_UPLOAD_MAX) {
-                throw new Error("That file is " + Math.round(one.size / 1024 / 1024) + "MB and this browser will not upload it directly. Export it at 1080p and it will go through.");
-              }
-              setBusy("Uploading your film\u2026");
-              up = await uploadWhole(one, function (done, all) {
-                setBusy("Uploading your film " + Math.round(done / all * 100) + "% \u00b7 " + mins());
-              });
-            }
+            const mb = Math.round(one.size / 1024 / 1024);
+            setBusy("Uploading your film \u00b7 " + mb + "MB");
+            const up = await uploadChunked(one, function (done, all) {
+              setBusy("Uploading your film " + Math.round(done / all * 100) + "% of " + mb + "MB \u00b7 " + mins());
+            }, function () {
+              setBusy("Google is reading your film \u00b7 " + mins());
+            });
             setBusy("Breaking it down \u00b7 " + mins());
             media = FD(up.file_uri, up.mime_type);
           }
