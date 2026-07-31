@@ -554,6 +554,10 @@ body { background: #EDF0F2; }
   color:var(--text); letter-spacing:-.02em; }
 .fr-meter[data-low="1"] { color:var(--amber); }
 .fr-meter[data-low="1"] span { color:var(--amber); }
+.fr-stop { appearance:none; cursor:pointer; margin-left:12px; border:1px solid var(--edge);
+  background:none; color:var(--dim); border-radius:999px; padding:4px 12px;
+  font-family:inherit; font-size:12px; letter-spacing:.04em; vertical-align:middle; }
+.fr-stop:hover { color:var(--ink); border-color:var(--edge-2); }
 .fr-lockback { display:block; margin:14px auto 0; border:0; background:none;
   color:var(--dim); font-size:13.5px; cursor:pointer; padding:6px 10px;
   border-radius:999px; font-family:inherit; }
@@ -722,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b80</div>
+<div class="fr-build">b89</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1060,7 +1064,7 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 // The AI worker with model fallback. The old one is still deployed at
 // https://filmroom.richardachampong075.workers.dev if this ever needs
 // swapping back.
-const AI_PROXY = "https://filmroomai3.richardachampong075.workers.dev";
+const AI_PROXY = "https://filmroomai4.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -1072,7 +1076,7 @@ const FIREBASE_PROJECT = "filmroom-212bd";
 
 // For "Continue with Google". Google Cloud > APIs & Services > Credentials >
 // OAuth 2.0 Client IDs > "Web client (auto created by Google Service)"
-const GOOGLE_CLIENT_ID = "";
+const GOOGLE_CLIENT_ID = "706016644053-fehoscnohueauhj0btpm84jtdsh5961b.apps.googleusercontent.com";
 
 // The one account that sees the admin panel. Put your own email here.
 const ADMIN_EMAIL = "Richard.jr.achampong@gmail.com";
@@ -2091,6 +2095,138 @@ const IMG = b64 => ({
     data: b64
   }
 });
+const VID = (b64, mime) => ({
+  inline_data: {
+    mime_type: mime || "video/mp4",
+    data: b64
+  }
+});
+
+/* One request can carry about 20MB, and base64 adds a third. Under this a
+   clip goes to Google whole, and Google reads every second of it instead of
+   the stills we could carry. Over it, we send stills. */
+const VIDEO_WHOLE_MAX = 13 * 1024 * 1024;
+
+/* Bigger than a request can carry, so it goes to Google's file service
+   through the worker, and what comes back is a reference to point the model
+   at. Cloudflare will not take more than about 100MB in one go. */
+const VIDEO_UPLOAD_MAX = 95 * 1024 * 1024;
+const FD = (uri, mime) => ({
+  file_data: {
+    file_uri: uri,
+    mime_type: mime || "video/mp4"
+  }
+});
+
+/* The browser sends the bytes to Google itself, so nothing sits in the
+   middle and there is no size limit but Google's own. Falls back to going
+   through the worker if the browser is not allowed to post there. */
+async function uploadDirect(file, onProgress, onStage) {
+  const base = AI_PROXY.replace(/\/$/, "");
+  const startRes = await fetch(base + "/upload-url", {
+    method: "POST",
+    headers: {
+      "x-file-size": String(file.size),
+      "x-file-type": file.type || "video/mp4",
+      "x-file-name": file.name || "clip"
+    }
+  });
+  const start = await startRes.json();
+  if (!start || start.error || !start.upload_url) {
+    throw new Error(start && start.error && start.error.message || "Could not start the upload.");
+  }
+
+  const made = await new Promise(function (resolve, reject) {
+    const x = new XMLHttpRequest();
+    x.open("POST", start.upload_url, true);
+    x.setRequestHeader("X-Goog-Upload-Command", "upload, finalize");
+    x.setRequestHeader("X-Goog-Upload-Offset", "0");
+    x.upload.onprogress = function (e) {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);
+    };
+    x.onload = function () {
+      try {
+        resolve(JSON.parse(x.responseText));
+      } catch (e) {
+        reject(new Error("Google gave an answer we could not read."));
+      }
+    };
+    x.onerror = function () {
+      reject(new Error("direct-blocked"));
+    };
+    x.send(file);
+  });
+
+  const made_file = made && made.file;
+  if (!made_file || !made_file.name) throw new Error("Google did not accept that file.");
+
+  // A long video is not readable the moment it lands.
+  let state = made_file.state || "PROCESSING";
+  let uri = made_file.uri;
+  let mime = made_file.mimeType || file.type;
+  for (let i = 0; i < 80 && state === "PROCESSING"; i++) {
+    if (onStage) onStage(i);
+    await new Promise(function (r) {
+      setTimeout(r, 2000);
+    });
+    const look = await fetch(base + "/file-state?name=" + encodeURIComponent(made_file.name));
+    const d = await look.json();
+    state = d.state || "FAILED";
+    if (d.uri) uri = d.uri;
+    if (d.mime_type) mime = d.mime_type;
+  }
+  if (state !== "ACTIVE") throw new Error("Google could not process that video (" + state + ").");
+  return {
+    file_uri: uri,
+    mime_type: mime
+  };
+}
+
+function uploadWhole(file, onProgress) {
+  return new Promise(function (resolve, reject) {
+    const x = new XMLHttpRequest();
+    x.open("POST", AI_PROXY.replace(/\/$/, "") + "/upload", true);
+    x.setRequestHeader("x-file-size", String(file.size));
+    x.setRequestHeader("x-file-type", file.type || "video/mp4");
+    x.setRequestHeader("x-file-name", file.name || "clip");
+    x.upload.onprogress = function (e) {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);
+    };
+    x.onload = function () {
+      let d = null;
+      try {
+        d = JSON.parse(x.responseText);
+      } catch (e) {}
+      if (!d || d.error || !d.file_uri) {
+        reject(new Error(d && d.error && d.error.message || "That upload did not go through."));
+        return;
+      }
+      resolve(d);
+    };
+    x.onerror = function () {
+      reject(new Error("Lost the connection while sending that film."));
+    };
+    x.send(file);
+  });
+}
+
+function fileToBase64(file, onProgress) {
+  return new Promise(function (resolve, reject) {
+    const r = new FileReader();
+    r.onload = function () {
+      const out = String(r.result || "");
+      const comma = out.indexOf(",");
+      resolve(comma === -1 ? out : out.slice(comma + 1));
+    };
+    r.onerror = function () {
+      reject(new Error("Could not read that file."));
+    };
+    if (onProgress) r.onprogress = function (e) {
+      if (e.lengthComputable) onProgress(e.loaded, e.total);
+    };
+    r.readAsDataURL(file);
+  });
+}
 function toJSON(text) {
   const clean = String(text).replace(/```json/g, "").replace(/```/g, "").trim();
   const a = clean.indexOf("{"),
@@ -2248,6 +2384,31 @@ function saveSession(u) {
     if (u) window.localStorage.setItem("fr-user", JSON.stringify(u));else window.localStorage.removeItem("fr-user");
   } catch (e) {}
 }
+/* An id token only lasts an hour. The refresh token is what keeps someone
+   signed in, so it is kept and swapped for a new id token before the old
+   one lapses. Without this an account silently stops syncing after an hour. */
+async function refreshSession(u) {
+  if (!u || !u.refresh) return null;
+  try {
+    const res = await fetch("https://securetoken.googleapis.com/v1/token?key=" + FIREBASE_KEY, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(u.refresh)
+    });
+    const d = await res.json();
+    if (d.error || !d.id_token) return null;
+    return Object.assign({}, u, {
+      token: d.id_token,
+      refresh: d.refresh_token || u.refresh,
+      at: Date.now()
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
 async function authCall(mode, email, password) {
   const res = await fetch(AUTH_URL + mode + "?key=" + FIREBASE_KEY, {
     method: "POST",
@@ -2273,7 +2434,9 @@ async function authCall(mode, email, password) {
   return {
     uid: data.localId,
     email: data.email,
-    token: data.idToken
+    token: data.idToken,
+    refresh: data.refreshToken,
+    at: Date.now()
   };
 }
 function docPath(uid) {
@@ -2359,7 +2522,9 @@ async function finishGoogle() {
   return {
     uid: data.localId,
     email: data.email,
-    token: data.idToken
+    token: data.idToken,
+    refresh: data.refreshToken,
+    at: Date.now()
   };
 }
 function SignIn({
@@ -3597,7 +3762,8 @@ function loadChats(sport) {
 }
 function saveChats(sport, chats) {
   try {
-    window.localStorage.setItem(chatKey(sport), JSON.stringify(chats.slice(0, 30)));
+    // Nothing is dropped for being old. It goes when they delete it.
+    window.localStorage.setItem(chatKey(sport), JSON.stringify(chats));
   } catch (e) {}
 }
 
@@ -3633,7 +3799,7 @@ function chatField(sport) {
 function packChats(chats) {
   const out = [];
   let budget = 260000;
-  for (let i = 0; i < chats.length && i < 30 && budget > 0; i++) {
+  for (let i = 0; i < chats.length && budget > 0; i++) {
     const c = chats[i];
     const one = JSON.stringify(c);
     if (one.length > budget) break;
@@ -3698,7 +3864,7 @@ function mergeChats(a, b) {
     seen[c.id] = 1;
     out.push(c);
   }
-  return out.slice(0, 30);
+  return out;
 }
 
 /* What the coach can remember from before this chat. Newest first, and
@@ -3754,7 +3920,108 @@ function titleOf(msgs) {
 
 /* ------------------------ CLIP ----------------------- */
 
-async function grabFrames(file, onProgress, fast, pro, sharing) {
+/* Seeking to a timestamp is slow, and gets slower the longer the file is.
+   Playing it at speed decodes in order, which a phone is far better at, and
+   every frame the browser paints is one we can grab. This is what makes a
+   dense read of a long session finish in a minute or two instead of never. */
+async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress, cancelled) {
+  if (!video.requestVideoFrameCallback) return null; // caller falls back to seeking
+  const frames = [];
+  const step = dur / want;
+  let nextAt = 0;
+
+  // A tiny copy of each frame, used only to tell whether anything moved.
+  // Even spacing wastes stills on timeouts and standing around; this spends
+  // them on the parts of the film where something is actually happening.
+  const tiny = document.createElement("canvas");
+  tiny.width = 48;
+  tiny.height = 27;
+  const tctx = tiny.getContext("2d", {
+    willReadFrequently: true
+  });
+  let lastPixels = null;
+  let avgMotion = 0;
+  let seen = 0;
+  const minGap = step * 0.4; // never closer together than this
+  const maxGap = step * 2.2; // and never further apart than this
+  let lastAt = -1e9;
+
+  function motionAt() {
+    try {
+      tctx.drawImage(video, 0, 0, tiny.width, tiny.height);
+      const px = tctx.getImageData(0, 0, tiny.width, tiny.height).data;
+      if (!lastPixels) {
+        lastPixels = px;
+        return 1;
+      }
+      let sum = 0;
+      for (let i = 0; i < px.length; i += 16) {
+        sum += Math.abs(px[i] - lastPixels[i]);
+      }
+      const score = sum / (px.length / 16) / 255;
+      lastPixels = px;
+      seen++;
+      avgMotion = avgMotion + (score - avgMotion) / Math.min(seen, 40);
+      return score;
+    } catch (e) {
+      return 1;
+    }
+  }
+  // Aim to be done in about 75 seconds, within what the browser allows.
+  video.playbackRate = Math.max(1, Math.min(16, dur / 75));
+  video.muted = true;
+  try {
+    await video.play();
+  } catch (e) {
+    return null; // autoplay refused, seek instead
+  }
+  await new Promise(function (resolve) {
+    let stopped = false;
+    function finish() {
+      if (stopped) return;
+      stopped = true;
+      try {
+        video.pause();
+      } catch (e) {}
+      resolve();
+    }
+    // However slow the file is, this cannot run forever.
+    const cutoff = setTimeout(finish, 180000);
+    function onFrame(now, meta) {
+      if (stopped) return;
+      const t = meta && meta.mediaTime !== undefined ? meta.mediaTime : video.currentTime;
+      const since = t - lastAt;
+      if (frames.length < want && since >= minGap) {
+        const score = motionAt();
+        // Take it if something moved, or if it has simply been too long.
+        const busyEnough = seen < 8 || score >= avgMotion * 1.05;
+        if (busyEnough || since >= maxGap) {
+          try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            frames.push(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
+            lastAt = t;
+            nextAt = frames.length * step;
+            if (onProgress) onProgress(frames.length, want);
+          } catch (e) {}
+        }
+      }
+      if (frames.length >= want || video.ended || cancelled && cancelled()) {
+        clearTimeout(cutoff);
+        finish();
+        return;
+      }
+      video.requestVideoFrameCallback(onFrame);
+    }
+    video.onended = function () {
+      clearTimeout(cutoff);
+      finish();
+    };
+    video.requestVideoFrameCallback(onFrame);
+  });
+  return frames.length ? frames : null;
+}
+
+async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
@@ -3801,30 +4068,92 @@ async function grabFrames(file, onProgress, fast, pro, sharing) {
     }
     // Longer film needs more stills to stay honest about what happened,
     // up to what one request can carry.
-    let count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(8, Math.min(32, Math.round(dur / 12)));
+    // Quick stays a glance. Deep reads the whole thing densely, because
+    // playing the file makes stills cheap enough to take a lot of them.
+    let count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(12, Math.min(120, Math.round(dur)));
     // One request can only carry so many images, however many clips there are.
-    if (sharing && sharing > 1) count = Math.max(3, Math.round(36 / sharing));
+    if (sharing && sharing > 1) count = Math.max(3, Math.round(120 / sharing));
     const canvas = document.createElement("canvas");
-    const wide = fast ? 400 : 560;
+    // Past about sixty stills the request matters more than the detail in
+    // any one of them, so they get a little smaller to pay for the density.
+    const wide = fast ? 400 : count > 60 ? 448 : 560;
     const scale = wide / video.videoWidth;
     canvas.width = wide;
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
+    const quality = fast ? 0.55 : count > 60 ? 0.62 : 0.72;
+
+    // Anything but a handful of stills is faster to take while it plays.
+    if (count > 8) {
+      const played = await grabByPlaying(video, canvas, ctx, count, dur, quality, onProgress, cancelled);
+      if (played && played.length) {
+        return {
+          frames: played,
+          duration: dur,
+          count: played.length
+        };
+      }
+      // Playing was refused or produced nothing, so fall through to seeking.
+      try {
+        video.pause();
+        video.currentTime = 0;
+      } catch (e) {}
+    }
+
     const frames = [];
+    let misses = 0;
     for (let i = 0; i < count; i++) {
+      if (cancelled && cancelled()) break;
       const t = Math.min(dur * ((i + 0.5) / count), Math.max(dur - 0.05, 0));
-      await new Promise(resolve => {
-        video.onseeked = resolve;
-        video.currentTime = t;
+      // Long recordings sometimes never fire seeked. Waiting forever on one
+      // frame is worse than going on without it.
+      const landed = await new Promise(function (resolve) {
+        let settled = false;
+        const give = setTimeout(function () {
+          if (!settled) {
+            settled = true;
+            resolve(false);
+          }
+        }, 12000);
+        video.onseeked = function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(give);
+          resolve(true);
+        };
+        try {
+          video.currentTime = t;
+        } catch (e) {
+          if (!settled) {
+            settled = true;
+            clearTimeout(give);
+            resolve(false);
+          }
+        }
       });
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      frames.push(canvas.toDataURL("image/jpeg", fast ? 0.55 : 0.72).split(",")[1]);
+      video.onseeked = null;
+      if (!landed) {
+        misses++;
+        // A few stubborn spots are fine. A wall of them means this file is
+        // not going to cooperate, so stop and use what did come through.
+        if (misses >= 3) break;
+        continue;
+      }
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        frames.push(canvas.toDataURL("image/jpeg", fast ? 0.55 : 0.72).split(",")[1]);
+      } catch (e) {
+        misses++;
+      }
       if (onProgress) onProgress(i + 1, count);
+    }
+    if (!frames.length) {
+      throw new Error("Could not read any frames from that file. Long videos straight off a phone are the usual cause \u2014 trimming it, or exporting at 1080p instead of 4K, usually fixes it.");
     }
     return {
       frames: frames,
       duration: dur,
-      count: count
+      count: frames.length
     };
   } finally {
     if (timer) clearTimeout(timer);
@@ -4000,6 +4329,7 @@ function Train({
   const [text, setText] = useState("");
   const [files, setFiles] = useState([]);
   const field = useRef(null);
+  const stop = useRef(false);
   const [busy, setBusy] = useState("");
   const [ready, setReady] = useState(!!aiKey());
   const input = useRef(null);
@@ -4087,6 +4417,7 @@ function Train({
       return;
     }
     if (!clip && !pro) onAsk();
+    stop.current = false;
     setText("");
     clearBar();
     setMsgs(m => m.concat([{
@@ -4105,6 +4436,67 @@ function Train({
           onOutOfClips();
           return;
         }
+        // Deep on a single clip: send the film itself so Google reads all of
+        // it. Small ones travel inside the request, big ones are uploaded.
+        if (!fast && pro && clips.length === 1) {
+          const one = clips[0];
+          let media = null;
+          if (one.size <= VIDEO_WHOLE_MAX) {
+            setBusy("Sending your film whole\u2026");
+            const b64 = await fileToBase64(one, function (done, all) {
+              setBusy("Sending your film whole " + Math.round(done / all * 100) + "%");
+            });
+            media = VID(b64, one.type);
+          } else {
+            const started = Date.now();
+            function mins() {
+              const secs = Math.round((Date.now() - started) / 1000);
+              return secs < 60 ? secs + "s" : Math.floor(secs / 60) + "m " + secs % 60 + "s";
+            }
+            setBusy("Uploading your film\u2026");
+            let up = null;
+            try {
+              up = await uploadDirect(one, function (done, all) {
+                setBusy("Uploading your film " + Math.round(done / all * 100) + "% \u00b7 " + mins());
+              }, function () {
+                setBusy("Google is reading your film \u00b7 " + mins());
+              });
+            } catch (e) {
+              // Some browsers will not post straight to Google. Go through
+              // the worker instead, which caps out around 95MB.
+              if (String(e.message).indexOf("direct-blocked") === -1) throw e;
+              if (one.size > VIDEO_UPLOAD_MAX) {
+                throw new Error("That file is " + Math.round(one.size / 1024 / 1024) + "MB and this browser will not upload it directly. Export it at 1080p and it will go through.");
+              }
+              setBusy("Uploading your film\u2026");
+              up = await uploadWhole(one, function (done, all) {
+                setBusy("Uploading your film " + Math.round(done / all * 100) + "% \u00b7 " + mins());
+              });
+            }
+            setBusy("Breaking it down \u00b7 " + mins());
+            media = FD(up.file_uri, up.mime_type);
+          }
+          onUse();
+          parts = [media, T("You are an elite basketball skills coach. You have been sent film of one player. " + "Watch all of it. Nobody told you what it is \u2014 work it out. If it is a full session or " + "game, cover it in order and say roughly when things happen.\n\n" + coachExtra() + "\n\nPlain text. Short ## headings and - bullets. Name what you actually see, never invent detail.")];
+          setBusy("Breaking it down\u2026");
+          const whole = await ai(parts, {
+            history: slimHistory(history),
+            fast: false
+          });
+          setMsgs(m => m.concat([{
+            who: "coach",
+            text: whole
+          }]));
+          setHistory(h => h.concat([{
+            role: "user",
+            parts: [T(said || "Break down this clip.")]
+          }, {
+            role: "model",
+            parts: [T(whole)]
+          }]));
+          setBusy("");
+          return;
+        }
         // Two clips share the frame budget, so neither swamps the other.
         const grabs = [];
         for (let ci = 0; ci < clips.length; ci++) {
@@ -4112,7 +4504,9 @@ function Train({
           // The more clips there are, the fewer stills each one can spare.
           const one = await grabFrames(clips[ci], function (i, nn) {
             setBusy("Watching your film " + label + Math.round(i / nn * 100) + "%");
-          }, clips.length > 1 ? true : fast, pro, clips.length);
+          }, clips.length > 1 ? true : fast, pro, clips.length, function () {
+            return stop.current;
+          });
           grabs.push(one);
           onUse();
         }
@@ -4344,7 +4738,13 @@ function Train({
     text: m.text
   }))), busy && /*#__PURE__*/React.createElement("p", {
     className: "fr-load"
-  }, busy), /*#__PURE__*/React.createElement("div", {
+  }, busy, /*#__PURE__*/React.createElement("button", {
+    className: "fr-stop",
+    onClick: function () {
+      stop.current = true;
+      setBusy("Finishing with what it has\u2026");
+    }
+  }, "Stop")), /*#__PURE__*/React.createElement("div", {
     ref: bottom
   })), /*#__PURE__*/React.createElement("input", {
     ref: input,
@@ -4452,6 +4852,25 @@ function App() {
   // Reading downwards hides the bar. The smallest move back up brings it
   // straight back, so Players and Games are never more than a flick away.
   const [navHide, setNavHide] = useState(false);
+  // Swap the hour long id token for a fresh one before it lapses, so an
+  // account stays signed in and keeps syncing instead of quietly going stale.
+  useEffect(function () {
+    if (!user || !user.refresh) return;
+    let alive = true;
+    async function tick() {
+      const next = await refreshSession(user);
+      if (alive && next) {
+        setUser(next);
+        saveSession(next);
+      }
+    }
+    if (!user.at || Date.now() - user.at > 40 * 60 * 1000) tick();
+    const id = setInterval(tick, 40 * 60 * 1000);
+    return function () {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [user && user.uid, user && user.refresh]);
   useEffect(function () {
     function top(e) {
       // Whichever thing is actually scrolling: the page, or a panel inside it.
