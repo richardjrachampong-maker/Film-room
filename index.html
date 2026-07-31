@@ -36,7 +36,11 @@ body { background: #EDF0F2; }
 
 .fr { position:relative; min-height:100%; background:var(--bg); color:var(--text);
   font-family:'Barlow',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
-  overflow-x:hidden; transition:background .35s ease,color .35s ease; }
+  transition:background .35s ease,color .35s ease; }
+/* No overflow rule belongs here. overflow-x on its own turns overflow-y
+   into auto, which makes this a scroll container, and a sticky nav inside
+   a container that never scrolls simply never sticks. The page bodies
+   carry the horizontal guard instead. */
 .fr *, .fr *::before, .fr *::after { box-sizing:border-box; }
 
 .fr-amb { position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
@@ -683,10 +687,11 @@ body { background: #EDF0F2; }
   /* A link scrolled past the edge fades instead of being chopped mid-word. */
   .fr-links { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent);
     mask-image:linear-gradient(to right, #000 calc(100% - 14px), transparent); }
-  /* Nothing anywhere may make the page wider than the phone. This uses
-     clip rather than hidden on purpose: hidden makes an ancestor into a
-     scroll container, which stops the nav sticking to the top. */
-  .fr, .fr-shell { overflow-x:clip; }
+  /* Nothing may make the page wider than the phone. This goes on the page
+     bodies, never on an ancestor of the nav: overflow-x on its own turns
+     overflow-y into auto, which makes a scroll container and takes the
+     sticky nav with it. */
+  .fr-blank, .fr-chatpage { overflow-x:clip; }
   .fr-tray { right:12px; max-width:calc(100vw - 24px); }
   .fr-trayin { overflow-x:auto; scrollbar-width:none; }
   .fr-trayin::-webkit-scrollbar { display:none; }
@@ -717,7 +722,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b79</div>
+<div class="fr-build">b80</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
