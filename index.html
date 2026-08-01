@@ -564,10 +564,12 @@ body { background: #EDF0F2; }
 .fr-clipsleft[data-low="1"], .fr-clipsleft[data-low="1"] i { color:var(--amber); }
 .fr-meter[data-low="1"] { color:var(--amber); }
 .fr-meter[data-low="1"] .fr-asksleft { color:var(--amber); }
-.fr-unlimited { display:inline-flex; align-items:center; margin-right:8px; flex:0 0 auto;
-  font-family:'Outfit',sans-serif; font-size:11px; letter-spacing:.1em;
+.fr-unlimited { display:inline-flex; align-items:center; gap:5px; margin-right:8px;
+  flex:0 0 auto; font-family:'Outfit',sans-serif; font-size:11px; letter-spacing:.1em;
   text-transform:uppercase; color:var(--amber); font-weight:600;
-  border:1px solid var(--amber); border-radius:999px; padding:4px 10px; }
+  border:1px solid var(--amber); border-radius:999px; padding:4px 10px; white-space:nowrap; }
+.fr-unlimited i { font-style:normal; opacity:.5; }
+.fr-unlimited[data-ending="1"] { color:var(--dim); border-color:var(--edge-2); }
 @media (max-width:760px){ .fr-unlimited { font-size:10px; padding:3px 8px; letter-spacing:.06em; } }
 .fr-stop { appearance:none; cursor:pointer; margin-left:12px; border:1px solid var(--edge);
   background:none; color:var(--dim); border-radius:999px; padding:4px 12px;
@@ -750,7 +752,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b109</div>
+<div class="fr-build">b110</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2999,22 +3001,44 @@ function LockedDeep({
    Hidden for Pro, since there is nothing to count. */
 function AskMeter({
   asks,
+  used,
+  pro,
+  ending,
   onFull
 }) {
+  // Nothing to count for Pro, so the space says so instead. A cancelled
+  // subscription still has Pro, but only until the paid period runs out.
+  if (pro) {
+    let until = "";
+    if (ending) {
+      try {
+        until = new Date(ending).toLocaleDateString();
+      } catch (e) {}
+    }
+    return /*#__PURE__*/React.createElement("span", {
+      className: "fr-unlimited",
+      "data-ending": ending ? "1" : "0",
+      title: ending ? "Pro until " + (until || "the end of the period you have paid for") : "Unlimited film and questions"
+    }, ending ? /*#__PURE__*/React.createElement(React.Fragment, null, "Pro", /*#__PURE__*/React.createElement("i", null, "\u00b7"), "Limited") : "Unlimited");
+  }
   const left = Math.max(0, FREE_ASKS - asks);
+  const clipsLeft = Math.max(0, FREE_CLIPS - (used || 0));
   const frac = Math.min(1, asks / FREE_ASKS);
   const low = left <= Math.ceil(FREE_ASKS * 0.1); // the last tenth
   const out = left <= 0;
   const r = 13;
   const c = 2 * Math.PI * r;
-  const label = out ? "No questions left today, they come back tomorrow" : left + " of " + FREE_ASKS + " questions left today";
+  const label = (out ? "No questions left today" : left + " of " + FREE_ASKS + " questions left today") + ", and " + clipsLeft + " of " + FREE_CLIPS + " film breakdowns. It all comes back tomorrow.";
   return /*#__PURE__*/React.createElement("button", {
     className: "fr-meter fr-meterwide",
     "data-low": low ? "1" : "0",
     onClick: onFull,
     title: label,
     "aria-label": label
-  }, /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-clipsleft",
+    "data-low": clipsLeft <= 0 ? "1" : "0"
+  }, clipsLeft, /*#__PURE__*/React.createElement("i", null, "\u25B6")), /*#__PURE__*/React.createElement("svg", {
     width: "32",
     height: "32",
     viewBox: "0 0 32 32",
@@ -3243,7 +3267,7 @@ function UpgradeCard({
     style: {
       margin: "18px 0 0"
     }
-  }, "Asking the coach questions stays free and unlimited, and so does everything in Players and Games."), STRIPE_LINK ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("a", {
+  }, "Browsing players, watching full games and saving anyone you like all stay free."), STRIPE_LINK ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("a", {
     className: "fr-btn fr-full",
     href: payLink,
     target: "_blank",
@@ -5465,6 +5489,8 @@ function App() {
     asks: profile && profile.asks || 0,
     used: profile && profile.used || 0,
     pro: isPro(user, profile),
+    // An admin is never ending: there is no subscription behind it.
+    ending: !isAdmin(user) && profile && profile.proEnds || "",
     onFull: () => setShowUpgrade(true)
   }), /*#__PURE__*/React.createElement("button", {
     className: "fr-sun fr-gear",
