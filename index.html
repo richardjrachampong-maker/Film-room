@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b91</div>
+<div class="fr-build">b94</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1064,7 +1064,7 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 // The AI worker with model fallback. The old one is still deployed at
 // https://filmroom.richardachampong075.workers.dev if this ever needs
 // swapping back.
-const AI_PROXY = "https://filmroomai5.richardachampong075.workers.dev";
+const AI_PROXY = "https://filmroomai6.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -2110,6 +2110,11 @@ const VIDEO_WHOLE_MAX = 13 * 1024 * 1024;
 /* Bigger than a request can carry, so it goes to Google's file service
    through the worker, and what comes back is a reference to point the model
    at. Cloudflare will not take more than about 100MB in one go. */
+/* Above this, uploading costs more time than it is worth. Google only looks
+   at about a frame a second anyway, and this device can pull those out in a
+   couple of minutes instead of spending an hour sending bytes that get
+   thrown away on arrival. */
+const UPLOAD_WORTH_IT = 350 * 1024 * 1024;
 const VIDEO_UPLOAD_MAX = 95 * 1024 * 1024;
 const FD = (uri, mime) => ({
   file_data: {
@@ -2122,7 +2127,8 @@ const FD = (uri, mime) => ({
    accept bytes straight from a web page, and Cloudflare will not take a
    whole film in one request, so the film is cut into pieces small enough
    for both. Nothing is held anywhere: each piece passes straight through. */
-const CHUNK = 12 * 1024 * 1024;
+// Google accepts eight megabytes per piece and no more.
+const CHUNK = 8 * 1024 * 1024;
 
 async function uploadChunked(file, onProgress, onStage) {
   const base = AI_PROXY.replace(/\/$/, "");
@@ -2140,7 +2146,9 @@ async function uploadChunked(file, onProgress, onStage) {
   }
 
   let made = null;
-  for (let offset = 0; offset < file.size; offset += CHUNK) {
+  let offset = 0;
+  let stuck = 0;
+  while (offset < file.size) {
     const end = Math.min(offset + CHUNK, file.size);
     const last = end >= file.size;
     const res = await fetch(base + "/upload-chunk", {
@@ -2153,9 +2161,35 @@ async function uploadChunked(file, onProgress, onStage) {
       body: file.slice(offset, end)
     });
     const d = await res.json();
-    if (d && d.error) throw new Error(d.error.message || "That upload stopped part way.");
-    if (onProgress) onProgress(end, file.size);
-    if (last) made = d.file;
+
+    if (last && d && d.file) {
+      made = d.file;
+      if (onProgress) onProgress(file.size, file.size);
+      break;
+    }
+
+    // Google says how much it really has. Trust that over our own count,
+    // because a piece can be taken only in part.
+    const held = d && typeof d.received === "number" ? d.received : null;
+    if (held !== null && held !== offset + (end - offset)) {
+      if (held <= offset) {
+        // No progress at all. Try again a couple of times, then give up
+        // rather than looping forever.
+        stuck++;
+        if (stuck > 3) throw new Error("The upload stopped moving at " + Math.round(offset / 1024 / 1024) + "MB. A smaller export usually goes through.");
+      } else {
+        stuck = 0;
+      }
+      offset = held;
+    } else if (d && d.error) {
+      throw new Error(d.error.message || "That upload stopped part way.");
+    } else if (d && d.ok === false) {
+      throw new Error("Google refused a piece of that upload" + (d.detail ? ": " + d.detail : "."));
+    } else {
+      offset = end;
+      stuck = 0;
+    }
+    if (onProgress) onProgress(Math.min(offset, file.size), file.size);
   }
   if (!made || !made.name) throw new Error("Google did not accept that file.");
 
@@ -4028,7 +4062,9 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
     }
   }
   // Aim to be done in about 75 seconds, within what the browser allows.
-  video.playbackRate = Math.max(1, Math.min(16, dur / 75));
+  // Fast enough to be done in a couple of minutes, slow enough that the
+  // decoder can keep up and actually paint the frames we are grabbing.
+  video.playbackRate = Math.max(1, Math.min(16, dur / 150));
   video.muted = true;
   try {
     await video.play();
@@ -4130,18 +4166,20 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
     // up to what one request can carry.
     // Quick stays a glance. Deep reads the whole thing densely, because
     // playing the file makes stills cheap enough to take a lot of them.
-    let count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(12, Math.min(120, Math.round(dur)));
+    // Deep aims at a frame a second, which is what Google itself looks at,
+    // up to what one request can carry.
+    let count = fast ? Math.max(4, Math.min(6, Math.round(dur / 4))) : Math.max(12, Math.min(400, Math.round(dur)));
     // One request can only carry so many images, however many clips there are.
     if (sharing && sharing > 1) count = Math.max(3, Math.round(120 / sharing));
     const canvas = document.createElement("canvas");
-    // Past about sixty stills the request matters more than the detail in
-    // any one of them, so they get a little smaller to pay for the density.
-    const wide = fast ? 400 : count > 60 ? 448 : 560;
+    // The more stills there are, the smaller each has to be for them all to
+    // fit in one request.
+    const wide = fast ? 400 : count > 150 ? 384 : count > 60 ? 448 : 560;
     const scale = wide / video.videoWidth;
     canvas.width = wide;
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
-    const quality = fast ? 0.55 : count > 60 ? 0.62 : 0.72;
+    const quality = fast ? 0.55 : count > 150 ? 0.5 : count > 60 ? 0.62 : 0.72;
 
     // Anything but a handful of stills is faster to take while it plays.
     if (count > 8) {
@@ -4503,7 +4541,7 @@ function Train({
         }
         // Deep on a single clip: send the film itself so Google reads all of
         // it. Small ones travel inside the request, big ones are uploaded.
-        if (!fast && pro && clips.length === 1) {
+        if (!fast && pro && clips.length === 1 && clips[0].size <= UPLOAD_WORTH_IT) {
           const one = clips[0];
           let media = null;
           if (one.size <= VIDEO_WHOLE_MAX) {
