@@ -739,7 +739,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b105</div>
+<div class="fr-build">b108</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2832,7 +2832,12 @@ function Settings({
     }
   }, cancelling === "working" ? "Cancelling\u2026" : "Cancel")), cancelling === "sure" && /*#__PURE__*/React.createElement("div", {
     className: "fr-sure"
-  }, /*#__PURE__*/React.createElement("p", null, "Are you sure? You keep Pro until the month you have paid for runs out, and you will not be charged again."), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("p", null, "Are you sure? You keep Pro until the month you have paid for runs out, and you will not be charged again."), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "-4px 0 10px",
+      fontSize: "13px"
+    }
+  }, "Stripe will ask which email. Use ", /*#__PURE__*/React.createElement("b", null, user && user.email || "the address you paid with"), "."), /*#__PURE__*/React.createElement("div", {
     className: "fr-surerow"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
@@ -3313,10 +3318,10 @@ function AdminPanel({
       } else {
         // Everything is one list now, so only this sport is taken out, and
         // the account copy is rewritten to match.
-        const kept = loadChats().filter(function (c) {
+        const kept = loadChats(user && user.uid).filter(function (c) {
           return (c.sport || "basketball") !== SPORT;
         });
-        window.localStorage.setItem(CHATS_KEY, JSON.stringify(kept));
+        saveChats(user && user.uid, kept);
         await pushChats(user, null, kept);
         say("Cleared the " + SPORTS[SPORT].label.toLowerCase() + " chats. Reload to see it.");
       }
@@ -3535,6 +3540,7 @@ function Library({
   items,
   pool,
   filters,
+  saved,
   onOpen,
   onSearch
 }) {
@@ -3544,6 +3550,36 @@ function Library({
   const q = term.trim().toLowerCase();
   const searchable = pool || items;
   let list = filter === "All" ? items : items.filter(r => r.g === filter);
+  // Anyone they have saved comes first, in the order they saved them, and a
+  // saved player who is not on the shortlist is added so they are reachable.
+  const savedList = saved || [];
+  if (savedList.length) {
+    const rank = {};
+    savedList.forEach(function (nm, i) {
+      rank[nm] = i;
+    });
+    const known = {};
+    list.forEach(function (r) {
+      known[r.n] = 1;
+    });
+    const missing = savedList.filter(function (nm) {
+      return !known[nm];
+    }).map(function (nm) {
+      const found = (searchable || []).filter(function (r) {
+        return r.n === nm;
+      })[0];
+      return found || {
+        n: nm,
+        g: "Saved"
+      };
+    });
+    list = missing.concat(list).slice();
+    list.sort(function (a, b) {
+      const ai = rank[a.n] === undefined ? 1e6 : rank[a.n];
+      const bi = rank[b.n] === undefined ? 1e6 : rank[b.n];
+      return ai - bi;
+    });
+  }
   if (q) {
     const hit = searchable.filter(r => r.n.toLowerCase().indexOf(q) > -1 || (r.t || "").toLowerCase().indexOf(q) > -1 || (D.pre[r.n] || "").toLowerCase().indexOf(q) > -1);
     hit.sort((a, b) => {
@@ -3657,6 +3693,7 @@ function Library({
 }
 function Players(props) {
   return /*#__PURE__*/React.createElement(Library, {
+    saved: props.saved,
     title: "Players",
     blurb: "Search " + D.pool.length + " players by name, or browse the shortlist below. Tap anyone for film study, highlights, full games and their college tape.",
     placeholder: "Search a player, school, or skill",
@@ -3930,44 +3967,63 @@ function Film({
 
 /* One history, not one per sport. The sport a chat belongs to is written on
    the chat itself, so switching sport no longer hides everything. */
-const CHATS_KEY = "fr-chats-all";
-const OLD_KEYS = ["fr-chats-basketball", "fr-chats-soccer", "fr-chats-football", "fr-chats-tennis", "fr-chats-volleyball"];
+/* History belongs to an account, not to a browser. Two people signing in on
+   the same iPad must not see each other's chats, and signing out must not
+   leave them lying around. Signed out, they are kept under "guest". */
+const OLD_KEYS = ["fr-chats-all", "fr-chats-basketball", "fr-chats-soccer", "fr-chats-football", "fr-chats-tennis", "fr-chats-volleyball"];
 
-function loadChats(sport) {
-  let all = [];
-  try {
-    all = JSON.parse(window.localStorage.getItem(CHATS_KEY) || "[]");
-  } catch (e) {
-    all = [];
-  }
-  // Anything saved under the old per sport keys is brought across once.
-  if (!all.length) {
-    OLD_KEYS.forEach(function (k) {
-      try {
-        const old = JSON.parse(window.localStorage.getItem(k) || "[]");
-        const which = k.replace("fr-chats-", "");
-        old.forEach(function (c) {
-          if (c && c.id) all.push(Object.assign({
-            sport: which
-          }, c));
-        });
-      } catch (e) {}
-    });
-    if (all.length) {
-      all.sort(function (a, b) {
-        return (b.at || 0) - (a.at || 0);
-      });
-      try {
-        window.localStorage.setItem(CHATS_KEY, JSON.stringify(all));
-      } catch (e) {}
-    }
-  }
-  return all;
+function chatsKeyFor(uid) {
+  return "fr-chats:" + (uid || "guest");
 }
-function saveChats(sport, chats) {
+
+/* The old shared keys are brought across once, into whoever is signed in at
+   the time, and then removed so they cannot come back or leak sideways. */
+function migrateOldChats(uid) {
+  let found = [];
+  OLD_KEYS.forEach(function (k) {
+    try {
+      const old = JSON.parse(window.localStorage.getItem(k) || "[]");
+      if (!Array.isArray(old) || !old.length) return;
+      const which = k === "fr-chats-all" ? null : k.replace("fr-chats-", "");
+      old.forEach(function (c) {
+        if (c && c.id) found.push(which ? Object.assign({
+          sport: which
+        }, c) : c);
+      });
+    } catch (e) {}
+    try {
+      window.localStorage.removeItem(k);
+    } catch (e) {}
+  });
+  if (!found.length) return [];
+  found.sort(function (a, b) {
+    return (b.at || 0) - (a.at || 0);
+  });
+  try {
+    const key = chatsKeyFor(uid);
+    const now = JSON.parse(window.localStorage.getItem(key) || "[]");
+    const merged = mergeChats(now, found);
+    window.localStorage.setItem(key, JSON.stringify(merged));
+    return merged;
+  } catch (e) {
+    return found;
+  }
+}
+
+function loadChats(uid) {
+  const moved = migrateOldChats(uid);
+  if (moved.length) return moved;
+  try {
+    const out = JSON.parse(window.localStorage.getItem(chatsKeyFor(uid)) || "[]");
+    return Array.isArray(out) ? out : [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveChats(uid, chats) {
   try {
     // Nothing is dropped for being old. It goes when they delete it.
-    window.localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
+    window.localStorage.setItem(chatsKeyFor(uid), JSON.stringify(chats));
   } catch (e) {}
 }
 
@@ -4047,7 +4103,7 @@ async function pullChats(user, sport) {
    simply brings it all back. */
 async function wipeChats(user) {
   try {
-    window.localStorage.removeItem(CHATS_KEY);
+    window.localStorage.removeItem(chatsKeyFor(user && user.uid));
     OLD_KEYS.forEach(function (k) {
       window.localStorage.removeItem(k);
     });
@@ -4653,7 +4709,7 @@ function Train({
       return c.id !== id;
     }));
     setChats(next);
-    saveChats(sport, next);
+    saveChats(user && user.uid, next);
     rememberOpen(sport, id);
     // Debounced so a fast back and forth is one write, not ten.
     if (pushTimer.current) clearTimeout(pushTimer.current);
@@ -4680,7 +4736,7 @@ function Train({
       return c.id !== id;
     });
     setChats(next);
-    saveChats(sport, next);
+    saveChats(user && user.uid, next);
     // Sent straight up, not debounced: a deletion that has not reached the
     // account yet is a deletion that comes back.
     pushChats(user, sport, next);
@@ -5159,19 +5215,21 @@ function App() {
   // History lives here, above the screens, so switching to Players and back
   // does not throw it away and reload it.
   const [chats, setChats] = useState(function () {
-    return loadChats();
+    return loadChats(null);
   });
   // Whatever the account holds is merged in, on the way in and whenever they
   // come back to the tab, so two devices end up with the same history.
   useEffect(function () {
     if (!user) return;
     let dead = false;
+    // Signing in or switching account swaps the whole history over.
+    setChats(loadChats(user.uid));
     function sync() {
       pullChats(user).then(function (remote) {
         if (dead) return;
         setChats(function (local) {
           const merged = mergeChats(local, remote || []);
-          saveChats(null, merged);
+          saveChats(user.uid, merged);
           // Always send the merged list back up. If the account was empty,
           // this is what seeds it; if it was behind, this catches it up.
           pushChats(user, null, merged);
@@ -5441,6 +5499,7 @@ function App() {
     go: go,
     sport: sport
   }), top.page === "players" && /*#__PURE__*/React.createElement(Players, {
+    saved: saved,
     onOpen: openItem,
     onSearch: query => openFilm(query, "any")
   }), top.page === "games" && /*#__PURE__*/React.createElement(GamesPage, {
