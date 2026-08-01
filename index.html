@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b95</div>
+<div class="fr-build">b96</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4049,7 +4049,10 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
   // moves at all. The gap has to stay tight enough that we still come away
   // with a proper spread of it, whatever the motion score says.
   const maxGap = step * 1.35;
+  // Start ready to take one, so a film that never satisfies any condition
+  // still comes away with frames rather than none.
   let lastAt = -1e9;
+  let taken = 0;
 
   function motionAt() {
     try {
@@ -4075,7 +4078,16 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
   // Aim to be done in about 75 seconds, within what the browser allows.
   // Fast enough to be done in a couple of minutes, slow enough that the
   // decoder can keep up and actually paint the frames we are grabbing.
-  video.playbackRate = Math.max(1, Math.min(16, dur / 150));
+  // Browsers quietly refuse rates they do not support, so it is checked.
+  const wanted = Math.max(1, Math.min(8, dur / 150));
+  try {
+    video.playbackRate = wanted;
+  } catch (e) {}
+  if (!video.playbackRate || video.playbackRate < 1) {
+    try {
+      video.playbackRate = 2;
+    } catch (e) {}
+  }
   video.muted = true;
   try {
     await video.play();
@@ -4092,8 +4104,13 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
       } catch (e) {}
       resolve();
     }
-    // However slow the file is, this cannot run forever.
-    const cutoff = setTimeout(finish, 180000);
+    // However slow the file is, this cannot run forever. Whatever has been
+    // gathered by then is what gets used.
+    const cutoff = setTimeout(finish, 150000);
+    // If frames simply never arrive, stop early rather than waiting it out.
+    const early = setTimeout(function () {
+      if (!frames.length) finish();
+    }, 20000);
     function onFrame(now, meta) {
       if (stopped) return;
       const t = meta && meta.mediaTime !== undefined ? meta.mediaTime : video.currentTime;
@@ -4114,6 +4131,7 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
       }
       if (frames.length >= want || video.ended || cancelled && cancelled()) {
         clearTimeout(cutoff);
+        clearTimeout(early);
         finish();
         return;
       }
@@ -4121,6 +4139,7 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
     }
     video.onended = function () {
       clearTimeout(cutoff);
+      clearTimeout(early);
       finish();
     };
     video.requestVideoFrameCallback(onFrame);
@@ -4245,9 +4264,10 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
       video.onseeked = null;
       if (!landed) {
         misses++;
-        // A few stubborn spots are fine. A wall of them means this file is
-        // not going to cooperate, so stop and use what did come through.
-        if (misses >= 3) break;
+        // A wall of failed seeks means the file will not cooperate. But if
+        // nothing at all has landed yet, keep trying a while longer: the
+        // first seek into a long recording is often the slow one.
+        if (misses >= (frames.length ? 3 : 8)) break;
         continue;
       }
       try {
