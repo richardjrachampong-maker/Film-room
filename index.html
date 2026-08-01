@@ -9,6 +9,10 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%23EDF0F2'/%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23D68910'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
 <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%23EDF0F2'/%3E%3Cpath%20d='M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4'%20fill='none'%20stroke='%23D68910'%20stroke-width='9'%20stroke-linecap='round'/%3E%3Ccircle%20cx='32'%20cy='32'%20r='10'%20fill='%230B1215'/%3E%3C/svg%3E" />
 <meta name="apple-mobile-web-app-title" content="Film Room" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="manifest" href='data:application/manifest+json,{"name":"Film Room","short_name":"Film Room","description":"See what you%27re actually doing. Break down your film and get the drills that fix it.","start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"%23EDF0F2","theme_color":"%23EDF0F2","icons":[{"src":"data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Crect%20width=%2764%27%20height=%2764%27%20rx=%2714%27%20fill=%27%23EDF0F2%27/%3E%3Cpath%20d=%27M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4%27%20fill=%27none%27%20stroke=%27%23D68910%27%20stroke-width=%279%27%20stroke-linecap=%27round%27/%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2710%27%20fill=%27%230B1215%27/%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml","purpose":"any"},{"src":"data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2064%2064%27%3E%3Crect%20width=%2764%27%20height=%2764%27%20fill=%27%23EDF0F2%27/%3E%3Cg%20transform=%27translate(32,32)%20scale(0.62)%20translate(-32,-32)%27%3E%3Cpath%20d=%27M45.8%2015.5%20A25%2021%20-14%201%201%2020.5%2012.4%27%20fill=%27none%27%20stroke=%27%23D68910%27%20stroke-width=%279%27%20stroke-linecap=%27round%27/%3E%3Ccircle%20cx=%2732%27%20cy=%2732%27%20r=%2710%27%20fill=%27%230B1215%27/%3E%3C/g%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml","purpose":"maskable"}]}' />
 <meta name="theme-color" content="#EDF0F2" />
 
 
@@ -726,7 +730,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b99</div>
+<div class="fr-build">b100</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3236,12 +3240,17 @@ function AdminPanel({
   function clearChats(all) {
     try {
       if (all) {
-        SPORT_KEYS.forEach(function (k) {
-          window.localStorage.removeItem(chatKey(k));
+        window.localStorage.removeItem(CHATS_KEY);
+        OLD_KEYS.forEach(function (k) {
+          window.localStorage.removeItem(k);
         });
         say("Cleared every chat, in every sport.");
       } else {
-        window.localStorage.removeItem(chatKey(SPORT));
+        // Everything lives in one list now, so only this sport is taken out.
+        const kept = loadChats().filter(function (c) {
+          return (c.sport || "basketball") !== SPORT;
+        });
+        window.localStorage.setItem(CHATS_KEY, JSON.stringify(kept));
         say("Cleared the " + SPORTS[SPORT].label.toLowerCase() + " chats.");
       }
     } catch (e) {}
@@ -3852,50 +3861,71 @@ function Film({
 
 /* ------------------- CHAT STORAGE -------------------- */
 
-function chatKey(sport) {
-  return "fr-chats-" + (sport || "basketball");
-}
+/* One history, not one per sport. The sport a chat belongs to is written on
+   the chat itself, so switching sport no longer hides everything. */
+const CHATS_KEY = "fr-chats-all";
+const OLD_KEYS = ["fr-chats-basketball", "fr-chats-soccer", "fr-chats-football", "fr-chats-tennis", "fr-chats-volleyball"];
+
 function loadChats(sport) {
+  let all = [];
   try {
-    return JSON.parse(window.localStorage.getItem(chatKey(sport)) || "[]");
+    all = JSON.parse(window.localStorage.getItem(CHATS_KEY) || "[]");
   } catch (e) {
-    return [];
+    all = [];
   }
+  // Anything saved under the old per sport keys is brought across once.
+  if (!all.length) {
+    OLD_KEYS.forEach(function (k) {
+      try {
+        const old = JSON.parse(window.localStorage.getItem(k) || "[]");
+        const which = k.replace("fr-chats-", "");
+        old.forEach(function (c) {
+          if (c && c.id) all.push(Object.assign({
+            sport: which
+          }, c));
+        });
+      } catch (e) {}
+    });
+    if (all.length) {
+      all.sort(function (a, b) {
+        return (b.at || 0) - (a.at || 0);
+      });
+      try {
+        window.localStorage.setItem(CHATS_KEY, JSON.stringify(all));
+      } catch (e) {}
+    }
+  }
+  return all;
 }
 function saveChats(sport, chats) {
   try {
     // Nothing is dropped for being old. It goes when they delete it.
-    window.localStorage.setItem(chatKey(sport), JSON.stringify(chats));
+    window.localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
   } catch (e) {}
 }
 
 /* Leaving Train for Players or Games takes the chat off screen, so the
    chat that was open is remembered and put back when they return. */
-function openKey(sport) {
-  return "fr-openchat-" + (sport || "basketball");
-}
+/* Which chat is open lives in memory only. Going to Players and back keeps
+   it, because the page never reloads. Opening the site fresh starts a new
+   one, which is what you want when you come back to it tomorrow. */
+let openChatId = null;
 function rememberOpen(sport, id) {
-  try {
-    if (id) window.localStorage.setItem(openKey(sport), id);else window.localStorage.removeItem(openKey(sport));
-  } catch (e) {}
+  openChatId = id || null;
 }
 function lastOpen(sport, chats) {
-  try {
-    const id = window.localStorage.getItem(openKey(sport));
-    if (!id) return null;
-    return chats.filter(function (c) {
-      return c.id === id;
-    })[0] || null;
-  } catch (e) {
-    return null;
-  }
+  if (!openChatId) return null;
+  return chats.filter(function (c) {
+    return c.id === openChatId;
+  })[0] || null;
 }
 
 /* Chats also live on the account, so signing in on a phone brings over
    what was said on the iPad. Kept as one JSON string per sport. */
 function chatField(sport) {
-  return "chats_" + String(sport || "basketball").replace(/[^a-z0-9]/gi, "");
+  return "chats_all";
 }
+const OLD_FIELDS = ["chats_basketball", "chats_soccer", "chats_football", "chats_tennis", "chats_volleyball"];
 
 /* Trimmed so the account document cannot grow without limit. */
 function packChats(chats) {
@@ -3921,10 +3951,26 @@ async function pullChats(user, sport) {
     });
     if (!res.ok) return null;
     const f = (await res.json()).fields || {};
+    let out = [];
     const raw = (f[chatField(sport)] || {}).stringValue;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) out = parsed;
+    }
+    // Whatever was written under the old per sport fields comes along too.
+    OLD_FIELDS.forEach(function (k) {
+      const r = (f[k] || {}).stringValue;
+      if (!r) return;
+      try {
+        const arr = JSON.parse(r);
+        if (Array.isArray(arr)) arr.forEach(function (c) {
+          if (c && c.id) out.push(Object.assign({
+            sport: k.replace("chats_", "")
+          }, c));
+        });
+      } catch (e) {}
+    });
+    return out.length ? out : null;
   } catch (e) {
     return null;
   }
@@ -4495,6 +4541,7 @@ function Train({
     const entry = {
       id: id,
       at: Date.now(),
+      sport: sport,
       title: titleOf(msgs),
       msgs: msgs,
       history: slimHistory(history)
