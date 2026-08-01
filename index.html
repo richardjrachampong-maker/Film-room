@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b98</div>
+<div class="fr-build">b99</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3971,6 +3971,12 @@ function mergeChats(a, b) {
 
 /* What the coach can remember from before this chat. Newest first, and
    trimmed, because all of it has to travel with every question. */
+/* What the coach does with a piece of film. Shared so every path \u2014 one clip
+   sent whole, several broken into stills \u2014 behaves the same way. */
+function filmRules(said) {
+  return (said ? "THE PLAYER ASKED: \"" + said + "\"\n\n" + "Answer that question first and directly, using what you see in the film as your evidence. " + "Everything else you cover should serve their question rather than sit alongside it.\n\n" : "They sent this without a question, so give them the full read.\n\n") + "HOW TO ANSWER:\n" + "Say what the film actually shows before judging it.\n" + "Be specific about what you can see, and say so when the angle or the blur hides something " + "instead of guessing.\n" + "End with drills \u2014 real sets, real reps, a coaching cue for each \u2014 unless they asked you not to. " + "If they asked only for what is wrong, or only for a grade, or said no drills, then give them " + "exactly that and stop.\n" + "If the film is not someone playing \u2014 a written plan, a whiteboard, a screen recording \u2014 read " + "what it says and answer about that, rather than pretending to watch a player.\n";
+}
+
 function memoryOf(chats, currentId) {
   const past = (chats || []).filter(function (c) {
     return c.id !== currentId && (c.msgs || []).length;
@@ -4617,7 +4623,7 @@ function Train({
             media = FD(up.file_uri, up.mime_type);
           }
           onUse();
-          parts = [media, T("You are an elite basketball skills coach. You have been sent film of one player. " + "Watch all of it. Nobody told you what it is \u2014 work it out. If it is a full session or " + "game, cover it in order and say roughly when things happen.\n\n" + coachExtra() + "\n\nPlain text. Short ## headings and - bullets. Name what you actually see, never invent detail.")];
+          parts = [media, T("You are an elite " + D.term + " skills coach. You have been sent film. Watch all of it. " + "Nobody told you what it is \u2014 work it out. If it is a full session or game, cover it in " + "order and say roughly when things happen.\n\n" + filmRules(said) + "\n" + coachExtra() + memoryOf(chats, chatId) + "\n\nPlain text. Short ## headings and - bullets. Under 600 words.")];
           setBusy("Breaking it down\u2026");
           // ai() takes turns, each one { role, parts } \u2014 not a bare parts list.
           const wholeTurns = slimHistory(history).concat([{
@@ -4666,7 +4672,7 @@ function Train({
         if (!parts.length) {
           throw new Error("Could not read any usable frames from that file. If it is a screen recording, try trimming it or exporting it as a video first.");
         }
-        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
+        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
       } else {
