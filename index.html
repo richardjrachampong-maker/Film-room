@@ -739,7 +739,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b104</div>
+<div class="fr-build">b105</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2796,7 +2796,12 @@ function Settings({
     "aria-label": "Close"
   }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
-  }, "Account"), /*#__PURE__*/React.createElement("p", {
+  }, "Account"), user && /*#__PURE__*/React.createElement("p", {
+    className: "fr-legal",
+    style: {
+      marginBottom: "6px"
+    }
+  }, "History: " + syncStatus()), /*#__PURE__*/React.createElement("p", {
     className: "fr-legal"
   }, /*#__PURE__*/React.createElement("a", {
     href: "legal.html",
@@ -4073,10 +4078,18 @@ async function wipeChats(user) {
   } catch (e) {}
 }
 
+let syncNote = "not signed in";
+function syncStatus() {
+  return syncNote;
+}
+
 async function pushChats(user, sport, chats) {
-  if (!user || !accountsOn()) return;
+  if (!user || !accountsOn()) {
+    syncNote = "not signed in, so history stays on this device";
+    return;
+  }
   try {
-    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=" + chatField(sport), {
+    const res = await fetch(docPath(user.uid) + "?updateMask.fieldPaths=" + chatField(sport), {
       method: "PATCH",
       headers: {
         Authorization: "Bearer " + user.token,
@@ -4092,7 +4105,15 @@ async function pushChats(user, sport, chats) {
         })()
       })
     });
-  } catch (e) {}
+    if (res.ok) {
+      syncNote = chats.length + " chats saved to your account";
+    } else {
+      const why = (await res.text()).slice(0, 120);
+      syncNote = "the account would not accept it (" + res.status + "). " + why;
+    }
+  } catch (e) {
+    syncNote = "could not reach your account: " + (e && e.message || "unknown");
+  }
 }
 
 /* Two devices, one account: keep every chat, newest wins on a clash. */
@@ -4807,7 +4828,7 @@ function Train({
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra() + memoryOf(chats, chatId))];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Match the size of your answer to the size of what they said. \"ok\", \"thanks\", \"got it\", " + "\"yeah\" and the like are not questions \u2014 reply in a line, the way a coach would, and wait. " + "Only a real question gets a full breakdown with headings and drills.\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra() + memoryOf(chats, chatId))];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
@@ -5147,12 +5168,13 @@ function App() {
     let dead = false;
     function sync() {
       pullChats(user).then(function (remote) {
-        if (dead || !remote) return;
+        if (dead) return;
         setChats(function (local) {
-          const merged = mergeChats(local, remote);
+          const merged = mergeChats(local, remote || []);
           saveChats(null, merged);
-          // Anything this device had that the account did not, goes up.
-          if (merged.length !== remote.length) pushChats(user, null, merged);
+          // Always send the merged list back up. If the account was empty,
+          // this is what seeds it; if it was behind, this catches it up.
+          pushChats(user, null, merged);
           return merged;
         });
       });
