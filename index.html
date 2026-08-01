@@ -752,7 +752,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b110</div>
+<div class="fr-build">b111</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3589,26 +3589,30 @@ function Library({
   let list = filter === "All" ? items : items.filter(r => r.g === filter);
   // Anyone they have saved comes first, in the order they saved them, and a
   // saved player who is not on the shortlist is added so they are reachable.
-  const savedList = saved || [];
+  // Only the ones who belong to this sport. A saved basketball player has
+  // no business sitting at the top of the soccer list.
+  const known = {};
+  (searchable || []).forEach(function (r) {
+    known[r.n] = 1;
+  });
+  const savedList = (saved || []).filter(function (nm) {
+    return known[nm];
+  });
   if (savedList.length) {
     const rank = {};
     savedList.forEach(function (nm, i) {
       rank[nm] = i;
     });
-    const known = {};
+    const onList = {};
     list.forEach(function (r) {
-      known[r.n] = 1;
+      onList[r.n] = 1;
     });
     const missing = savedList.filter(function (nm) {
-      return !known[nm];
+      return !onList[nm];
     }).map(function (nm) {
-      const found = (searchable || []).filter(function (r) {
+      return (searchable || []).filter(function (r) {
         return r.n === nm;
       })[0];
-      return found || {
-        n: nm,
-        g: "Saved"
-      };
     });
     list = missing.concat(list).slice();
     list.sort(function (a, b) {
