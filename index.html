@@ -562,6 +562,15 @@ body { background: #EDF0F2; }
   background:none; color:var(--dim); border-radius:999px; padding:4px 12px;
   font-family:inherit; font-size:12px; letter-spacing:.04em; vertical-align:middle; }
 .fr-stop:hover { color:var(--ink); border-color:var(--edge-2); }
+.fr-legal { margin:-2px 2px 14px; font-size:13px; }
+.fr-legal a { color:var(--dim); text-decoration:none; border-bottom:1px solid var(--edge); }
+.fr-legal a:hover { color:var(--amber); border-color:var(--amber); }
+.fr-sure { margin:10px 2px 0; padding:12px 14px; border-radius:16px;
+  background:var(--glass); border:1px solid var(--edge); }
+.fr-sure p { margin:0 0 10px; font-size:13.5px; color:var(--dim); line-height:1.5; }
+.fr-surerow { display:flex; gap:8px; flex-wrap:wrap; }
+.fr-danger { color:#B3261E; border-color:#B3261E33; }
+.fr-danger:hover { background:#B3261E11; }
 .fr-lockback { display:block; margin:14px auto 0; border:0; background:none;
   color:var(--dim); font-size:13.5px; cursor:pointer; padding:6px 10px;
   border-radius:999px; font-family:inherit; }
@@ -730,7 +739,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b101</div>
+<div class="fr-build">b104</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1097,7 +1106,10 @@ const STRIPE_LINK = "https://buy.stripe.com/6oU6oH0MZbsZfrZcRO5Rm00";
 /* Stripe's own billing page, where a subscriber can cancel for themselves.
    Turn it on at Stripe > Settings > Billing > Customer portal, then paste
    the login link here. Until then, Cancel opens an email instead. */
-const STRIPE_PORTAL = "";
+/* Stripe > Settings > Billing > Customer portal > activate, then paste the
+   login link here. It is a public URL, the same as the payment link, and it
+   lets a subscriber cancel for themselves with no key and no worker. */
+const STRIPE_PORTAL = "https://billing.stripe.com/p/login/6oU6oH0MZbsZfrZcRO5Rm00";
 const SUPPORT_EMAIL = "richard.jr.achampong@gmail.com";
 
 // Fallback used only when GEMINI_KEY is empty (works in Claude's preview).
@@ -2732,6 +2744,42 @@ function Settings({
   onAdmin,
   onClose
 }) {
+  const [cancelling, setCancelling] = useState("");
+  const [cancelled, setCancelled] = useState("");
+  async function doCancel() {
+    // The portal is the simplest path: Stripe handles it, we hold nothing.
+    if (STRIPE_PORTAL) {
+      window.open(STRIPE_PORTAL, "_blank", "noopener");
+      setCancelling("");
+      setCancelled("Opened Stripe to finish cancelling. Enter your email there and they will send you a link. You keep Pro until the month you have paid for runs out.");
+      return;
+    }
+    setCancelling("working");
+    try {
+      const res = await fetch(BILLING_WORKER.replace(/\/$/, "") + "/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          idToken: user && user.token
+        })
+      });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      let when = "";
+      try {
+        if (d.ends_at) when = " You keep Pro until " + new Date(d.ends_at).toLocaleDateString() + ".";
+      } catch (e) {}
+      setCancelled("Cancelled." + when + " You will not be charged again.");
+    } catch (e) {
+      // The billing worker is not reachable, so fall back to asking by mail
+      // rather than leaving them stuck with no way to cancel at all.
+      window.location.href = "mailto:" + SUPPORT_EMAIL + "?subject=" + encodeURIComponent("Cancel Film Room Pro") + "&body=" + encodeURIComponent("Please cancel my Film Room Pro subscription.\n\nMy account email is " + (user && user.email || "") + ".");
+      setCancelled("Opening an email to cancel. Send it and it will be done within a day, and you will not be charged again.");
+    }
+    setCancelling("");
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-sheet",
     onClick: onClose
@@ -2748,7 +2796,13 @@ function Settings({
     "aria-label": "Close"
   }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
-  }, "Account"), user ? /*#__PURE__*/React.createElement("div", {
+  }, "Account"), /*#__PURE__*/React.createElement("p", {
+    className: "fr-legal"
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "legal.html",
+    target: "_blank",
+    rel: "noopener"
+  }, "Terms and privacy")), user ? /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, user.email), /*#__PURE__*/React.createElement("span", null, pro ? "Pro \u00b7 unlimited film" : "Free \u00b7 " + FREE_CLIPS + " clips and " + FREE_ASKS + " questions a day")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
@@ -2767,20 +2821,29 @@ function Settings({
     className: "fr-srow"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Film Room Pro"), /*#__PURE__*/React.createElement("span", null, "$4.99 a month")), /*#__PURE__*/React.createElement("button", {
     className: "fr-pill",
+    disabled: !!cancelling || !!cancelled,
     onClick: function () {
-      if (STRIPE_PORTAL) {
-        window.open(STRIPE_PORTAL, "_blank", "noopener");
-        return;
-      }
-      window.location.href = "mailto:" + SUPPORT_EMAIL + "?subject=" + encodeURIComponent("Cancel Film Room Pro") + "&body=" + encodeURIComponent("Please cancel my Film Room Pro subscription. My account email is " + (user.email || "") + ".");
+      setCancelling(cancelling === "sure" ? "" : "sure");
     }
-  }, "Cancel")), /*#__PURE__*/React.createElement("p", {
+  }, cancelling === "working" ? "Cancelling\u2026" : "Cancel")), cancelling === "sure" && /*#__PURE__*/React.createElement("div", {
+    className: "fr-sure"
+  }, /*#__PURE__*/React.createElement("p", null, "Are you sure? You keep Pro until the month you have paid for runs out, and you will not be charged again."), /*#__PURE__*/React.createElement("div", {
+    className: "fr-surerow"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    onClick: function () {
+      setCancelling("");
+    }
+  }, "Keep Pro"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill fr-danger",
+    onClick: doCancel
+  }, "Yes, cancel"))), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
-      margin: "2px 2px 0",
+      margin: "8px 2px 0",
       fontSize: "13px"
     }
-  }, "Cancelling stops the next payment. The month you have already paid for is not refunded, and Pro stays on until it runs out.")), isAdmin(user) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+  }, cancelled || "Cancelling stops the next payment. The month you have already paid for is not refunded, and Pro stays on until it runs out.")), isAdmin(user) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Admin"), /*#__PURE__*/React.createElement("div", {
     className: "fr-srow"
@@ -3237,21 +3300,20 @@ function AdminPanel({
       setNote("");
     }, 2600);
   }
-  function clearChats(all) {
+  async function clearChats(all) {
     try {
       if (all) {
-        window.localStorage.removeItem(CHATS_KEY);
-        OLD_KEYS.forEach(function (k) {
-          window.localStorage.removeItem(k);
-        });
-        say("Cleared every chat, in every sport.");
+        await wipeChats(user);
+        say("Cleared every chat, on every device. Reload to see it.");
       } else {
-        // Everything lives in one list now, so only this sport is taken out.
+        // Everything is one list now, so only this sport is taken out, and
+        // the account copy is rewritten to match.
         const kept = loadChats().filter(function (c) {
           return (c.sport || "basketball") !== SPORT;
         });
         window.localStorage.setItem(CHATS_KEY, JSON.stringify(kept));
-        say("Cleared the " + SPORTS[SPORT].label.toLowerCase() + " chats.");
+        await pushChats(user, null, kept);
+        say("Cleared the " + SPORTS[SPORT].label.toLowerCase() + " chats. Reload to see it.");
       }
     } catch (e) {}
   }
@@ -3976,6 +4038,41 @@ async function pullChats(user, sport) {
   }
 }
 
+/* Emptying history has to empty the account copy too, or the next sync
+   simply brings it all back. */
+async function wipeChats(user) {
+  try {
+    window.localStorage.removeItem(CHATS_KEY);
+    OLD_KEYS.forEach(function (k) {
+      window.localStorage.removeItem(k);
+    });
+  } catch (e) {}
+  if (!user || !accountsOn()) return;
+  const fields = {};
+  let mask = "updateMask.fieldPaths=" + chatField();
+  fields[chatField()] = {
+    stringValue: "[]"
+  };
+  OLD_FIELDS.forEach(function (k) {
+    mask += "&updateMask.fieldPaths=" + k;
+    fields[k] = {
+      stringValue: "[]"
+    };
+  });
+  try {
+    await fetch(docPath(user.uid) + "?" + mask, {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: fields
+      })
+    });
+  } catch (e) {}
+}
+
 async function pushChats(user, sport, chats) {
   if (!user || !accountsOn()) return;
   try {
@@ -4470,11 +4567,10 @@ function Train({
   asks,
   onAsk,
   onUse,
-  onOutOfClips
+  onOutOfClips,
+  chats,
+  setChats
 }) {
-  const [chats, setChats] = useState(function () {
-    return loadChats(sport);
-  });
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
   const restored = useRef(false);
@@ -4511,21 +4607,7 @@ function Train({
     }
   }, []);
 
-  // Bring down anything written on another device.
-  useEffect(function () {
-    let dead = false;
-    pullChats(user, sport).then(function (remote) {
-      if (dead || !remote || !remote.length) return;
-      setChats(function (local) {
-        const merged = mergeChats(local, remote);
-        saveChats(sport, merged);
-        return merged;
-      });
-    });
-    return function () {
-      dead = true;
-    };
-  }, [user && user.uid, sport]);
+
   const [text, setText] = useState("");
   const [files, setFiles] = useState([]);
   const field = useRef(null);
@@ -4578,6 +4660,8 @@ function Train({
     });
     setChats(next);
     saveChats(sport, next);
+    // Sent straight up, not debounced: a deletion that has not reached the
+    // account yet is a deletion that comes back.
     pushChats(user, sport, next);
     if (id === chatId) newChat();
     if (id === chatId) rememberOpen(sport, null);
@@ -5051,6 +5135,38 @@ function App() {
   const [saved, setSaved] = useState([]);
   const [profile, setProfile] = useState(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // History lives here, above the screens, so switching to Players and back
+  // does not throw it away and reload it.
+  const [chats, setChats] = useState(function () {
+    return loadChats();
+  });
+  // Whatever the account holds is merged in, on the way in and whenever they
+  // come back to the tab, so two devices end up with the same history.
+  useEffect(function () {
+    if (!user) return;
+    let dead = false;
+    function sync() {
+      pullChats(user).then(function (remote) {
+        if (dead || !remote) return;
+        setChats(function (local) {
+          const merged = mergeChats(local, remote);
+          saveChats(null, merged);
+          // Anything this device had that the account did not, goes up.
+          if (merged.length !== remote.length) pushChats(user, null, merged);
+          return merged;
+        });
+      });
+    }
+    sync();
+    function onWake() {
+      if (document.visibilityState === "visible") sync();
+    }
+    document.addEventListener("visibilitychange", onWake);
+    return function () {
+      dead = true;
+      document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [user && user.uid]);
   // Reading downwards hides the bar. The smallest move back up brings it
   // straight back, so Players and Games are never more than a flick away.
   const [navHide, setNavHide] = useState(false);
@@ -5319,6 +5435,8 @@ function App() {
     onSignIn: () => setShowSignIn(true)
   }) : /*#__PURE__*/React.createElement(Train, {
     user: user,
+    chats: chats,
+    setChats: setChats,
     sport: sport,
     pro: isPro(user, profile),
     used: profile && profile.used || 0,
