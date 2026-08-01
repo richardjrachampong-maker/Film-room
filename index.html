@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b94</div>
+<div class="fr-build">b95</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2078,6 +2078,14 @@ function coachExtra() {
   return c ? "\n\nAlso follow this standing instruction: " + c : "";
 }
 async function ai(turns, wantJSON, opts) {
+  // An empty payload is what makes Google answer "request has empty input",
+  // which tells the player nothing about what actually went wrong.
+  const empty = !turns || !turns.length || turns.every(function (t) {
+    return !t || !t.parts || !t.parts.length;
+  });
+  if (empty) {
+    throw new Error("There was nothing to send. If that was a clip, none of it could be read.");
+  }
   if (aiKey()) return aiGemini(turns, wantJSON, opts);
   if (AI_ENDPOINT) return aiClaude(turns);
   throw new Error(AI_OFF);
@@ -4037,7 +4045,10 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
   let avgMotion = 0;
   let seen = 0;
   const minGap = step * 0.4; // never closer together than this
-  const maxGap = step * 2.2; // and never further apart than this
+  // A screen recording, a whiteboard, a locked off camera: some film barely
+  // moves at all. The gap has to stay tight enough that we still come away
+  // with a proper spread of it, whatever the motion score says.
+  const maxGap = step * 1.35;
   let lastAt = -1e9;
 
   function motionAt() {
@@ -4184,7 +4195,9 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
     // Anything but a handful of stills is faster to take while it plays.
     if (count > 8) {
       const played = await grabByPlaying(video, canvas, ctx, count, dur, quality, onProgress, cancelled);
-      if (played && played.length) {
+      // Fewer than half of what was asked for means playback did not really
+      // work on this file. Seeking is slower but it always lands.
+      if (played && played.length >= Math.min(8, Math.ceil(count / 2))) {
         return {
           frames: played,
           duration: dur,
@@ -4607,6 +4620,11 @@ function Train({
         }
         const got = grabs[0];
         const many = grabs.length > 1;
+        // Belt and braces: an empty parts list is what makes Google answer
+        // "request has empty input", which tells the player nothing.
+        if (!parts.length) {
+          throw new Error("Could not read any usable frames from that file. If it is a screen recording, try trimming it or exporting it as a video first.");
+        }
         parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + (said ? "They also said: \"" + said + "\"\n\n" : "") + "Write your breakdown as if you're talking to them courtside. Plain text, no JSON. Use short ## headings and - bullets. Cover:\n" + "What they're doing and roughly what level it looks like.\n" + "A letter grade, then a grade for each skill you can actually see.\n" + "The mechanics phase by phase.\n" + "What's already good.\n" + "What's breaking down, and what it costs them in a game.\n" + "The single thing to fix first.\n" + "Four drills with real sets and reps and a coaching cue for each.\n" + "Be blunt and specific. If the angle or blur hides something, say so instead of guessing." + " Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
