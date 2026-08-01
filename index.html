@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b96</div>
+<div class="fr-build">b97</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4026,7 +4026,8 @@ function titleOf(msgs) {
    Playing it at speed decodes in order, which a phone is far better at, and
    every frame the browser paints is one we can grab. This is what makes a
    dense read of a long session finish in a minute or two instead of never. */
-async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress, cancelled) {
+async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress, cancelled, note) {
+  note = note || function () {};
   if (!video.requestVideoFrameCallback) return null; // caller falls back to seeking
   const frames = [];
   const step = dur / want;
@@ -4091,7 +4092,9 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
   video.muted = true;
   try {
     await video.play();
+    note("play ok at " + video.playbackRate + "x");
   } catch (e) {
+    note("play refused: " + (e && e.name || "unknown"));
     return null; // autoplay refused, seek instead
   }
   await new Promise(function (resolve) {
@@ -4114,6 +4117,8 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
     function onFrame(now, meta) {
       if (stopped) return;
       const t = meta && meta.mediaTime !== undefined ? meta.mediaTime : video.currentTime;
+      if (!taken && frames.length === 0) note("first painted frame at " + t.toFixed(1) + "s");
+      taken = 1;
       const since = t - lastAt;
       if (frames.length < want && since >= minGap) {
         const score = motionAt();
@@ -4148,6 +4153,12 @@ async function grabByPlaying(video, canvas, ctx, want, dur, quality, onProgress,
 }
 
 async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
+  // Every step writes down what happened, so a failure can say where it
+  // stopped instead of just reporting that nothing came out.
+  const trace = [];
+  const note = function (what) {
+    trace.push(what);
+  };
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
@@ -4187,6 +4198,7 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
     if (timer) clearTimeout(timer);
     if (!video.videoWidth) throw new Error("That file has no video track.");
     const dur = video.duration && isFinite(video.duration) ? video.duration : 10;
+    note("opened " + video.videoWidth + "x" + video.videoHeight + ", " + Math.round(dur) + "s");
     // Full length film is the thing Pro is for. A free account sends a
     // possession or a move.
     if (!pro && dur > FREE_CLIP_SECONDS + 2) {
@@ -4212,11 +4224,15 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
     const quality = fast ? 0.55 : count > 150 ? 0.5 : count > 60 ? 0.62 : 0.72;
 
     // Anything but a handful of stills is faster to take while it plays.
+    note("wanted " + count + " stills");
     if (count > 8) {
-      const played = await grabByPlaying(video, canvas, ctx, count, dur, quality, onProgress, cancelled);
+      const played = await grabByPlaying(video, canvas, ctx, count, dur, quality, onProgress, cancelled, note);
+      note("playing gave " + (played ? played.length : "nothing"));
       // Fewer than half of what was asked for means playback did not really
       // work on this file. Seeking is slower but it always lands.
-      if (played && played.length >= Math.min(8, Math.ceil(count / 2))) {
+      // Anything at all is worth using. Seeking is only for when playing
+      // produced nothing whatsoever.
+      if (played && played.length) {
         return {
           frames: played,
           duration: dur,
@@ -4278,8 +4294,9 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
       }
       if (onProgress) onProgress(i + 1, count);
     }
+    note("seeking gave " + frames.length + " after " + misses + " misses");
     if (!frames.length) {
-      throw new Error("Could not read any frames from that file. Long videos straight off a phone are the usual cause \u2014 trimming it, or exporting at 1080p instead of 4K, usually fixes it.");
+      throw new Error("Could not read any frames from that file. What happened: " + trace.join("; ") + ".");
     }
     return {
       frames: frames,
