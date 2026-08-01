@@ -726,7 +726,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b97</div>
+<div class="fr-build">b98</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4619,8 +4619,12 @@ function Train({
           onUse();
           parts = [media, T("You are an elite basketball skills coach. You have been sent film of one player. " + "Watch all of it. Nobody told you what it is \u2014 work it out. If it is a full session or " + "game, cover it in order and say roughly when things happen.\n\n" + coachExtra() + "\n\nPlain text. Short ## headings and - bullets. Name what you actually see, never invent detail.")];
           setBusy("Breaking it down\u2026");
-          const whole = await ai(parts, {
-            history: slimHistory(history),
+          // ai() takes turns, each one { role, parts } \u2014 not a bare parts list.
+          const wholeTurns = slimHistory(history).concat([{
+            role: "user",
+            parts: parts
+          }]);
+          const whole = await ai(wholeTurns, false, {
             fast: false
           });
           setMsgs(m => m.concat([{
