@@ -552,12 +552,23 @@ body { background: #EDF0F2; }
   padding:32px 28px; text-align:center;
   animation:pop .35s cubic-bezier(.2,.7,.3,1) both; }
 .fr-meter { position:relative; display:inline-flex; align-items:center; justify-content:center;
-  width:32px; height:32px; margin-right:6px; border:0; background:none; cursor:pointer;
-  color:var(--dim); padding:0; }
-.fr-meter span { position:absolute; font-size:11px; font-weight:600; font-family:inherit;
-  color:var(--text); letter-spacing:-.02em; }
+  margin-right:6px; border:0; background:none; cursor:pointer; color:var(--dim);
+  padding:0; gap:7px; flex:0 0 auto; }
+.fr-meterwide { width:auto; height:32px; }
+.fr-meter svg { display:block; }
+.fr-asksleft { position:absolute; right:9.5px; font-size:11px; font-weight:600;
+  font-family:inherit; color:var(--text); letter-spacing:-.02em; }
+.fr-clipsleft { display:inline-flex; align-items:center; gap:3px; font-size:12px;
+  font-weight:600; font-family:inherit; color:var(--text); letter-spacing:-.01em; }
+.fr-clipsleft i { font-style:normal; font-size:8px; color:var(--dim); }
+.fr-clipsleft[data-low="1"], .fr-clipsleft[data-low="1"] i { color:var(--amber); }
 .fr-meter[data-low="1"] { color:var(--amber); }
-.fr-meter[data-low="1"] span { color:var(--amber); }
+.fr-meter[data-low="1"] .fr-asksleft { color:var(--amber); }
+.fr-unlimited { display:inline-flex; align-items:center; margin-right:8px; flex:0 0 auto;
+  font-family:'Outfit',sans-serif; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--amber); font-weight:600;
+  border:1px solid var(--amber); border-radius:999px; padding:4px 10px; }
+@media (max-width:760px){ .fr-unlimited { font-size:10px; padding:3px 8px; letter-spacing:.06em; } }
 .fr-stop { appearance:none; cursor:pointer; margin-left:12px; border:1px solid var(--edge);
   background:none; color:var(--dim); border-radius:999px; padding:4px 12px;
   font-family:inherit; font-size:12px; letter-spacing:.04em; vertical-align:middle; }
@@ -739,7 +750,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b108</div>
+<div class="fr-build">b109</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2998,7 +3009,7 @@ function AskMeter({
   const c = 2 * Math.PI * r;
   const label = out ? "No questions left today, they come back tomorrow" : left + " of " + FREE_ASKS + " questions left today";
   return /*#__PURE__*/React.createElement("button", {
-    className: "fr-meter",
+    className: "fr-meter fr-meterwide",
     "data-low": low ? "1" : "0",
     onClick: onFull,
     title: label,
@@ -3027,7 +3038,9 @@ function AskMeter({
     strokeDasharray: c,
     strokeDashoffset: c * (1 - frac),
     transform: "rotate(-90 16 16)"
-  })), /*#__PURE__*/React.createElement("span", null, left));
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "fr-asksleft"
+  }, left));
 }
 
 /* ------------------------- PRO ----------------------- */
@@ -5448,8 +5461,10 @@ function App() {
     className: "fr-link",
     "data-on": top.page === n.id ? "1" : "0",
     onClick: () => go(n.id)
-  }, n.label))), user && !isPro(user, profile) && /*#__PURE__*/React.createElement(AskMeter, {
+  }, n.label))), user && /*#__PURE__*/React.createElement(AskMeter, {
     asks: profile && profile.asks || 0,
+    used: profile && profile.used || 0,
+    pro: isPro(user, profile),
     onFull: () => setShowUpgrade(true)
   }), /*#__PURE__*/React.createElement("button", {
     className: "fr-sun fr-gear",
