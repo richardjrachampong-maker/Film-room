@@ -752,7 +752,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b111</div>
+<div class="fr-build">b112</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4238,13 +4238,93 @@ function filmRules(said) {
   return (said ? "THE PLAYER ASKED: \"" + said + "\"\n\n" + "Answer that question first and directly, using what you see in the film as your evidence. " + "Everything else you cover should serve their question rather than sit alongside it.\n\n" : "They sent this without a question, so give them the full read.\n\n") + "HOW TO ANSWER:\n" + "Say what the film actually shows before judging it.\n" + "Be specific about what you can see, and say so when the angle or the blur hides something " + "instead of guessing.\n" + "End with drills \u2014 real sets, real reps, a coaching cue for each \u2014 unless they asked you not to. " + "If they asked only for what is wrong, or only for a grade, or said no drills, then give them " + "exactly that and stop.\n" + "If the film is not someone playing \u2014 a written plan, a whiteboard, a screen recording \u2014 read " + "what it says and answer about that, rather than pretending to watch a player.\n";
 }
 
-function memoryOf(chats, currentId) {
+/* A coach keeps a file on a player: what they are, what keeps going wrong,
+   what has actually changed, what they are working towards. It is rewritten
+   after every session that had film in it, so it stays short and stays true
+   however many months go by. */
+function noteKeyFor(uid) {
+  return "fr-note:" + (uid || "guest");
+}
+
+function loadNote(uid) {
+  try {
+    return window.localStorage.getItem(noteKeyFor(uid)) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function saveNote(uid, note) {
+  try {
+    window.localStorage.setItem(noteKeyFor(uid), note || "");
+  } catch (e) {}
+}
+
+async function pullNote(user) {
+  if (!user || !accountsOn()) return null;
+  try {
+    const res = await fetch(docPath(user.uid), {
+      headers: {
+        Authorization: "Bearer " + user.token
+      }
+    });
+    if (!res.ok) return null;
+    const f = (await res.json()).fields || {};
+    return (f.coachNote || {}).stringValue || "";
+  } catch (e) {
+    return null;
+  }
+}
+
+async function pushNote(user, note) {
+  if (!user || !accountsOn()) return;
+  try {
+    await fetch(docPath(user.uid) + "?updateMask.fieldPaths=coachNote", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          coachNote: {
+            stringValue: String(note || "").slice(0, 6000)
+          }
+        }
+      })
+    });
+  } catch (e) {}
+}
+
+/* Rewrites the file after a session, folding the new one into what was
+   already known. Runs quietly in the background; a failure costs nothing. */
+async function updateNote(user, oldNote, transcript, sport) {
+  try {
+    const ask = "You keep the file on one " + (sport || "basketball") + " player. Below is the file as it stands, " + "then the session that has just happened. Rewrite the file so it holds everything that still " + "matters, and nothing that does not.\n\n" + "Keep it under 350 words, in these sections, dropping any that are empty:\n" + "WHO THEY ARE \u2014 age, position, level, height and build if said, what they are chasing.\n" + "RECURRING \u2014 faults that have shown up more than once, with the date first seen.\n" + "CHANGED \u2014 what has measurably improved or got worse, and when.\n" + "WORKING ON \u2014 the drills and focus they were last given.\n" + "THEIR WORDS \u2014 anything they said about goals, teams, tryouts, injuries, or their situation.\n\n" + "Write plain statements with dates. Never invent anything not in the file or the session. " + "If the session adds nothing, return the file unchanged.\n\n" + "=== FILE ===\n" + (oldNote || "(empty, this is the first session)") + "\n\n=== THIS SESSION (" + new Date().toLocaleDateString() + ") ===\n" + transcript.slice(0, 9000);
+    const next = await ai([{
+      role: "user",
+      parts: [T(ask)]
+    }], false, {
+      fast: true
+    });
+    if (next && next.trim().length > 20) {
+      const clean = next.trim().slice(0, 6000);
+      saveNote(user && user.uid, clean);
+      pushNote(user, clean);
+      return clean;
+    }
+  } catch (e) {}
+  return oldNote;
+}
+
+function memoryOf(chats, currentId, note) {
+  const head = note ? "\n\nYOUR FILE ON THIS PLAYER, built over every session so far:\n" + note + "\n" : "";
   const past = (chats || []).filter(function (c) {
     return c.id !== currentId && (c.msgs || []).length;
   });
-  if (!past.length) return "";
+  if (!past.length) return head ? head + "\nUse it. Refer back to what they did before, by date, whenever it is relevant." : "";
   const blocks = [];
-  let budget = 5200;
+  let budget = 9000;
   for (let i = 0; i < past.length && budget > 0; i++) {
     const c = past[i];
     let when = "";
@@ -4258,12 +4338,18 @@ function memoryOf(chats, currentId) {
     }).filter(function (line) {
       return line.length > 8;
     }).join("\n");
-    if (body.length > 1400) body = body.slice(0, 1400) + "\u2026";
+    // A session with film in it is worth more than one without, so it keeps
+    // more of its detail.
+    const hadClip = (c.msgs || []).some(function (m) {
+      return m.clip;
+    });
+    const cap = hadClip ? 2600 : 900;
+    if (body.length > cap) body = body.slice(0, cap) + "\u2026";
     const block = "### " + (c.title || "Untitled") + (when ? " (" + when + ")" : "") + "\n" + body;
     blocks.push(block);
     budget -= block.length;
   }
-  return "\n\nWHAT YOU REMEMBER FROM THIS PLAYER'S EARLIER CHATS, newest first:\n" + blocks.join("\n\n") + "\n\nUse this when they refer back to something, and say which chat you are drawing on. " + "The stills from an old clip are gone, so you have what was written about that film, not the film itself. " + "If they ask you to look at an old clip again, say you kept the breakdown but not the footage, and ask them to send it again. " + "Never pretend to remember something that is not written above.";
+  return head + "\n\nTHE SESSIONS THEMSELVES, newest first:\n" + blocks.join("\n\n") + "\n\nUse this when they refer back to something, and say which chat you are drawing on. " + "The stills from an old clip are gone, so you have what was written about that film, not the film itself. " + "If they ask you to look at an old clip again, say you kept the breakdown but not the footage, and ask them to send it again. " + "Never pretend to remember something that is not written above. " + "When they ask how they are doing, compare what you see now against what the file says they " + "were doing before, and name the date you are comparing to.";
 }
 
 /* Images are far too big to keep, so only the words are stored. */
@@ -4702,6 +4788,26 @@ function Train({
     }
   });
   const [locked, setLocked] = useState(false);
+  const [note, setNote] = useState(function () {
+    return loadNote(user && user.uid);
+  });
+  // The file follows the account, so it is there on any device.
+  useEffect(function () {
+    if (!user) return;
+    let dead = false;
+    pullNote(user).then(function (remote) {
+      if (dead || remote === null) return;
+      if (remote && remote !== note) {
+        setNote(remote);
+        saveNote(user.uid, remote);
+      } else if (!remote && note) {
+        pushNote(user, note);
+      }
+    });
+    return function () {
+      dead = true;
+    };
+  }, [user && user.uid]);
   function pickMode(m) {
     setMode(m);
     try {
@@ -4872,7 +4978,7 @@ function Train({
             media = FD(up.file_uri, up.mime_type);
           }
           onUse();
-          parts = [media, T("You are an elite " + D.term + " skills coach. You have been sent film. Watch all of it. " + "Nobody told you what it is \u2014 work it out. If it is a full session or game, cover it in " + "order and say roughly when things happen.\n\n" + filmRules(said) + "\n" + coachExtra() + memoryOf(chats, chatId) + "\n\nPlain text. Short ## headings and - bullets. Under 600 words.")];
+          parts = [media, T("You are an elite " + D.term + " skills coach. You have been sent film. Watch all of it. " + "Nobody told you what it is \u2014 work it out. If it is a full session or game, cover it in " + "order and say roughly when things happen.\n\n" + filmRules(said) + "\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nPlain text. Short ## headings and - bullets. Under 600 words.")];
           setBusy("Breaking it down\u2026");
           // ai() takes turns, each one { role, parts } \u2014 not a bare parts list.
           const wholeTurns = slimHistory(history).concat([{
@@ -4921,11 +5027,11 @@ function Train({
         if (!parts.length) {
           throw new Error("Could not read any usable frames from that file. If it is a screen recording, try trimming it or exporting it as a video first.");
         }
-        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
+        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
       } else if (history.length) {
-        parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId))];
+        parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId, note))];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Match the size of your answer to the size of what they said. \"ok\", \"thanks\", \"got it\", " + "\"yeah\" and the like are not questions \u2014 reply in a line, the way a coach would, and wait. " + "Only a real question gets a full breakdown with headings and drills.\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra() + memoryOf(chats, chatId))];
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Match the size of your answer to the size of what they said. \"ok\", \"thanks\", \"got it\", " + "\"yeah\" and the like are not questions \u2014 reply in a line, the way a coach would, and wait. " + "Only a real question gets a full breakdown with headings and drills.\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + "Never invent facts about this player. You do not know their height, position, level, or " + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "Plain text. Short ## headings and - bullets. Up to 450 words." + coachExtra() + memoryOf(chats, chatId, note))];
       }
       setBusy(clip ? "Breaking it down" : "Thinking");
       const turns = history.concat([{
@@ -4953,6 +5059,34 @@ function Train({
     setBusy("");
     clearBar();
   }
+
+  /* After a session with film in it, fold what happened into the file. It
+     runs on its own, after the answer is already on screen, so nobody waits
+     for it and a failure costs nothing. */
+  const noteTimer = useRef(null);
+  useEffect(function () {
+    if (!user || busy) return;
+    if (!msgs.length) return;
+    const last = msgs[msgs.length - 1];
+    if (!last || last.who !== "coach" || last.err) return;
+    const hadClip = msgs.some(function (m) {
+      return m.clip;
+    });
+    if (!hadClip) return;
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(function () {
+      const transcript = msgs.map(function (m) {
+        return (m.who === "you" ? "Player" : "Coach") + ": " + (m.clip ? "[film: " + m.clip + "] " : "") + String(m.text || "");
+      }).join("\n\n");
+      updateNote(user, note, transcript, sport).then(function (next) {
+        if (next && next !== note) setNote(next);
+      });
+    }, 4000);
+    return function () {
+      if (noteTimer.current) clearTimeout(noteTimer.current);
+    };
+  }, [msgs.length, busy]);
+
   const empty = !msgs.length && !busy;
   function grow(el) {
     if (!el) return;
