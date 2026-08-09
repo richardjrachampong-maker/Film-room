@@ -756,7 +756,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b116</div>
+<div class="fr-build">b117</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2548,31 +2548,6 @@ async function refreshSession(u) {
 
 /* Sends the confirmation mail. Also the way back in if they lose the
    password, since the same endpoint handles both. */
-/* Asks Firebase how this address signs in. An account made with Google has
-   no password, so a reset mail would never arrive and nobody would know why. */
-async function signInMethods(email) {
-  try {
-    const res = await fetch(AUTH_URL + "createAuthUri?key=" + FIREBASE_KEY, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        identifier: email,
-        continueUri: window.location.origin
-      })
-    });
-    const d = await res.json();
-    if (d.error) return null;
-    return {
-      registered: !!d.registered,
-      methods: d.signinMethods || d.allProviders || []
-    };
-  } catch (e) {
-    return null;
-  }
-}
-
 async function sendAuthEmail(kind, idTokenOrEmail) {
   const body = kind === "VERIFY_EMAIL" ? {
     requestType: "VERIFY_EMAIL",
@@ -2764,20 +2739,12 @@ function SignIn({
         return;
       }
       setErr("Sending\u2026");
-      // Google accounts have no password, so say that rather than sending
-      // a mail that can never arrive.
-      const who = await signInMethods(addr);
-      if (who && who.registered === false) {
-        setErr("There is no account with that email. Create one instead.");
-        return;
-      }
-      if (who && who.methods.length && who.methods.indexOf("password") === -1) {
-        setErr("That account signs in with Google, so it has no password. Use Continue with Google below.");
-        return;
-      }
+      // Firebase deliberately will not say which addresses have accounts, so
+      // there is nothing to check first. Ask it to send, and pass on whatever
+      // it says.
       try {
         await sendAuthEmail("PASSWORD_RESET", addr);
-        setErr("Sent to " + addr + ". Check your inbox, and your spam folder \u2014 the first one often lands there.");
+        setErr("If " + addr + " has a password on it, a reset link is on its way. Check spam too. " + "If you made the account with Google there is no password \u2014 use Continue with Google above.");
       } catch (e) {
         setErr(e.message);
       }
