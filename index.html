@@ -577,6 +577,9 @@ body { background: #EDF0F2; }
 .fr-stop:hover { color:var(--ink); border-color:var(--edge-2); }
 .fr-legal { margin:-2px 2px 14px; font-size:13px; }
 .fr-legal a { color:var(--dim); text-decoration:none; border-bottom:1px solid var(--edge); }
+.fr-linky { appearance:none; border:0; background:none; padding:0; cursor:pointer;
+  font-family:inherit; font-size:inherit; color:var(--amber);
+  border-bottom:1px solid currentColor; }
 .fr-legal a:hover { color:var(--amber); border-color:var(--amber); }
 .fr-sure { margin:10px 2px 0; padding:12px 14px; border-radius:16px;
   background:var(--glass); border:1px solid var(--edge); }
@@ -752,7 +755,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b112</div>
+<div class="fr-build">b115</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2167,7 +2170,7 @@ const FD = (uri, mime) => ({
 // Google accepts eight megabytes per piece and no more.
 const CHUNK = 8 * 1024 * 1024;
 
-async function uploadChunked(file, onProgress, onStage) {
+async function uploadChunked(file, onProgress, onStage, cancelled) {
   const base = AI_PROXY.replace(/\/$/, "");
   const startRes = await fetch(base + "/upload-url", {
     method: "POST",
@@ -2188,6 +2191,7 @@ async function uploadChunked(file, onProgress, onStage) {
   while (offset < file.size) {
     const end = Math.min(offset + CHUNK, file.size);
     const last = end >= file.size;
+    if (cancelled && cancelled()) throw new Error("cancelled");
     const res = await fetch(base + "/upload-chunk", {
       method: "POST",
       headers: {
@@ -2235,6 +2239,7 @@ async function uploadChunked(file, onProgress, onStage) {
   let uri = made.uri;
   let mime = made.mimeType || file.type;
   for (let i = 0; i < 120 && state === "PROCESSING"; i++) {
+    if (cancelled && cancelled()) throw new Error("cancelled");
     if (onStage) onStage(i);
     await new Promise(function (r) {
       setTimeout(r, 2000);
@@ -2540,6 +2545,33 @@ async function refreshSession(u) {
   }
 }
 
+/* Sends the confirmation mail. Also the way back in if they lose the
+   password, since the same endpoint handles both. */
+async function sendAuthEmail(kind, idTokenOrEmail) {
+  const body = kind === "VERIFY_EMAIL" ? {
+    requestType: "VERIFY_EMAIL",
+    idToken: idTokenOrEmail
+  } : {
+    requestType: "PASSWORD_RESET",
+    email: idTokenOrEmail
+  };
+  const res = await fetch(AUTH_URL + "sendOobCode?key=" + FIREBASE_KEY, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const d = await res.json();
+  if (d.error) {
+    const m = (d.error.message || "").replace(/_/g, " ").toLowerCase();
+    if (m.indexOf("email not found") > -1) throw new Error("No account with that email.");
+    if (m.indexOf("too many") > -1) throw new Error("Too many attempts. Wait a few minutes and try again.");
+    throw new Error(d.error.message || "That did not send.");
+  }
+  return true;
+}
+
 async function authCall(mode, email, password) {
   const res = await fetch(AUTH_URL + mode + "?key=" + FIREBASE_KEY, {
     method: "POST",
@@ -2673,6 +2705,13 @@ function SignIn({
     setErr("");
     try {
       const u = await authCall(mode === "in" ? "signInWithPassword" : "signUp", email.trim(), pw);
+      // A new account gets a confirmation mail at once, so a mistyped address
+      // is obvious now rather than the day they need to get back in.
+      if (mode !== "in") {
+        try {
+          await sendAuthEmail("VERIFY_EMAIL", u.token);
+        } catch (e) {}
+      }
       saveSession(u);
       onDone(u);
     } catch (e) {
@@ -2690,7 +2729,21 @@ function SignIn({
     }
   }, /*#__PURE__*/React.createElement("h3", null, mode === "in" ? "Sign in" : "Create an account"), /*#__PURE__*/React.createElement("p", {
     className: "fr-note"
-  }, "Your saved players follow you to any device."), googleOn() && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }, mode === "in" ? /*#__PURE__*/React.createElement(React.Fragment, null, "Your saved players follow you to any device. ", /*#__PURE__*/React.createElement("button", {
+    className: "fr-linky",
+    onClick: async function () {
+      if (!email.trim()) {
+        setErr("Put your email in first, then tap this.");
+        return;
+      }
+      try {
+        await sendAuthEmail("PASSWORD_RESET", email.trim());
+        setErr("Sent. Check your email for a link to set a new password.");
+      } catch (e) {
+        setErr(e.message);
+      }
+    }
+  }, "Forgotten your password?")) : "Your saved players follow you to any device. We will send a note to confirm the address.", " "), googleOn() && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     className: "fr-google",
     onClick: startGoogle
   }, /*#__PURE__*/React.createElement("span", {
@@ -2809,12 +2862,7 @@ function Settings({
     "aria-label": "Close"
   }, "\u00D7")), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
-  }, "Account"), user && /*#__PURE__*/React.createElement("p", {
-    className: "fr-legal",
-    style: {
-      marginBottom: "6px"
-    }
-  }, "History: " + syncStatus()), /*#__PURE__*/React.createElement("p", {
+  }, "Account"), /*#__PURE__*/React.createElement("p", {
     className: "fr-legal"
   }, /*#__PURE__*/React.createElement("a", {
     href: "legal.html",
@@ -4861,7 +4909,19 @@ function Train({
     // Debounced so a fast back and forth is one write, not ten.
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(function () {
-      pushChats(user, sport, next);
+      pushChats(user, sport, next).then(function () {
+        // Marked as reached the account, so a later sync will not treat it
+        // as unsaved and put a deleted chat back.
+        setChats(function (now) {
+          const marked = now.map(function (c) {
+            return c.id === id ? Object.assign({}, c, {
+              synced: 1
+            }) : c;
+          });
+          saveChats(user && user.uid, marked);
+          return marked;
+        });
+      });
     }, 1500);
   }, [msgs.length]);
   function newChat() {
@@ -4973,7 +5033,10 @@ function Train({
               setBusy("Uploading your film " + Math.round(done / all * 100) + "% of " + mb + "MB \u00b7 " + mins());
             }, function () {
               setBusy("Google is reading your film \u00b7 " + mins());
+            }, function () {
+              return abandoned.current;
             });
+            if (abandoned.current) return;
             setBusy("Breaking it down \u00b7 " + mins());
             media = FD(up.file_uri, up.mime_type);
           }
@@ -4988,6 +5051,7 @@ function Train({
           const whole = await ai(wholeTurns, false, {
             fast: false
           });
+          if (abandoned.current) return;
           setMsgs(m => m.concat([{
             who: "coach",
             text: whole
@@ -5278,11 +5342,9 @@ function Train({
     className: "fr-load"
   }, busy, /*#__PURE__*/React.createElement("button", {
     className: "fr-stop",
-    onClick: function () {
-      stop.current = true;
-      setBusy("Finishing with what it has\u2026");
-    }
-  }, "Stop")), /*#__PURE__*/React.createElement("div", {
+    onClick: cancelEverything,
+    "aria-label": "Cancel"
+  }, "Cancel")), /*#__PURE__*/React.createElement("div", {
     ref: bottom
   })), /*#__PURE__*/React.createElement("input", {
     ref: input,
@@ -5397,18 +5459,30 @@ function App() {
   useEffect(function () {
     if (!user) return;
     let dead = false;
-    // Signing in or switching account swaps the whole history over.
+    // What is on this device is only a cache, shown while the account is
+    // being read so the screen is not blank.
     setChats(loadChats(user.uid));
     function sync() {
       pullChats(user).then(function (remote) {
         if (dead) return;
+        // A null means the account could not be read at all, so the cache
+        // stands. Anything else, including an empty list, is the truth.
+        if (remote === null) return;
         setChats(function (local) {
-          const merged = mergeChats(local, remote || []);
-          saveChats(user.uid, merged);
-          // Always send the merged list back up. If the account was empty,
-          // this is what seeds it; if it was behind, this catches it up.
-          pushChats(user, null, merged);
-          return merged;
+          // Only chats this device has that have never been saved anywhere
+          // are kept, so nothing typed a second ago is lost. Everything
+          // else comes from the account.
+          const remoteIds = {};
+          remote.forEach(function (c) {
+            if (c && c.id) remoteIds[c.id] = 1;
+          });
+          const unsent = (local || []).filter(function (c) {
+            return c && c.id && !remoteIds[c.id] && !c.synced;
+          });
+          const next = unsent.length ? mergeChats(unsent, remote) : remote;
+          saveChats(user.uid, next);
+          if (unsent.length) pushChats(user, null, next);
+          return next;
         });
       });
     }
@@ -5658,6 +5732,9 @@ function App() {
       setShowAdmin(true);
     },
     onSignOut: () => {
+      // The history belonged to that account, so it goes off the screen
+      // with them rather than greeting whoever signs in next.
+      setChats([]);
       signOut();
       setShowSettings(false);
     }
