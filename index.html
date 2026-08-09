@@ -577,9 +577,10 @@ body { background: #EDF0F2; }
 .fr-stop:hover { color:var(--ink); border-color:var(--edge-2); }
 .fr-legal { margin:-2px 2px 14px; font-size:13px; }
 .fr-legal a { color:var(--dim); text-decoration:none; border-bottom:1px solid var(--edge); }
-.fr-linky { appearance:none; border:0; background:none; padding:0; cursor:pointer;
-  font-family:inherit; font-size:inherit; color:var(--amber);
-  border-bottom:1px solid currentColor; }
+.fr-linky { appearance:none; border:0; background:none; cursor:pointer;
+  font-family:inherit; font-size:14px; color:var(--amber); font-weight:500;
+  padding:8px 0 0; display:inline-block; border-bottom:1px solid currentColor; }
+.fr-linky:hover { color:var(--ink); }
 .fr-legal a:hover { color:var(--amber); border-color:var(--amber); }
 .fr-sure { margin:10px 2px 0; padding:12px 14px; border-radius:16px;
   background:var(--glass); border:1px solid var(--edge); }
@@ -755,7 +756,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b115</div>
+<div class="fr-build">b116</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2547,6 +2548,31 @@ async function refreshSession(u) {
 
 /* Sends the confirmation mail. Also the way back in if they lose the
    password, since the same endpoint handles both. */
+/* Asks Firebase how this address signs in. An account made with Google has
+   no password, so a reset mail would never arrive and nobody would know why. */
+async function signInMethods(email) {
+  try {
+    const res = await fetch(AUTH_URL + "createAuthUri?key=" + FIREBASE_KEY, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        identifier: email,
+        continueUri: window.location.origin
+      })
+    });
+    const d = await res.json();
+    if (d.error) return null;
+    return {
+      registered: !!d.registered,
+      methods: d.signinMethods || d.allProviders || []
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 async function sendAuthEmail(kind, idTokenOrEmail) {
   const body = kind === "VERIFY_EMAIL" ? {
     requestType: "VERIFY_EMAIL",
@@ -2729,21 +2755,34 @@ function SignIn({
     }
   }, /*#__PURE__*/React.createElement("h3", null, mode === "in" ? "Sign in" : "Create an account"), /*#__PURE__*/React.createElement("p", {
     className: "fr-note"
-  }, mode === "in" ? /*#__PURE__*/React.createElement(React.Fragment, null, "Your saved players follow you to any device. ", /*#__PURE__*/React.createElement("button", {
+  }, mode === "in" ? /*#__PURE__*/React.createElement(React.Fragment, null, "Your saved players follow you to any device.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
     className: "fr-linky",
     onClick: async function () {
-      if (!email.trim()) {
-        setErr("Put your email in first, then tap this.");
+      const addr = email.trim();
+      if (!addr) {
+        setErr("Put your email in the box first, then tap this.");
+        return;
+      }
+      setErr("Sending\u2026");
+      // Google accounts have no password, so say that rather than sending
+      // a mail that can never arrive.
+      const who = await signInMethods(addr);
+      if (who && who.registered === false) {
+        setErr("There is no account with that email. Create one instead.");
+        return;
+      }
+      if (who && who.methods.length && who.methods.indexOf("password") === -1) {
+        setErr("That account signs in with Google, so it has no password. Use Continue with Google below.");
         return;
       }
       try {
-        await sendAuthEmail("PASSWORD_RESET", email.trim());
-        setErr("Sent. Check your email for a link to set a new password.");
+        await sendAuthEmail("PASSWORD_RESET", addr);
+        setErr("Sent to " + addr + ". Check your inbox, and your spam folder \u2014 the first one often lands there.");
       } catch (e) {
         setErr(e.message);
       }
     }
-  }, "Forgotten your password?")) : "Your saved players follow you to any device. We will send a note to confirm the address.", " "), googleOn() && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }, "Forgot your password?")) : "Your saved players follow you to any device. We will send a note to confirm the address.", " "), googleOn() && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     className: "fr-google",
     onClick: startGoogle
   }, /*#__PURE__*/React.createElement("span", {
