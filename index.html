@@ -756,7 +756,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b117</div>
+<div class="fr-build">b118</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4891,6 +4891,14 @@ function Train({
   const field = useRef(null);
   const stop = useRef(false);
   const [busy, setBusy] = useState("");
+  /* The Cancel button. Flips the flag the frame grabber polls, and clears the
+     spinner straight away so the tap feels instant. Anything already in flight
+     checks stop.current before it writes to the thread, so a late reply from a
+     cancelled run is dropped instead of appearing after the fact. */
+  function cancelEverything() {
+    stop.current = true;
+    setBusy("");
+  }
   const [ready, setReady] = useState(!!aiKey());
   const input = useRef(null);
   const bottom = useRef(null);
@@ -5115,12 +5123,13 @@ function Train({
         role: "model",
         parts: [T(reply)]
       }]));
+      if (stop.current) return;
       setMsgs(m => m.concat([{
         who: "coach",
         text: reply
       }]));
     } catch (e) {
-      setMsgs(m => m.concat([{
+      if (!stop.current) setMsgs(m => m.concat([{
         who: "coach",
         text: e.message || "That didn't go through.",
         err: true
