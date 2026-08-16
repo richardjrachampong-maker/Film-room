@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Umami: free, cookieless, no consent banner needed. Sign up at umami.is,
+     add filmroom.site, paste your website id below, and this starts working.
+     Until then it is inert and costs nothing. -->
+<script defer src="https://cloud.umami.is/script.js"
+        data-website-id="PASTE-YOUR-UMAMI-ID-HERE"></script>
+<script>
+  /* Never let analytics break the app. If the script is blocked, missing, or the
+     id is still the placeholder, this quietly does nothing. */
+  window.track = function (name, data) {
+    try {
+      if (window.umami && typeof window.umami.track === "function") {
+        window.umami.track(name, data || {});
+      }
+    } catch (e) {}
+  };
+  /* Remember where someone came from, so a signup an hour later is still
+     attributable to the post that sent them. */
+  try {
+    var src = new URLSearchParams(location.search).get("s");
+    if (src) window.localStorage.setItem("fr-src", src);
+  } catch (e) {}
+</script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Film Room</title>
@@ -468,10 +490,16 @@ body { background: #EDF0F2; }
 
 /* --- accounts --- */
 .fr-acct { font-family:'Outfit',sans-serif; font-weight:600; font-size:13px; }
-.fr-sheet { position:fixed; inset:0; z-index:80; display:grid; place-items:center;
+/* Flex + margin:auto on the child, rather than grid centring. When the card fits
+   it sits centred; when it is taller than the screen the auto margins collapse and
+   it scrolls from the top instead of having its head cut off. */
+.fr-sheet { position:fixed; inset:0; z-index:80; display:flex;
   padding:24px; background:rgba(6,10,13,.42);
+  overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   animation:fade .22s ease both; }
+.fr-sheet > * { margin:auto; flex:0 0 auto; }
 @keyframes fade { from { opacity:0; } }
 .fr-signin { width:100%; max-width:380px; padding:26px 26px 22px;
   animation:pop .28s cubic-bezier(.2,.7,.3,1) both; }
@@ -756,7 +784,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b118</div>
+<div class="fr-build">b120</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2930,6 +2958,17 @@ function Settings({
       padding: "11px 20px"
     },
     onClick: onAdmin
+  }, "Open")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Stats"), /*#__PURE__*/React.createElement("span", null, "Visits and clips sent. Private to you.")), /*#__PURE__*/React.createElement("a", {
+    className: "fr-btn",
+    style: {
+      padding: "11px 20px",
+      textDecoration: "none"
+    },
+    href: STATS_URL,
+    target: "_blank",
+    rel: "noopener noreferrer"
   }, "Open"))), /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Sport"), /*#__PURE__*/React.createElement("div", {
@@ -3346,6 +3385,10 @@ function UpgradeCard({
 }
 
 /* ------------------------ ADMIN ---------------------- */
+
+/* Where the private stats dashboard lives. Only ever rendered for an admin, and
+   it is just a link out — no numbers are shown inside Film Room itself. */
+const STATS_URL = "https://cloud.umami.is/websites";
 
 function isAdmin(user) {
   return !!(user && ADMIN_EMAIL && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
@@ -4999,6 +5042,13 @@ function Train({
     const clip = clips.length ? clips[0] : null;
     const said = (note || "").trim();
     if (!clip && !said) return;
+    try {
+      window.track(clip ? "clip-sent" : "question-sent", {
+        sport: sport,
+        pro: pro ? 1 : 0,
+        src: window.localStorage.getItem("fr-src") || "direct"
+      });
+    } catch (e) {}
     // Questions are counted; clips are counted separately further down.
     if (!clip && !pro && (asks || 0) >= FREE_ASKS) {
       onOutOfClips();
@@ -5105,7 +5155,7 @@ function Train({
         if (!parts.length) {
           throw new Error("Could not read any usable frames from that file. If it is a screen recording, try trimming it or exporting it as a video first.");
         }
-        parts.push(T(many ? "You are an elite basketball skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite basketball skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
+        parts.push(T(many ? "You are an elite " + D.term + " skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player. Compare them: say what is consistent, what changes between them, and which is better." + "\n\n" : "You are an elite " + D.term + " skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId, note))];
       } else {
@@ -5124,16 +5174,27 @@ function Train({
         parts: [T(reply)]
       }]));
       if (stop.current) return;
+      try {
+        window.track("answer-shown", { sport: sport, clip: clip ? 1 : 0 });
+      } catch (e) {}
       setMsgs(m => m.concat([{
         who: "coach",
         text: reply
       }]));
     } catch (e) {
-      if (!stop.current) setMsgs(m => m.concat([{
-        who: "coach",
-        text: e.message || "That didn't go through.",
-        err: true
-      }]));
+      if (!stop.current) {
+        try {
+          window.track("answer-failed", {
+            sport: sport,
+            why: String(e && e.message || "unknown").slice(0, 80)
+          });
+        } catch (e2) {}
+        setMsgs(m => m.concat([{
+          who: "coach",
+          text: e.message || "That didn't go through.",
+          err: true
+        }]));
+      }
     }
     setBusy("");
     clearBar();
