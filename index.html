@@ -5,7 +5,7 @@
      add filmroom.site, paste your website id below, and this starts working.
      Until then it is inert and costs nothing. -->
 <script defer src="https://cloud.umami.is/script.js"
-        data-website-id="PASTE-YOUR-UMAMI-ID-HERE"></script>
+        data-website-id="b60d26bd-24bc-491a-b659-6ff821f07ead"></script>
 <script>
   /* Never let analytics break the app. If the script is blocked, missing, or the
      id is still the placeholder, this quietly does nothing. */
@@ -784,7 +784,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b120</div>
+<div class="fr-build">b122</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3388,7 +3388,7 @@ function UpgradeCard({
 
 /* Where the private stats dashboard lives. Only ever rendered for an admin, and
    it is just a link out — no numbers are shown inside Film Room itself. */
-const STATS_URL = "https://cloud.umami.is/websites";
+const STATS_URL = "https://cloud.umami.is/login";
 
 function isAdmin(user) {
   return !!(user && ADMIN_EMAIL && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
