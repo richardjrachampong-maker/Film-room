@@ -413,14 +413,50 @@ body { background: #EDF0F2; }
   animation:mic 1.1s ease-in-out infinite; }
 @keyframes mic { 50% { opacity:.62; } }
 .fr-mic:disabled { opacity:.4; cursor:default; }
-.fr-mecard { appearance:none; cursor:pointer; width:100%; text-align:left;
-  display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 14px;
-  margin:14px 0 0; padding:15px 17px; border-radius:14px; font:inherit;
-  background:var(--glass-2); border:1px solid var(--edge); color:var(--text); }
-.fr-mecard:hover { border-color:var(--amber); }
-.fr-mecard b { font-size:14.5px; font-weight:600; }
-.fr-mecard span { grid-column:1; font-size:13px; color:var(--faint); line-height:1.45; }
-.fr-mecard i { grid-row:1 / span 2; font-style:normal; font-size:19px; color:var(--amber); }
+/* The survey is its own screen, not a box dropped into another one. Fixed over
+   everything, one question at a time, so nothing else competes for attention. */
+.fr-svy { position:fixed; inset:0; z-index:90; background:var(--bg); color:var(--text);
+  display:flex; flex-direction:column; animation:svyin .3s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes svyin { from { opacity:0; transform:translate3d(0,10px,0); } }
+.fr-svytop { flex:0 0 auto; display:flex; align-items:center; gap:14px;
+  padding:18px 20px calc(18px + env(safe-area-inset-top)); }
+.fr-svytop > b { font-family:'Outfit',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+.fr-dots { margin-left:auto; display:flex; gap:6px; }
+.fr-dots i { width:22px; height:3px; border-radius:2px; background:var(--edge-2);
+  transition:background .3s ease; }
+.fr-dots i[data-on="1"] { background:var(--amber); }
+.fr-x { appearance:none; cursor:pointer; width:34px; height:34px; border-radius:50%;
+  background:var(--glass-2); border:1px solid var(--edge); color:var(--text);
+  font-size:17px; line-height:1; display:grid; place-items:center; }
+.fr-x:hover { border-color:var(--amber); }
+.fr-svybody { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  display:flex; }
+.fr-svyin { width:100%; max-width:560px; margin:auto; padding:8px 24px 32px; }
+.fr-step { animation:stepin .34s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes stepin { from { opacity:0; transform:translate3d(22px,0,0); } }
+.fr-svyq { margin:0 0 6px; font-family:'Outfit',sans-serif; font-weight:700;
+  font-size:clamp(28px,6vw,42px); line-height:1.04; letter-spacing:-.03em; }
+.fr-svysub { margin:0 0 26px; font-size:14px; color:var(--dim); line-height:1.5; }
+.fr-svychips { display:flex; flex-direction:column; gap:9px; }
+.fr-svychip { appearance:none; cursor:pointer; width:100%; text-align:left;
+  padding:16px 18px; border-radius:14px; font:inherit; font-size:16px;
+  background:var(--glass); border:1px solid var(--edge); color:var(--text);
+  transition:border-color .15s ease, background .15s ease; }
+.fr-svychip:hover { border-color:var(--edge-2); background:var(--glass-2); }
+.fr-svychip[data-on="1"] { background:var(--amber); border-color:var(--amber);
+  color:var(--onAmber); font-weight:600; }
+.fr-svyfoot { flex:0 0 auto; display:flex; align-items:center; gap:10px;
+  padding:14px 24px calc(20px + env(safe-area-inset-bottom));
+  max-width:560px; width:100%; margin:0 auto; }
+.fr-svyskip { appearance:none; cursor:pointer; background:none; border:0; font:inherit;
+  font-size:14px; color:var(--dim); padding:10px 2px; }
+.fr-svyskip:hover { color:var(--text); }
+.fr-svynext { margin-left:auto; }
+.fr-plan { max-width:560px; margin:0 auto; padding:4px 24px 40px; }
+@media (prefers-reduced-motion:reduce) {
+  .fr-svy, .fr-step { animation:none; }
+}
 .fr-me { max-width:520px; width:100%; padding:24px 22px 20px; }
 .fr-me h3 { margin:0 0 4px; font-family:'Outfit',sans-serif; font-weight:600;
   font-size:21px; letter-spacing:-.02em; }
@@ -813,7 +849,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b124</div>
+<div class="fr-build">b125</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -4947,58 +4983,82 @@ function KeyGate({
 /* The questionnaire. Everything is optional: a chip you have not picked and a box
    you have not filled are both simply left out of the prompt, so skipping a question
    costs nothing and never leaves the coach guessing. */
-function AboutYou({
+/* One question per screen. Every step is skippable, the X is always there, and
+   nothing is written until the very end, so backing out leaves no trace. */
+const SURVEY = [{
+  k: "height",
+  q: "How tall are you?",
+  sub: "It changes which players are worth copying and which drills are a waste of your time.",
+  opts: HEIGHTS
+}, {
+  k: "pos",
+  q: "Where do you play?",
+  sub: "Pick the one you play most. If you move around, pick where you want to end up.",
+  opts: null
+}, {
+  k: "level",
+  q: "What level are you playing?",
+  sub: "This sets how hard the plan should be, not how good you are.",
+  opts: LEVELS
+}, {
+  k: "focus",
+  q: "What do you most want to fix?",
+  sub: "One thing. Say it the way you would say it to a coach.",
+  ph: "my shot keeps coming up short"
+}, {
+  k: "note",
+  q: "Anything else I should know?",
+  sub: "Left footed, new position, coming back from something. Anything that changes the advice.",
+  ph: "left footed, back from an ankle"
+}];
+
+function Survey({
   sport,
   onClose
 }) {
+  const [i, setI] = useState(0);
   const [p, setP] = useState(function () {
     return loadMe(sport) || {};
   });
   const [plan, setPlan] = useState("");
   const [working, setWorking] = useState(false);
   const [err, setErr] = useState("");
+  const done = i >= SURVEY.length;
 
   function set(k, v) {
     const next = Object.assign({}, p);
-    if (next[k] === v) delete next[k];else next[k] = v;
-    setP(next);
-    saveMe(sport, Object.keys(next).length ? next : null);
-  }
-  function setText(k, v) {
-    const next = Object.assign({}, p);
     if (v) next[k] = v;else delete next[k];
     setP(next);
+    return next;
+  }
+  function commit(next) {
     saveMe(sport, Object.keys(next).length ? next : null);
   }
-  function chips(k, list) {
-    return /*#__PURE__*/React.createElement("div", {
-      className: "fr-chips"
-    }, list.map(function (v) {
-      return /*#__PURE__*/React.createElement("button", {
-        key: v,
-        className: "fr-chip",
-        "data-on": p[k] === v ? "1" : "0",
-        onClick: function () {
-          set(k, v);
-        }
-      }, v);
-    }));
+  function go(n) {
+    setI(Math.max(0, n));
   }
 
-  async function build() {
-    const bits = profileBits(sport);
-    if (!bits) {
-      setErr("Tell me at least one thing first.");
+  async function build(next) {
+    const use = next || p;
+    commit(use);
+    const bits = [];
+    if (use.height) bits.push("height " + use.height);
+    if (use.pos) bits.push("plays " + use.pos);
+    if (use.level) bits.push("level: " + use.level);
+    if (use.focus) bits.push("wants to fix: " + use.focus);
+    if (use.note) bits.push("in their own words: " + use.note);
+    setI(SURVEY.length);
+    if (!bits.length) {
+      setErr("You skipped everything, so there is nothing to go on yet.");
       return;
     }
     setErr("");
     setWorking(true);
-    setPlan("");
     try {
       const out = await ai([{
         role: "user",
         parts: [{
-          text: "You are an elite " + SPORTS[sport].term + " skills coach.\n\n" + "A player has told you this about themselves: " + bits + ".\n\n" + "Give them two things and nothing else.\n\n" + "## Who to study\n" + "Three players, real ones, at any level. Pick people who actually fit THIS player's " + "body, position and level rather than the most famous names in the sport. For each one, " + "one line on why they are the right model for this player, and the single specific thing " + "to watch them do.\n\n" + "## What to study\n" + "Three things to work on, most important first. For each: one line on why it matters for " + "this player in particular, and one drill with real sets and reps.\n\n" + "Work only with what they told you. Do not guess at anything they left out and do not ask " + "for it. Plain text, short ## headings and - bullets, under 400 words."
+          text: "You are an elite " + SPORTS[sport].term + " skills coach.\n\n" + "A player has told you this about themselves: " + bits.join("; ") + ".\n\n" + "Give them two things and nothing else.\n\n" + "## Who to study\n" + "Three players, real ones, at any level. Pick people who actually fit THIS player's " + "body, position and level rather than the most famous names in the sport. For each one, " + "one line on why they are the right model for this player, and the single specific thing " + "to watch them do.\n\n" + "## What to study\n" + "Three things to work on, most important first. For each: one line on why it matters for " + "this player in particular, and one drill with real sets and reps.\n\n" + "Work only with what they told you. Do not guess at anything they left out and do not ask " + "for it. Plain text, short ## headings and - bullets, under 400 words."
         }]
       }]);
       setPlan(out || "");
@@ -5011,70 +5071,108 @@ function AboutYou({
     setWorking(false);
   }
 
+  const step = SURVEY[i];
+  const opts = step && (step.opts || POSITIONS[sport] || POSITIONS.basketball);
+
   return /*#__PURE__*/React.createElement("div", {
-    className: "fr-sheet",
-    onClick: function (e) {
-      if (e.target === e.currentTarget) onClose();
-    }
+    className: "fr-svy"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-me"
-  }, /*#__PURE__*/React.createElement("h3", null, "About you"), /*#__PURE__*/React.createElement("p", {
-    className: "fr-note"
-  }, "Every question is optional. Skip anything you would rather not say \u2014 whatever you do answer makes the coaching about you instead of about everyone."), /*#__PURE__*/React.createElement("p", {
-    className: "fr-meq"
-  }, "How tall are you?"), chips("height", HEIGHTS), /*#__PURE__*/React.createElement("p", {
-    className: "fr-meq"
-  }, "Where do you play?"), chips("pos", POSITIONS[sport] || POSITIONS.basketball), /*#__PURE__*/React.createElement("p", {
-    className: "fr-meq"
-  }, "What level?"), chips("level", LEVELS), /*#__PURE__*/React.createElement("p", {
-    className: "fr-meq"
-  }, "What do you most want to fix?"), /*#__PURE__*/React.createElement("input", {
-    className: "fr-input",
-    value: p.focus || "",
-    placeholder: "Optional",
-    onChange: function (e) {
-      setText("focus", e.target.value);
-    }
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "fr-meq"
-  }, "Anything else I should know?"), /*#__PURE__*/React.createElement("input", {
-    className: "fr-input",
-    value: p.note || "",
-    placeholder: "Left footed, back from an ankle, new position\u2026",
-    onChange: function (e) {
-      setText("note", e.target.value);
-    }
-  }), err ? /*#__PURE__*/React.createElement("p", {
-    className: "fr-note",
+    className: "fr-svytop"
+  }, /*#__PURE__*/React.createElement("b", null, "About you"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-dots"
+  }, SURVEY.map(function (s2, n) {
+    return /*#__PURE__*/React.createElement("i", {
+      key: s2.k,
+      "data-on": n <= i ? "1" : "0"
+    });
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "fr-x",
+    onClick: onClose,
+    "aria-label": "Close"
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-svybody"
+  }, done ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-plan fr-step",
+    key: "plan"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-svyq",
     style: {
-      color: "var(--amber)",
-      marginTop: 12
+      fontSize: "clamp(24px,5vw,34px)"
     }
-  }, err) : null, /*#__PURE__*/React.createElement("div", {
-    className: "fr-cta",
-    style: {
-      marginTop: 18
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "fr-btn",
-    onClick: build,
-    disabled: working
-  }, working ? "Working\u2026" : plan ? "Build it again" : "What should I study?"), /*#__PURE__*/React.createElement("button", {
-    className: "fr-btn",
-    "data-ghost": "1",
-    onClick: onClose
-  }, plan ? "Done" : "Skip for now")), plan ? /*#__PURE__*/React.createElement("div", {
-    className: "fr-meplan"
-  }, /*#__PURE__*/React.createElement(Rich, {
+  }, working ? "Working on it\u2026" : err ? "Hmm." : "Here's your plan"), err ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-svysub"
+  }, err) : null, plan ? /*#__PURE__*/React.createElement(Rich, {
     text: plan
-  })) : null, /*#__PURE__*/React.createElement("button", {
-    className: "fr-swap",
-    onClick: function () {
-      saveMe(sport, null);
-      setP({});
-      setPlan("");
+  }) : null) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-svyin"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-step",
+    key: step.k
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "fr-svyq"
+  }, step.q), /*#__PURE__*/React.createElement("p", {
+    className: "fr-svysub"
+  }, step.sub), step.opts === undefined && !step.ph ? null : null, step.ph ? /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    autoFocus: true,
+    value: p[step.k] || "",
+    placeholder: step.ph,
+    onChange: function (e) {
+      set(step.k, e.target.value);
+    },
+    onKeyDown: function (e) {
+      if (e.key === "Enter") {
+        if (i === SURVEY.length - 1) build(p);else go(i + 1);
+      }
     }
-  }, "Clear what I've told you")));
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-svychips"
+  }, opts.map(function (v) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: v,
+      className: "fr-svychip",
+      "data-on": p[step.k] === v ? "1" : "0",
+      onClick: function () {
+        const next = set(step.k, p[step.k] === v ? "" : v);
+        /* Picking an answer moves you on by itself. One tap per question. */
+        if (p[step.k] !== v) {
+          if (i === SURVEY.length - 1) build(next);else setTimeout(function () {
+            go(i + 1);
+          }, 160);
+        }
+      }
+    }, v);
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-svyfoot"
+  }, done ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "fr-svyskip",
+    onClick: function () {
+      setPlan("");
+      setErr("");
+      go(0);
+    }
+  }, "Change my answers"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-svynext",
+    onClick: onClose
+  }, "Done")) : /*#__PURE__*/React.createElement(React.Fragment, null, i > 0 ? /*#__PURE__*/React.createElement("button", {
+    className: "fr-svyskip",
+    onClick: function () {
+      go(i - 1);
+    }
+  }, "Back") : null, /*#__PURE__*/React.createElement("button", {
+    className: "fr-svyskip",
+    style: {
+      marginLeft: i > 0 ? 8 : 0
+    },
+    onClick: function () {
+      if (i === SURVEY.length - 1) build(p);else go(i + 1);
+    }
+  }, "Skip"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn fr-svynext",
+    onClick: function () {
+      if (i === SURVEY.length - 1) build(p);else go(i + 1);
+    }
+  }, i === SURVEY.length - 1 ? "See my plan" : "Next")))));
 }
 
 function Train({
@@ -5637,7 +5735,7 @@ function Train({
   }, "History", chats.length ? /*#__PURE__*/React.createElement("span", {
     className: "fr-tail"
   }, " " + chats.length) : "")));
-  const meSheet = showMe && /*#__PURE__*/React.createElement(AboutYou, {
+  const meSheet = showMe && /*#__PURE__*/React.createElement(Survey, {
     sport: sport,
     onClose: function () {
       setShowMe(false);
@@ -5689,12 +5787,7 @@ function Train({
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
-    }, "Tap + to send a clip. Pro reads full length film, whole games included."), /*#__PURE__*/React.createElement("button", {
-      className: "fr-mecard",
-      onClick: function () {
-        setShowMe(true);
-      }
-    }, /*#__PURE__*/React.createElement("b", null, profileBits(sport) ? "Update what I know about you" : "Tell me about you first"), /*#__PURE__*/React.createElement("span", null, profileBits(sport) ? profileBits(sport) : "Height, position, level \u2014 all optional. Then I'll tell you who to study and what to work on."), /*#__PURE__*/React.createElement("i", null, "\u2192")), /*#__PURE__*/React.createElement("p", {
+    }, "Tap + to send a clip. Pro reads full length film, whole games included."), /*#__PURE__*/React.createElement("p", {
       className: "fr-disclaim"
     }, "The coach can get things wrong. Treat it as a second opinion, not a diagnosis — and never train through pain on its say-so."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
       onSaved: () => setReady(true)
