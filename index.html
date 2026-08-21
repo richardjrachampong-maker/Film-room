@@ -429,13 +429,23 @@ body { background: #EDF0F2; }
   mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent); }
 .fr-flowtrack { display:flex; gap:14px; will-change:transform;
   transition:transform .55s cubic-bezier(.25,.8,.3,1); }
-.fr-sport { flex:0 0 168px; height:104px; cursor:pointer; appearance:none; font:inherit;
+.fr-sport { position:relative; overflow:hidden; flex:0 0 168px; height:104px;
+  cursor:pointer; appearance:none; font:inherit;
   border-radius:16px; background:var(--glass); border:1px solid var(--edge);
-  color:var(--text); display:flex; flex-direction:column; justify-content:center;
-  align-items:flex-start; gap:3px; padding:0 18px; text-align:left;
+  color:var(--text); display:flex; flex-direction:column; justify-content:flex-end;
+  align-items:flex-start; gap:1px; padding:0 0 13px 15px; text-align:left;
   opacity:.42; transform:scale(.88);
   transition:opacity .45s ease, transform .45s cubic-bezier(.25,.8,.3,1),
              border-color .2s ease, background .2s ease; }
+/* The photo sits behind the words, dimmed, so a light and a dark picture both
+   still leave white text readable. */
+.fr-sportimg { position:absolute; inset:0; background-size:cover;
+  background-position:center; filter:grayscale(.25); }
+.fr-sportimg::after { content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(6,10,13,.28) 0%, rgba(6,10,13,.82) 100%); }
+.fr-sport > b, .fr-sport > span, .fr-sport > i { position:relative; z-index:1; }
+.fr-sport[data-img="1"] > b { color:#fff; }
+.fr-sport[data-img="1"] > span { color:rgba(255,255,255,.8); }
 .fr-sport[data-mid="1"] { opacity:1; transform:scale(1); background:var(--glass-2);
   border-color:var(--amber); }
 .fr-sport:hover { opacity:1; }
@@ -888,7 +898,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b131</div>
+<div class="fr-build">b132</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1933,113 +1943,124 @@ function itemsOf(list, kind) {
 /* A tactic is a game-level idea rather than a skill you drill on your own: how a
    team presses, how you get out of one. Same tile shape as a full game so it
    opens the same way, grouped under Tactics on the Games page. */
-const TAC = (n, t, q, wiki) => ({
+/* A tactic without its own article still needs a picture, so it falls back to the
+   playing surface itself. Those articles carry overhead diagrams and wide shots,
+   which is what a tactic looks like anyway. */
+const TAC = (n, t, q, wiki, board) => ({
   n: n,
   t: t,
   g: "Tactics",
   q: q,
-  wiki: wiki,
+  wiki: wiki || board,
   kind: "game"
 });
+const BOARD = {
+  bb: "Basketball court",
+  so: "Football pitch",
+  ho: "Ice hockey rink",
+  vo: "Volleyball",
+  fb: "American football field"
+};
 
 const BB_TACTICS = [
-TAC("Beating a Full Court Press", "Get out of trouble", "how to break a full court press basketball", "Full court press"),
-TAC("Full Court Press", "Force turnovers", "full court press defense basketball explained", "Full court press"),
-TAC("1-3-1 Zone", "Trap the corners", "1-3-1 zone defense explained basketball", "Zone defense"),
-TAC("2-3 Zone", "Protect the paint", "2-3 zone defense explained basketball", "Zone defense"),
-TAC("Zone Offense", "Attack the gaps", "how to attack a 2-3 zone basketball", "Zone defense"),
-TAC("Drop Coverage", "Guard the pick and roll", "drop coverage explained basketball", "Pick and roll"),
-TAC("Blitzing the Ball Screen", "Get it out of his hands", "blitz trap pick and roll defense basketball", "Pick and roll"),
-TAC("Switch Everything", "No mismatches", "switching defense scheme basketball explained"),
-TAC("ICE the Side Pick and Roll", "Send it baseline", "ice coverage pick and roll basketball explained", "Pick and roll"),
-TAC("Five Out", "Space the floor", "five out offense explained basketball"),
-TAC("Motion Offense", "Read and react", "motion offense explained basketball", "Motion offense"),
-TAC("Princeton Offense", "Backdoor everything", "princeton offense explained basketball", "Princeton offense"),
-TAC("Triangle Offense", "Spacing and reads", "triangle offense explained basketball", "Triangle offense"),
-TAC("Horns", "Two bigs at the elbows", "horns offense explained basketball"),
-TAC("Spain Pick and Roll", "Back screen the tagger", "spain pick and roll explained", "Pick and roll"),
-TAC("Delay Offense", "Play through the big", "delay offense explained basketball"),
-TAC("Transition Defense", "Get back and build the wall", "transition defense concepts basketball"),
-TAC("Late Game Execution", "Two minutes left", "late game situations basketball coaching"),
-TAC("Out of Bounds Plays", "BLOB and SLOB", "baseline out of bounds plays basketball"),
-TAC("Small Ball", "Speed over size", "small ball lineups explained basketball")];
+TAC("Beating a Full Court Press", "Get out of trouble", "how to break a full court press basketball", "Full court press", BOARD.bb),
+TAC("Full Court Press", "Force turnovers", "full court press defense basketball explained", "Full court press", BOARD.bb),
+TAC("1-3-1 Zone", "Trap the corners", "1-3-1 zone defense explained basketball", "Zone defense", BOARD.bb),
+TAC("2-3 Zone", "Protect the paint", "2-3 zone defense explained basketball", "Zone defense", BOARD.bb),
+TAC("Zone Offense", "Attack the gaps", "how to attack a 2-3 zone basketball", "Zone defense", BOARD.bb),
+TAC("Drop Coverage", "Guard the pick and roll", "drop coverage explained basketball", "Pick and roll", BOARD.bb),
+TAC("Blitzing the Ball Screen", "Get it out of his hands", "blitz trap pick and roll defense basketball", "Pick and roll", BOARD.bb),
+TAC("Switch Everything", "No mismatches", "switching defense scheme basketball explained", BOARD.bb),
+TAC("ICE the Side Pick and Roll", "Send it baseline", "ice coverage pick and roll basketball explained", "Pick and roll", BOARD.bb),
+TAC("Five Out", "Space the floor", "five out offense explained basketball", BOARD.bb),
+TAC("Motion Offense", "Read and react", "motion offense explained basketball", "Motion offense", BOARD.bb),
+TAC("Princeton Offense", "Backdoor everything", "princeton offense explained basketball", "Princeton offense", BOARD.bb),
+TAC("Triangle Offense", "Spacing and reads", "triangle offense explained basketball", "Triangle offense", BOARD.bb),
+TAC("Horns", "Two bigs at the elbows", "horns offense explained basketball", BOARD.bb),
+TAC("Spain Pick and Roll", "Back screen the tagger", "spain pick and roll explained", "Pick and roll", BOARD.bb),
+TAC("Delay Offense", "Play through the big", "delay offense explained basketball", BOARD.bb),
+TAC("Transition Defense", "Get back and build the wall", "transition defense concepts basketball", BOARD.bb),
+TAC("Late Game Execution", "Two minutes left", "late game situations basketball coaching", BOARD.bb),
+TAC("Out of Bounds Plays", "BLOB and SLOB", "baseline out of bounds plays basketball", BOARD.bb),
+TAC("Small Ball", "Speed over size", "small ball lineups explained basketball", BOARD.bb)];
 
 const SO_TACTICS = [
-TAC("Press Resistance", "Play through it", "how to play out from the back under pressure football", "Association football tactics"),
-TAC("Counter-Press", "Win it back in six seconds", "gegenpressing counter press explained football", "Gegenpressing"),
-TAC("High Press", "Squeeze them in", "high press explained football tactics", "Press (association football)"),
-TAC("Low Block", "Give them the ball", "low block defending explained football"),
-TAC("Mid Block", "Hold the middle third", "mid block defensive shape football explained"),
-TAC("Playing Out From the Back", "Build up phase one", "playing out from the back explained football"),
-TAC("Third Man Run", "The pass after the pass", "third man run explained football"),
-TAC("Overload to Isolate", "Load one side, switch", "overload to isolate explained football"),
-TAC("Half-Spaces", "The channel that hurts", "half spaces explained football tactics"),
-TAC("Inverted Full Back", "Full back into midfield", "inverted full back explained football"),
-TAC("False Nine", "No striker at all", "false nine explained football", "False 9"),
-TAC("Overlap and Underlap", "Runs off the winger", "overlap underlap runs explained football", "Overlap (football)"),
-TAC("Offside Trap", "Step as one", "offside trap explained football", "Offside (association football)"),
-TAC("Man Marking vs Zonal", "Two ways to defend a corner", "zonal vs man marking corners explained"),
-TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", "Counter-attack"),
-TAC("Tiki-Taka", "Keep it until it opens", "tiki taka explained football", "Tiki-taka"),
-TAC("Direct Play", "Skip the middle", "direct play long ball tactics football"),
-TAC("4-3-3", "The shape", "4-3-3 formation explained football", "Formation (association football)"),
-TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", "Formation (association football)"),
-TAC("3-5-2", "The shape", "3-5-2 formation explained football", "Formation (association football)"),
-TAC("Set Piece Routines", "Corners and free kicks", "attacking set piece routines football")];
+TAC("Press Resistance", "Play through it", "how to play out from the back under pressure football", "Association football tactics", BOARD.so),
+TAC("Counter-Press", "Win it back in six seconds", "gegenpressing counter press explained football", "Gegenpressing", BOARD.so),
+TAC("High Press", "Squeeze them in", "high press explained football tactics", "Press (association football)", BOARD.so),
+TAC("Low Block", "Give them the ball", "low block defending explained football", BOARD.so),
+TAC("Mid Block", "Hold the middle third", "mid block defensive shape football explained", BOARD.so),
+TAC("Playing Out From the Back", "Build up phase one", "playing out from the back explained football", BOARD.so),
+TAC("Third Man Run", "The pass after the pass", "third man run explained football", BOARD.so),
+TAC("Overload to Isolate", "Load one side, switch", "overload to isolate explained football", BOARD.so),
+TAC("Half-Spaces", "The channel that hurts", "half spaces explained football tactics", BOARD.so),
+TAC("Inverted Full Back", "Full back into midfield", "inverted full back explained football", BOARD.so),
+TAC("False Nine", "No striker at all", "false nine explained football", "False 9", BOARD.so),
+TAC("Overlap and Underlap", "Runs off the winger", "overlap underlap runs explained football", "Overlap (football)", BOARD.so),
+TAC("Offside Trap", "Step as one", "offside trap explained football", "Offside (association football)", BOARD.so),
+TAC("Man Marking vs Zonal", "Two ways to defend a corner", "zonal vs man marking corners explained", BOARD.so),
+TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", "Counter-attack", BOARD.so),
+TAC("Tiki-Taka", "Keep it until it opens", "tiki taka explained football", "Tiki-taka", BOARD.so),
+TAC("Direct Play", "Skip the middle", "direct play long ball tactics football", BOARD.so),
+TAC("4-3-3", "The shape", "4-3-3 formation explained football", "Formation (association football)", BOARD.so),
+TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", "Formation (association football)", BOARD.so),
+TAC("3-5-2", "The shape", "3-5-2 formation explained football", "Formation (association football)", BOARD.so),
+TAC("Set Piece Routines", "Corners and free kicks", "attacking set piece routines football", BOARD.so)];
 
 const HO_TACTICS = [
-TAC("Breakout", "Get out of your own zone", "hockey breakout systems explained"),
-TAC("Forecheck 1-2-2", "Contain and turn them", "1-2-2 forecheck explained hockey"),
-TAC("Forecheck 2-1-2", "Pressure everything", "2-1-2 aggressive forecheck explained hockey"),
-TAC("Neutral Zone Trap", "Kill the rush", "neutral zone trap explained hockey", "Trap (ice hockey)"),
-TAC("Power Play 1-3-1", "The umbrella", "1-3-1 power play explained hockey", "Power play (sporting term)"),
-TAC("Penalty Kill Box", "Take away the seam", "penalty kill box explained hockey", "Penalty kill"),
-TAC("Penalty Kill Diamond", "Pressure the point", "diamond penalty kill explained hockey", "Penalty kill"),
-TAC("Defensive Zone Coverage", "Man vs zone low", "defensive zone coverage explained hockey"),
-TAC("Cycle Game", "Wear them down low", "cycle game explained hockey"),
-TAC("Net Front Presence", "Screens and tips", "net front presence explained hockey"),
-TAC("Regroup", "Reset through the neutral zone", "neutral zone regroup explained hockey"),
-TAC("Line Matching", "Get the matchup you want", "line matching explained hockey"),
-TAC("Pulling the Goalie", "Six on five", "pulling the goalie 6 on 5 explained hockey", "Empty net"),
+TAC("Breakout", "Get out of your own zone", "hockey breakout systems explained", BOARD.ho),
+TAC("Forecheck 1-2-2", "Contain and turn them", "1-2-2 forecheck explained hockey", BOARD.ho),
+TAC("Forecheck 2-1-2", "Pressure everything", "2-1-2 aggressive forecheck explained hockey", BOARD.ho),
+TAC("Neutral Zone Trap", "Kill the rush", "neutral zone trap explained hockey", "Trap (ice hockey)", BOARD.ho),
+TAC("Power Play 1-3-1", "The umbrella", "1-3-1 power play explained hockey", "Power play (sporting term)", BOARD.ho),
+TAC("Penalty Kill Box", "Take away the seam", "penalty kill box explained hockey", "Penalty kill", BOARD.ho),
+TAC("Penalty Kill Diamond", "Pressure the point", "diamond penalty kill explained hockey", "Penalty kill", BOARD.ho),
+TAC("Defensive Zone Coverage", "Man vs zone low", "defensive zone coverage explained hockey", BOARD.ho),
+TAC("Cycle Game", "Wear them down low", "cycle game explained hockey", BOARD.ho),
+TAC("Net Front Presence", "Screens and tips", "net front presence explained hockey", BOARD.ho),
+TAC("Regroup", "Reset through the neutral zone", "neutral zone regroup explained hockey", BOARD.ho),
+TAC("Line Matching", "Get the matchup you want", "line matching explained hockey", BOARD.ho),
+TAC("Pulling the Goalie", "Six on five", "pulling the goalie 6 on 5 explained hockey", "Empty net", BOARD.ho),
 TAC("Faceoff Plays", "Win the draw, win the shift", "faceoff plays explained hockey", "Face-off")];
 
 const VO_TACTICS = [
-TAC("Serve Receive", "Three passer vs two", "serve receive formations volleyball explained"),
-TAC("Rotations", "Where everyone starts", "volleyball rotations explained", "Volleyball#Rotation"),
-TAC("5-1 System", "One setter all rotations", "5-1 system volleyball explained"),
-TAC("6-2 System", "Two setters, three hitters", "6-2 system volleyball explained"),
-TAC("Serving Strategy", "Where to put it", "serving strategy zones volleyball"),
-TAC("Blocking Schemes", "Read vs commit", "read blocking vs commit blocking volleyball"),
-TAC("Perimeter Defense", "Cover the line", "perimeter defense volleyball explained"),
-TAC("Rotational Defense", "Rotate behind the block", "rotation defense volleyball explained"),
-TAC("Free Ball Transition", "Reset and attack", "free ball transition volleyball"),
-TAC("Running a Quick Offense", "Tempo sets", "quick tempo offense volleyball explained"),
-TAC("Out of System Play", "When the pass is bad", "out of system volleyball offense"),
+TAC("Serve Receive", "Three passer vs two", "serve receive formations volleyball explained", BOARD.vo),
+TAC("Rotations", "Where everyone starts", "volleyball rotations explained", "Volleyball#Rotation", BOARD.vo),
+TAC("5-1 System", "One setter all rotations", "5-1 system volleyball explained", BOARD.vo),
+TAC("6-2 System", "Two setters, three hitters", "6-2 system volleyball explained", BOARD.vo),
+TAC("Serving Strategy", "Where to put it", "serving strategy zones volleyball", BOARD.vo),
+TAC("Blocking Schemes", "Read vs commit", "read blocking vs commit blocking volleyball", BOARD.vo),
+TAC("Perimeter Defense", "Cover the line", "perimeter defense volleyball explained", BOARD.vo),
+TAC("Rotational Defense", "Rotate behind the block", "rotation defense volleyball explained", BOARD.vo),
+TAC("Free Ball Transition", "Reset and attack", "free ball transition volleyball", BOARD.vo),
+TAC("Running a Quick Offense", "Tempo sets", "quick tempo offense volleyball explained", BOARD.vo),
+TAC("Out of System Play", "When the pass is bad", "out of system volleyball offense", BOARD.vo),
 TAC("Beach vs Indoor Tactics", "Two players, same court", "beach volleyball strategy explained", "Beach volleyball")];
 
 const FB_TACTICS = [
-TAC("Beating Cover 2", "Find the hole", "how to attack cover 2 explained football", "Cover 2"),
-TAC("Cover 2", "Two deep safeties", "cover 2 defense explained football", "Cover 2"),
-TAC("Cover 3", "Three deep zones", "cover 3 defense explained football", "Cover 3"),
-TAC("Cover 4 Quarters", "Four deep, pattern match", "cover 4 quarters explained football"),
-TAC("Man Coverage", "Press and trail", "man coverage explained football"),
-TAC("Zone Blitz", "Rush from anywhere", "zone blitz explained football", "Zone blitz"),
-TAC("RPO", "Run pass option", "RPO run pass option explained football", "Run–pass option"),
-TAC("Play Action", "Sell the run", "play action pass explained football", "Play-action pass"),
-TAC("Zone Read", "Read the end", "zone read explained football", "Zone read"),
-TAC("Air Raid", "Spread and throw", "air raid offense explained football", "Air raid offense"),
-TAC("West Coast Offense", "Short and rhythmic", "west coast offense explained football", "West Coast offense"),
-TAC("Spread Offense", "Stretch them wide", "spread offense explained football", "Spread offense"),
-TAC("Wide Zone", "One cut and go", "wide zone run scheme explained football", "Zone blocking scheme"),
-TAC("Power and Counter", "Pull the guard", "power counter run scheme explained football"),
-TAC("Screen Game", "Use their rush", "screen game explained football", "Screen pass"),
-TAC("Two Minute Drill", "Clock and sideline", "two minute drill explained football", "Two-minute drill"),
-TAC("Red Zone Offense", "Field gets small", "red zone offense explained football", "Red zone (gridiron football)"),
+TAC("Beating Cover 2", "Find the hole", "how to attack cover 2 explained football", "Cover 2", BOARD.fb),
+TAC("Cover 2", "Two deep safeties", "cover 2 defense explained football", "Cover 2", BOARD.fb),
+TAC("Cover 3", "Three deep zones", "cover 3 defense explained football", "Cover 3", BOARD.fb),
+TAC("Cover 4 Quarters", "Four deep, pattern match", "cover 4 quarters explained football", BOARD.fb),
+TAC("Man Coverage", "Press and trail", "man coverage explained football", BOARD.fb),
+TAC("Zone Blitz", "Rush from anywhere", "zone blitz explained football", "Zone blitz", BOARD.fb),
+TAC("RPO", "Run pass option", "RPO run pass option explained football", "Run–pass option", BOARD.fb),
+TAC("Play Action", "Sell the run", "play action pass explained football", "Play-action pass", BOARD.fb),
+TAC("Zone Read", "Read the end", "zone read explained football", "Zone read", BOARD.fb),
+TAC("Air Raid", "Spread and throw", "air raid offense explained football", "Air raid offense", BOARD.fb),
+TAC("West Coast Offense", "Short and rhythmic", "west coast offense explained football", "West Coast offense", BOARD.fb),
+TAC("Spread Offense", "Stretch them wide", "spread offense explained football", "Spread offense", BOARD.fb),
+TAC("Wide Zone", "One cut and go", "wide zone run scheme explained football", "Zone blocking scheme", BOARD.fb),
+TAC("Power and Counter", "Pull the guard", "power counter run scheme explained football", BOARD.fb),
+TAC("Screen Game", "Use their rush", "screen game explained football", "Screen pass", BOARD.fb),
+TAC("Two Minute Drill", "Clock and sideline", "two minute drill explained football", "Two-minute drill", BOARD.fb),
+TAC("Red Zone Offense", "Field gets small", "red zone offense explained football", "Red zone (gridiron football)", BOARD.fb),
 TAC("Special Teams", "The third phase", "special teams explained football", "Special teams")];
 
 const SPORTS = {
   basketball: {
     label: "Basketball",
+    hero: "Basketball court",
     term: "basketball",
     roster: BB_ROSTER,
     games: BB_GAME_ITEMS.concat(BB_TACTICS),
@@ -2051,6 +2072,7 @@ const SPORTS = {
   },
   soccer: {
     label: "Soccer",
+    hero: "Football pitch",
     term: "soccer",
     roster: SO_ROSTER,
     games: SO_TACTICS.concat(SO_GAMES, SO_CLUB_ITEMS),
@@ -2063,6 +2085,7 @@ const SPORTS = {
   },
   hockey: {
     label: "Hockey",
+    hero: "Ice hockey rink",
     term: "hockey",
     roster: HO_ROSTER,
     games: HO_TACTICS.concat(HO_GAMES),
@@ -2074,6 +2097,7 @@ const SPORTS = {
   },
   volleyball: {
     label: "Volleyball",
+    hero: "Volleyball",
     term: "volleyball",
     roster: VO_ROSTER,
     games: VO_TACTICS.concat(VO_GAMES),
@@ -2085,6 +2109,7 @@ const SPORTS = {
   },
   football: {
     label: "Football",
+    hero: "American football field",
     term: "football",
     roster: FB_ROSTER,
     games: FB_TACTICS.concat(FB_GAMES),
@@ -3914,6 +3939,22 @@ function SportFlow({
   const start = Math.max(0, SPORT_KEYS.indexOf(sport));
   const [mid, setMid] = useState(start);
   const [held, setHeld] = useState(false);
+  const [art, setArt] = useState({});
+
+  /* Same Wikipedia lookup the player tiles use, so the pictures are free to use
+     and there is nothing to host. */
+  useEffect(function () {
+    let dead = false;
+    const titles = SPORT_KEYS.map(function (k) {
+      return SPORTS[k].hero;
+    }).filter(Boolean);
+    wikiPhotos(titles).then(function (map) {
+      if (!dead) setArt(map || {});
+    }).catch(function () {});
+    return function () {
+      dead = true;
+    };
+  }, []);
 
   /* Drifts one card every couple of seconds until someone touches it, then stops
      for good: a strip that keeps moving under a finger is worse than a still one. */
@@ -3957,16 +3998,24 @@ function SportFlow({
     const count = (d.pool || []).filter(function (r) {
       return r.kind === "player";
     }).length;
+    const shot = art[d.hero];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       className: "fr-sport",
       "data-mid": n === mid ? "1" : "0",
+      "data-img": shot ? "1" : "0",
       onClick: function () {
         setHeld(true);
         setMid(n);
         if (k !== sport) setSport(k);
       }
-    }, k === sport ? /*#__PURE__*/React.createElement("i", null, "Now") : null, /*#__PURE__*/React.createElement("b", null, d.label), /*#__PURE__*/React.createElement("span", null, count ? count.toLocaleString() + " players" : "Film and drills"));
+    }, shot ? /*#__PURE__*/React.createElement("span", {
+      className: "fr-sportimg",
+      style: {
+        backgroundImage: "url(" + shot + ")"
+      },
+      "aria-hidden": "true"
+    }) : null, k === sport ? /*#__PURE__*/React.createElement("i", null, "Now") : null, /*#__PURE__*/React.createElement("b", null, d.label), /*#__PURE__*/React.createElement("span", null, count ? count.toLocaleString() + " players" : "Film and drills"));
   }))), /*#__PURE__*/React.createElement("p", {
     className: "fr-picknote"
   }, "Everything follows this \u2014 players, games and the coach. Change it any time in Settings."));
