@@ -425,9 +425,10 @@ body { background: #EDF0F2; }
 .fr-pickq { margin:34px 0 14px; font-family:'Outfit',sans-serif; font-weight:600;
   font-size:15px; letter-spacing:-.01em; color:var(--dim); }
 .fr-flow { position:relative; overflow:hidden; padding:6px 0 2px;
+  display:flex; justify-content:center;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent); }
-.fr-flowtrack { display:flex; gap:14px; will-change:transform;
+.fr-flowtrack { display:flex; gap:14px; will-change:transform; flex:0 0 auto;
   transition:transform .55s cubic-bezier(.25,.8,.3,1); }
 .fr-sport { position:relative; overflow:hidden; flex:0 0 168px; height:104px;
   cursor:pointer; appearance:none; font:inherit;
@@ -439,11 +440,12 @@ body { background: #EDF0F2; }
              border-color .2s ease, background .2s ease; }
 /* The photo sits behind the words, dimmed, so a light and a dark picture both
    still leave white text readable. */
-.fr-sportimg { position:absolute; inset:0; background-size:cover;
-  background-position:center; filter:grayscale(.25); }
+.fr-sportimg { position:absolute; inset:0; z-index:0; background-size:cover;
+  background-position:center; background-color:var(--glass-2);
+  filter:grayscale(.25); }
 .fr-sportimg::after { content:""; position:absolute; inset:0;
   background:linear-gradient(180deg, rgba(6,10,13,.28) 0%, rgba(6,10,13,.82) 100%); }
-.fr-sport > b, .fr-sport > span, .fr-sport > i { position:relative; z-index:1; }
+.fr-sport > b, .fr-sport > i, .fr-sport > span:not(.fr-sportimg) { position:relative; z-index:1; }
 .fr-sport[data-img="1"] > b { color:#fff; }
 .fr-sport[data-img="1"] > span { color:rgba(255,255,255,.8); }
 .fr-sport[data-mid="1"] { opacity:1; transform:scale(1); background:var(--glass-2);
@@ -898,7 +900,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b132</div>
+<div class="fr-build">b133</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3971,10 +3973,11 @@ function SportFlow({
     };
   }, [held]);
 
-  /* Card 168 wide plus a 14 gap. Half a card back from the middle puts the
-     focused one dead centre whatever the screen width. */
+  /* The track is centred by flex, so the middle card of the row already sits in
+     the middle of the screen. Shifting by whole cards from there puts whichever
+     one is focused dead centre, at any width, with nothing to measure. */
   const step = 182;
-  const shift = "translateX(calc(50% - 84px - " + mid * step + "px))";
+  const shift = "translateX(" + (Math.floor(SPORT_KEYS.length / 2) - mid) * step + "px)";
 
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "fr-pickq"
