@@ -422,6 +422,11 @@ body { background: #EDF0F2; }
    switch exists, so it is stated on the way in rather than buried in settings.
    The strip drifts on its own so it reads as a thing you can move, then stops
    for good the moment it is touched. */
+.fr-again { appearance:none; cursor:pointer; font:inherit; font-size:13px;
+  margin:12px 0 0; padding:9px 15px; border-radius:999px; background:var(--glass-2);
+  border:1px solid var(--edge); color:var(--text); }
+.fr-again:hover { border-color:var(--amber); }
+.fr-again:disabled { opacity:.5; cursor:default; }
 .fr-pickq { margin:34px 0 14px; font-family:'Outfit',sans-serif; font-weight:600;
   font-size:15px; letter-spacing:-.01em; color:var(--dim); }
 .fr-flow { position:relative; overflow:hidden; padding:6px 0 2px;
@@ -900,7 +905,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b135</div>
+<div class="fr-build">b136</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2145,13 +2150,44 @@ const unescapeHTML = s => {
   el.innerHTML = s || "";
   return el.value;
 };
+/* Words that mean the video is not film. Compilations set to music, reaction
+   videos and career retrospectives all rank well on YouTube and are all useless
+   to someone trying to study a player. */
+const YT_JUNK = /\b(reaction|reacts?|tier list|ranking|top ?\d+|quiz|prediction|rumou?rs?|transfer news|tribute|edit|amv|mix|4k edit|whatsapp status|shorts|meme|funny|fails?|troll|skills? ?&? ?goals? ?\d{4}|goals? and skills|ultimate compilation)\b/i;
+/* Anything that means the clip is real coaching or real footage. */
+const YT_GOOD = /\b(analysis|breakdown|film|tactical|explained|why|how|masterclass|scout|coaching|tutorial|session|full match|full game|extended|highlights)\b/i;
+
+function rankVideos(list, wanted) {
+  const seen = {};
+  const out = [];
+  for (const v of list) {
+    const t = v.title || "";
+    if (YT_JUNK.test(t)) continue;
+    /* Series uploads differ only by a trailing number, so four parts of the same
+       thing used to fill the grid. Keep the first and drop the rest. */
+    const stem = t.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim().split(" ").slice(0, 6).join(" ");
+    const dupe = stem + "|" + (v.channel || "");
+    if (seen[dupe]) continue;
+    seen[dupe] = 1;
+    let score = 0;
+    if (YT_GOOD.test(t)) score += 3;
+    if (wanted && wanted.test(t)) score += 4;
+    if (/\b(vs\.?|v)\b/i.test(t)) score += 1;
+    v._s = score;
+    out.push(v);
+  }
+  return out.sort(function (a, b) {
+    return b._s - a._s;
+  });
+}
+
 async function ytSearch(q, opts) {
   opts = opts || {};
   const key = q + "|" + (opts.duration || "any");
-  if (ytCache[key]) return ytCache[key];
+  if (ytCache[key] && !opts.fresh) return ytCache[key];
   // strip out video-game footage, which otherwise floods these searches
-  const clean = q + " -2K -2K26 -2K25 -FIFA -EAFC -simulation -gameplay -mod -roster";
-  let url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&maxResults=" + (opts.max || 12) + "&q=" + encodeURIComponent(clean) + "&key=" + YT_KEY;
+  const clean = q + " -2K -2K26 -2K25 -FIFA -EAFC -simulation -gameplay -mod -roster" + " -reaction -tierlist -edit -shorts";
+  let url = "https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&order=relevance&maxResults=" + Math.min(50, (opts.max || 12) * 3) + "&q=" + encodeURIComponent(clean) + "&key=" + YT_KEY;
   if (opts.duration && opts.duration !== "any") url += "&videoDuration=" + opts.duration;
   const res = await fetch(url);
   const data = await res.json();
@@ -2167,8 +2203,11 @@ async function ytSearch(q, opts) {
     channel: unescapeHTML(it.snippet.channelTitle),
     thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
   })).filter(v => v.id);
-  ytCache[key] = out;
-  return out;
+  const ranked = rankVideos(out, opts.wanted).slice(0, opts.max || 12);
+  /* If the filter was so strict nothing survived, the raw list beats an empty grid. */
+  const final = ranked.length ? ranked : out.slice(0, opts.max || 12);
+  ytCache[key] = final;
+  return final;
 }
 
 /* --------------------- Wikipedia --------------------- */
@@ -2815,7 +2854,9 @@ function Tile({
 function VideoList({
   vids,
   active,
-  setActive
+  setActive,
+  onRefresh,
+  refreshing
 }) {
   if (!vids || !vids.length) return null;
   return /*#__PURE__*/React.createElement(React.Fragment, null, active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("iframe", {
@@ -2834,7 +2875,12 @@ function VideoList({
     target: "_blank",
     rel: "noreferrer",
     href: "https://www.youtube.com/watch?v=" + active.id
-  }, "Open on YouTube")), /*#__PURE__*/React.createElement("div", {
+  }, "Open on YouTube")), onRefresh ? /*#__PURE__*/React.createElement("button", {
+    className: "fr-again",
+    onClick: onRefresh,
+    disabled: refreshing,
+    title: "Search YouTube again for different videos"
+  }, refreshing ? "Looking\u2026" : "\u21BB  Different videos") : null, /*#__PURE__*/React.createElement("div", {
     className: "fr-vids",
     style: {
       marginTop: 16
@@ -4288,12 +4334,14 @@ function tabsFor(item) {
       id: "highlights",
       label: "Highlights",
       q: item.n + " " + D.term + " highlights",
-      dur: "any"
+      dur: "any",
+      wanted: /\b(highlights|extended|recap)\b/i
     }, {
       id: "games",
       label: "Full games",
-      q: item.n + " " + D.term + " full game",
-      dur: "long"
+      q: item.n + " " + D.term + " full game replay",
+      dur: "long",
+      wanted: /\b(full (game|match)|replay|extended|complete)\b/i
     }, {
       id: "players",
       label: "Top players",
@@ -4304,18 +4352,23 @@ function tabsFor(item) {
   const tabs = [{
     id: "study",
     label: "Film study",
-    q: item.g === "College" ? item.n + " college " + D.term + " film breakdown" : item.n + " " + D.term + " film study breakdown",
-    dur: "any"
+    /* "film study breakdown" alone returns compilations, so the words a real
+       analyst puts in a title do the filtering instead. */
+    q: item.g === "College" ? item.n + " college " + D.term + " tactical analysis breakdown" : item.n + " " + D.term + " tactical analysis film breakdown how he plays",
+    dur: "medium",
+    wanted: /\b(analysis|breakdown|tactical|why|how|explained|masterclass|scout)\b/i
   }, {
     id: "highlights",
     label: "Highlights",
-    q: item.n + " " + D.term + " highlights",
-    dur: "any"
+    q: item.n + " " + D.term + " highlights full match performance",
+    dur: "any",
+    wanted: /\b(highlights|performance|every touch|all touches|vs\.?)\b/i
   }, {
     id: "games",
     label: "Full games",
-    q: item.n + " " + D.term + " full game",
-    dur: "long"
+    q: item.n + " " + D.term + " full match extended highlights",
+    dur: "long",
+    wanted: /\b(full (match|game)|extended|1st half|2nd half|complete)\b/i
   }];
   const pre = item.g === "College" ? null : D.pre[item.n];
   if (pre) tabs.push({
@@ -4341,7 +4394,7 @@ function Player({
   const [stats, setStats] = useState(false);
   async function load(id, cache) {
     setTab(id);
-    const have = cache || byTab;
+    const have = cache === "again" ? {} : cache || byTab;
     if (have[id]) {
       setActive(have[id][0] || null);
       return;
@@ -4350,10 +4403,15 @@ function Player({
     setBusy(true);
     setErr("");
     try {
-      const list = await ytSearch(t.q, {
+      const again = cache === "again";
+      /* A second look asks for more than it shows and takes the next slice, so
+         pressing it twice does not return the same nine videos. */
+      const list = (await ytSearch(t.q, {
         duration: t.dur,
-        max: 9
-      });
+        max: again ? 27 : 9,
+        wanted: t.wanted,
+        fresh: again
+      })).slice(again ? 9 : 0, again ? 18 : 9);
       setByTab(m => {
         const n = {};
         for (const k in m) n[k] = m[k];
@@ -4361,6 +4419,19 @@ function Player({
         return n;
       });
       setActive(list[0] || null);
+      if (!list.length && again) {
+        const back = await ytSearch(t.q, {
+          duration: t.dur,
+          max: 9,
+          wanted: t.wanted
+        });
+        setByTab(m => Object.assign({}, m, {
+          [id]: back
+        }));
+        setActive(back[0] || null);
+        setBusy(false);
+        return;
+      }
       if (!list.length) {
         setErr(id === "study" ? "Couldn't find any " + D.term + " film for \u201C" + player.n + "\u201D. Check the spelling, or try their full name." : "No " + t.label.toLowerCase() + " came back for " + player.n + ".");
       }
@@ -4436,7 +4507,11 @@ function Player({
   }, err), /*#__PURE__*/React.createElement(VideoList, {
     vids: byTab[tab],
     active: active,
-    setActive: setActive
+    setActive: setActive,
+    refreshing: busy,
+    onRefresh: function () {
+      load(tab, "again");
+    }
   })));
 }
 
@@ -5885,7 +5960,9 @@ function Train({
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId, note))];
       } else {
-        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Match the size of your answer to the size of what they said. \"ok\", \"thanks\", \"got it\", " + "\"yeah\" and the like are not questions \u2014 reply in a line, the way a coach would, and wait. " + "Only a real question gets a full breakdown with headings and drills.\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + (profileBits() ? "Never invent facts about this player beyond what they told you above. " : "Never invent facts about this player. You do not know their height, position, level, or ") + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "HOW TO ANSWER:\n" + "Lead with the thing that matters most. Never open with a summary of what they said.\n" + "If what they asked for is not what they need, say so in the first line and explain why. " + "A player asking to fix his touch when the real problem is that he is looking up too late " + "should be told that, plainly, before anything else.\n" + "Name the actual cause, not the symptom. Practice going well and games going badly is almost " + "never technique, so do not treat it as technique.\n" + "Order it by what would help fastest, and say what to do first.\n" + "Speak the way a coach speaks on a touchline: short sentences, ordinary words, no hedging. " + "Say \"receive on the half turn\" not \"implement rotational body orientation protocols\".\n" + "Headings are a plain statement of the point, in sentence case, in the language of the sport. " + "\"Scan earlier, not more\" is a heading. \"Automated Scanning & Spatial Snapshots\" is not. " + "Never invent terminology or capitalise a phrase to make it sound like a system.\n" + "Every claim earns its place: if you say something is a mistake, say what it costs in a game.\n" + "Real numbers where they exist, and only where they are true. Sets, reps, distances, minutes.\n" + "If they ask what to do every session, end with a short numbered list of non-negotiables.\n" + "No filler openers, no motivational padding, no restating the question back at them.\n\n" + "WRITE LIKE A PERSON, NOT A REPORT:\n" + "Write in prose. Short paragraphs, two or three sentences each. This is you talking to him, "
+        parts = [T("You are an expert " + D.term + " skills coach talking to a player.\n\n" + "They said: \"" + said + "\"\n\n" + "RULES:\n" + "Match the size of your answer to the size of what they said. \"ok\", \"thanks\", \"got it\", " + "\"yeah\" and the like are not questions \u2014 reply in a line, the way a coach would, and wait. " + "Only a real question gets a full breakdown with headings and drills.\n" + "Always answer a real training question. Never say it is too broad, never ask permission first.\n" + "If the question is broad, cover it properly: break it into its main parts and give real " + "drills with real sets and reps and real coaching cues for each part. Broad question, " + "thorough answer.\n" + (profileBits() ? "Never invent facts about this player beyond what they told you above. " : "Never invent facts about this player. You do not know their height, position, level, or ") + "what they do wrong. So write it as the complete picture rather than a diagnosis of them \u2014 " + "say \"if X is what is happening, do Y\" instead of claiming X is what they do.\n" + "You may finish with one short question that would let you narrow it down next time, but only " + "after you have already given a full answer.\n" + "If the message is gibberish, or you honestly cannot tell what is being asked, say that in one " + "line and ask what they meant. Do not guess at a question and answer that instead.\n" + "If the message has nothing to do with " + D.term + ", sport, training or the body, say in one line " + "that you only cover " + D.term + " and training, name a couple of things you could help with, " + "and stop there. Do not answer it.\n" + "If they describe pain, an injury, or anything medical, tell them to get it seen by a doctor or " + "trainer, and do not hand them drills to work through it.\n" + "HOW TO ANSWER:\n" + "Lead with the thing that matters most. Never open with a summary of what they said.\n" + "If what they asked for is not what they need, say so in the first line and explain why. " + "A player asking to fix his touch when the real problem is that he is looking up too late " + "should be told that, plainly, before anything else.\n" + "Name the actual cause, not the symptom. Practice going well and games going badly is almost " + "never technique, so do not treat it as technique.\n" + "Order it by what would help fastest, and say what to do first.\n" + "Speak the way a coach speaks on a touchline: short sentences, ordinary words, no hedging. " + "Say \"receive on the half turn\" not \"implement rotational body orientation protocols\".\n" + "If you use a heading at all, it is a plain sentence about the point, in sentence case. " + "\"Scan earlier, not more\" is fine. \"Automated Scanning & Spatial Snapshots\" and "
++ "\"Scrimmage Non-Negotiables\" are not: never Title Case a phrase, and never name a "
++ "section as though it were a product or a system. Most answers need no headings at all. " + "Never invent terminology or capitalise a phrase to make it sound like a system.\n" + "Every claim earns its place: if you say something is a mistake, say what it costs in a game.\n" + "Real numbers where they exist, and only where they are true. Sets, reps, distances, minutes.\n" + "If they ask what to do every session, end with a short numbered list of non-negotiables.\n" + "No filler openers, no motivational padding, no restating the question back at them.\n\n" + "WRITE LIKE A PERSON, NOT A REPORT:\n" + "Write in prose. Short paragraphs, two or three sentences each. This is you talking to him, "
 + "not a document you are handing over.\n" + "Talk straight at him. \"You\", not \"the player\". Use his own words back where it helps.\n" + "Bold the claim that starts a paragraph, then explain it. Do not put a heading on every idea.\n" + "Bullets are only for real lists: drills, or the things to do every session. Never a bullet per thought.\n" + "Be willing to be blunt. \"That is not your problem\" and \"that will not fix it\" are things a "
 + "coach says. Say the hard thing early and then explain it kindly.\n" + "Turn a complaint into something usable where you honestly can. Three men closing him down means "
 + "two of his teammates are free, and he should be told that.\n" + "Concrete over abstract, always. A picture he can see beats a principle he has to decode.\n" + "You may name a real coach, player or piece of research if it genuinely applies, but never invent "
