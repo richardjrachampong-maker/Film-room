@@ -509,7 +509,42 @@ body { background: #EDF0F2; }
   font-size:14px; color:var(--dim); padding:10px 2px; }
 .fr-svyskip:hover { color:var(--text); }
 .fr-svynext { margin-left:auto; }
-.fr-plan { max-width:560px; margin:0 auto; padding:4px 24px 40px; }
+.fr-plan { max-width:560px; margin:0 auto; padding:4px 24px 40px; width:100%; }
+.fr-two { display:flex; gap:12px; }
+.fr-num { flex:1; display:block; }
+.fr-num span { display:block; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 7px; }
+.fr-num .fr-input { font-size:26px; font-family:'Outfit',sans-serif; font-weight:600;
+  padding:14px 16px; }
+/* Build screen */
+.fr-build { text-align:center; padding:10px 0 0; }
+.fr-bust { width:104px; height:104px; margin:0 auto 22px; border-radius:50%;
+  background:var(--glass-2); border:1px solid var(--edge); position:relative;
+  overflow:hidden; }
+.fr-bust::before { content:""; position:absolute; left:50%; top:20%; width:36px; height:36px;
+  transform:translateX(-50%); border-radius:50%; background:var(--edge-2); }
+.fr-bust::after { content:""; position:absolute; left:50%; bottom:-16px; width:70px; height:56px;
+  transform:translateX(-50%); border-radius:50% 50% 0 0; background:var(--edge-2); }
+.fr-bar { height:4px; border-radius:3px; background:var(--edge); overflow:hidden;
+  max-width:300px; margin:0 auto 10px; }
+.fr-bar i { display:block; height:100%; background:var(--amber);
+  transition:width .35s ease; }
+.fr-build > b { display:block; font-family:'Outfit',sans-serif; font-size:14px;
+  color:var(--dim); margin:0 0 18px; }
+.fr-build p { margin:0 0 7px; font-size:14px; color:var(--faint); opacity:.3;
+  transition:opacity .5s ease; }
+.fr-build p[data-on="1"] { opacity:1; color:var(--text); }
+/* The reveal */
+.fr-comp { text-align:center; }
+.fr-comp img { width:150px; height:150px; object-fit:cover; border-radius:50%;
+  border:1px solid var(--edge); display:block; margin:0 auto 14px;
+  animation:pop .4s cubic-bezier(.2,.7,.3,1) both; }
+.fr-comp .fr-bust { width:150px; height:150px; }
+.fr-comp h2 { margin:0 0 16px; font-family:'Outfit',sans-serif; font-weight:700;
+  font-size:clamp(26px,5vw,34px); letter-spacing:-.02em; }
+.fr-compwhy { margin:0 0 18px; font-size:15.5px; line-height:1.62; }
+@media (prefers-reduced-motion:reduce) { .fr-comp img { animation:none; } }
+
 @media (prefers-reduced-motion:reduce) {
   .fr-svy, .fr-step { animation:none; }
 }
@@ -905,7 +940,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b136</div>
+<div class="fr-build">b139</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2485,9 +2520,14 @@ function profileBits(sport) {
   const p = loadMe(sport);
   if (!p) return "";
   const bits = [];
-  if (p.height) bits.push("height " + p.height);
+  /* height used to be a band picked off a list. Anyone who answered back then
+     still has it, so both shapes are read. */
+  if (p.ft || p.in) bits.push("height " + (p.ft || "?") + "'" + (p.in || 0) + "\"");else if (p.height) bits.push("height " + p.height);
+  if (p.weight) bits.push(p.weight + " lbs");
   if (p.pos) bits.push("plays " + p.pos);
   if (p.level) bits.push("level: " + p.level);
+  if (p.hand) bits.push("strong side: " + p.hand);
+  if (p.best) bits.push("best part of their game: " + p.best);
   if (p.focus) bits.push("wants to fix: " + p.focus);
   if (p.note) bits.push("in their own words: " + p.note);
   return bits.join("; ");
@@ -4527,17 +4567,32 @@ function Film({
   const [err, setErr] = useState("");
   const [vids, setVids] = useState(null);
   const [active, setActive] = useState(null);
-  async function run(term, duration) {
+  const last = useRef(null);
+  async function run(term, duration, again) {
     const query = (term !== undefined && term !== null ? term : q).trim();
     const dur = duration !== undefined ? duration : mode;
     if (!query) return;
+    last.current = {
+      query: query,
+      dur: dur
+    };
     setBusy(true);
     setErr("");
-    setVids(null);
-    setActive(null);
+    if (!again) {
+      setVids(null);
+      setActive(null);
+    }
     try {
-      const list = await ytSearch(query, {
-        duration: dur
+      /* Second press digs past the first page rather than handing back the same
+         results, which is the whole point of asking again. */
+      let list = (await ytSearch(query, {
+        duration: dur,
+        max: again ? 30 : 12,
+        fresh: again
+      })).slice(again ? 12 : 0, again ? 24 : 12);
+      if (!list.length && again) list = await ytSearch(query, {
+        duration: dur,
+        max: 12
       });
       if (!list.length) setErr("Nothing came back for that. Try different words.");
       setVids(list);
@@ -4597,7 +4652,12 @@ function Film({
   }, /*#__PURE__*/React.createElement(VideoList, {
     vids: vids,
     active: active,
-    setActive: setActive
+    setActive: setActive,
+    refreshing: busy,
+    onRefresh: function () {
+      const L = last.current;
+      if (L) run(L.query, L.dur, true);
+    }
   }))));
 }
 
@@ -5369,7 +5429,13 @@ const SURVEY = [{
   k: "height",
   q: "How tall are you?",
   sub: "It changes which players are worth copying and which drills are a waste of your time.",
-  opts: HEIGHTS
+  pair: ["ft", "in"],
+  ph: ["Feet", "Inches"]
+}, {
+  k: "weight",
+  q: "What do you weigh?",
+  sub: "Not to judge it. Two players the same height play completely differently at 140 and 190.",
+  num: "Pounds"
 }, {
   k: "pos",
   q: "Where do you play?",
@@ -5381,6 +5447,16 @@ const SURVEY = [{
   sub: "This sets how hard the plan should be, not how good you are.",
   opts: LEVELS
 }, {
+  k: "hand",
+  q: "Which side are you strong on?",
+  sub: "Half the advice changes depending on the answer.",
+  opts: ["Right", "Left", "Both about the same"]
+}, {
+  k: "best",
+  q: "What is the best thing about your game?",
+  sub: "Say it plainly. The plan should build on this, not ignore it.",
+  ph: "I never lose the ball under pressure"
+}, {
   k: "focus",
   q: "What do you most want to fix?",
   sub: "One thing. Say it the way you would say it to a coach.",
@@ -5389,8 +5465,13 @@ const SURVEY = [{
   k: "note",
   q: "Anything else I should know?",
   sub: "Left footed, new position, coming back from something. Anything that changes the advice.",
-  ph: "left footed, back from an ankle"
+  ph: "back from an ankle, moved to the 10 this year"
 }];
+
+/* One question per screen, a build screen while it thinks, then the answer with
+   the player's face on it. Nothing is written until the end, so backing out with
+   the X leaves no trace. */
+const BUILD_LINES = ["Reading what you told me\u2026", "Comparing your size and position\u2026", "Finding the right players to study\u2026", "Working out what to fix first\u2026"];
 
 function Survey({
   sport,
@@ -5403,7 +5484,9 @@ function Survey({
     return me || {};
   });
   const [plan, setPlan] = useState("");
+  const [face, setFace] = useState(null);
   const [working, setWorking] = useState(false);
+  const [pct, setPct] = useState(0);
   const [err, setErr] = useState("");
   const done = i >= SURVEY.length;
 
@@ -5413,37 +5496,74 @@ function Survey({
     setP(next);
     return next;
   }
-  function commit(next) {
-    onSave(Object.keys(next).length ? next : null);
-  }
   function go(n) {
     setI(Math.max(0, n));
   }
 
+  /* The bar is honest about being an estimate: it climbs to 92 and waits there
+     for the real answer rather than pretending to finish early. */
+  useEffect(function () {
+    if (!working) return;
+    setPct(6);
+    const t = setInterval(function () {
+      setPct(function (v) {
+        return v >= 92 ? 92 : v + Math.max(1, Math.round((92 - v) / 12));
+      });
+    }, 260);
+    return function () {
+      clearInterval(t);
+    };
+  }, [working]);
+
+  function bitsOf(u) {
+    const b = [];
+    if (u.ft || u.in) b.push("height " + (u.ft || "?") + "'" + (u.in || 0) + "\"");
+    if (u.weight) b.push(u.weight + " lbs");
+    if (u.pos) b.push("plays " + u.pos);
+    if (u.level) b.push("level: " + u.level);
+    if (u.hand) b.push("strong side: " + u.hand);
+    if (u.best) b.push("best part of their game: " + u.best);
+    if (u.focus) b.push("wants to fix: " + u.focus);
+    if (u.note) b.push("also: " + u.note);
+    return b.join("; ");
+  }
+
   async function build(next) {
     const use = next || p;
-    commit(use);
-    const bits = [];
-    if (use.height) bits.push("height " + use.height);
-    if (use.pos) bits.push("plays " + use.pos);
-    if (use.level) bits.push("level: " + use.level);
-    if (use.focus) bits.push("wants to fix: " + use.focus);
-    if (use.note) bits.push("in their own words: " + use.note);
+    onSave(Object.keys(use).length ? use : null);
+    const bits = bitsOf(use);
     setI(SURVEY.length);
-    if (!bits.length) {
+    if (!bits) {
       setErr("You skipped everything, so there is nothing to go on yet.");
       return;
     }
     setErr("");
     setWorking(true);
+    setPlan("");
+    setFace(null);
     try {
       const out = await ai([{
         role: "user",
         parts: [{
-          text: "You are an elite " + SPORTS[sport].term + " skills coach.\n\n" + "A player has told you this about themselves: " + bits.join("; ") + ".\n\n" + "Give them two things and nothing else.\n\n" + "## Who to study\n" + "Three players, real ones, at any level. Pick people who actually fit THIS player's " + "body, position and level rather than the most famous names in the sport. Only name players " + "well known enough to have a Wikipedia page and findable film, so they can actually go and " + "watch them. For each one, " + "one line on why they are the right model for this player, and the single specific thing " + "to watch them do.\n\n" + "## What to study\n" + "Three things to work on, most important first. For each: one line on why it matters for " + "this player in particular, and one drill with real sets and reps.\n\n" + "Work only with what they told you. Do not guess at anything they left out and do not ask " + "for it. Plain text, short ## headings and - bullets, under 400 words."
+          text: "You are an elite " + SPORTS[sport].term + " skills coach.\n\n" + "A player has told you this about themselves: " + bits + ".\n\n" + "Reply in exactly this shape and nothing else:\n\n" + "STUDY: <one player's full name>\n" + "WHY: <90 to 130 words, written straight to them as \"you\". Why this player is the " + "right model for their body, position and level. Then the one specific thing to watch " + "them do, and what it will fix. Plain words, no headings, no bullets.>\n" + "ALSO: <two more names, comma separated>\n" + "FIX: <three things to work on, most important first, each on its own line as " + "\"name \u2014 one sentence, then a drill with real sets and reps\">\n\n" + "Pick players who genuinely fit this player rather than the most famous names, and only " + "ones well known enough to have a Wikipedia page so they can go and watch them."
         }]
       }]);
+      const name = (/STUDY:\s*(.+)/i.exec(out || "") || [])[1];
+      if (name) {
+        const clean = name.trim();
+        wikiPhotos([clean]).then(function (map) {
+          setFace({
+            name: clean,
+            img: map && map[clean]
+          });
+        }).catch(function () {
+          setFace({
+            name: clean
+          });
+        });
+      }
       setPlan(out || "");
+      setPct(100);
       try {
         window.track("plan-built", { sport: sport });
       } catch (e) {}
@@ -5455,6 +5575,70 @@ function Survey({
 
   const step = SURVEY[i];
   const opts = step && (step.opts || POSITIONS[sport] || POSITIONS.basketball);
+  const why = (/WHY:\s*([\s\S]*?)(?:\nALSO:|\nFIX:|$)/i.exec(plan) || [])[1];
+  const also = (/ALSO:\s*(.+)/i.exec(plan) || [])[1];
+  const fix = (/FIX:\s*([\s\S]*)$/i.exec(plan) || [])[1];
+
+  function field(st) {
+    if (st.pair) return /*#__PURE__*/React.createElement("div", {
+      className: "fr-two"
+    }, st.pair.map(function (k, n) {
+      return /*#__PURE__*/React.createElement("label", {
+        key: k,
+        className: "fr-num"
+      }, /*#__PURE__*/React.createElement("span", null, st.ph[n]), /*#__PURE__*/React.createElement("input", {
+        className: "fr-input",
+        inputMode: "numeric",
+        autoFocus: n === 0,
+        value: p[k] || "",
+        onChange: function (e) {
+          set(k, e.target.value.replace(/[^0-9]/g, "").slice(0, 2));
+        }
+      }));
+    }));
+    if (st.num) return /*#__PURE__*/React.createElement("label", {
+      className: "fr-num"
+    }, /*#__PURE__*/React.createElement("span", null, st.num), /*#__PURE__*/React.createElement("input", {
+      className: "fr-input",
+      inputMode: "numeric",
+      autoFocus: true,
+      value: p[st.k] || "",
+      onChange: function (e) {
+        set(st.k, e.target.value.replace(/[^0-9]/g, "").slice(0, 3));
+      }
+    }));
+    if (st.ph) return /*#__PURE__*/React.createElement("input", {
+      className: "fr-input",
+      autoFocus: true,
+      value: p[st.k] || "",
+      placeholder: st.ph,
+      onChange: function (e) {
+        set(st.k, e.target.value);
+      },
+      onKeyDown: function (e) {
+        if (e.key === "Enter") {
+          if (i === SURVEY.length - 1) build(p);else go(i + 1);
+        }
+      }
+    });
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-svychips"
+    }, opts.map(function (v) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: v,
+        className: "fr-svychip",
+        "data-on": p[st.k] === v ? "1" : "0",
+        onClick: function () {
+          const next = set(st.k, p[st.k] === v ? "" : v);
+          if (p[st.k] !== v) {
+            if (i === SURVEY.length - 1) build(next);else setTimeout(function () {
+              go(i + 1);
+            }, 160);
+          }
+        }
+      }, v);
+    }));
+  }
 
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-svy"
@@ -5476,16 +5660,71 @@ function Survey({
   }, done ? /*#__PURE__*/React.createElement("div", {
     className: "fr-plan fr-step",
     key: "plan"
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "fr-svyq",
+  }, working ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-build"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-bust",
+    "aria-hidden": "true"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "fr-bar"
+  }, /*#__PURE__*/React.createElement("i", {
     style: {
-      fontSize: "clamp(24px,5vw,34px)"
+      width: pct + "%"
     }
-  }, working ? "Working on it\u2026" : err ? "Hmm." : "Here's your plan"), err ? /*#__PURE__*/React.createElement("p", {
+  })), /*#__PURE__*/React.createElement("b", null, pct + "%"), BUILD_LINES.map(function (l, n) {
+    return /*#__PURE__*/React.createElement("p", {
+      key: l,
+      "data-on": pct > n * 23 ? "1" : "0"
+    }, l);
+  })) : err ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h2", {
+    className: "fr-svyq"
+  }, "Hmm."), /*#__PURE__*/React.createElement("p", {
     className: "fr-svysub"
-  }, err) : null, plan ? /*#__PURE__*/React.createElement(Rich, {
+  }, err)) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+    className: "fr-svysub",
+    style: {
+      margin: "0 0 18px"
+    }
+  }, "You should study\u2026"), face ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-comp"
+  }, face.img ? /*#__PURE__*/React.createElement("img", {
+    src: face.img,
+    alt: face.name
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-bust",
+    "aria-hidden": "true"
+  }), /*#__PURE__*/React.createElement("h2", null, face.name)) : null, why ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-compwhy"
+  }, why.trim()) : null, face ? /*#__PURE__*/React.createElement("button", {
+    className: "fr-btn",
+    style: {
+      marginTop: 4
+    },
+    onClick: function () {
+      onClose();
+      setTimeout(function () {
+        window.dispatchEvent(new CustomEvent("fr-study", {
+          detail: face.name
+        }));
+      }, 60);
+    }
+  }, "Study " + face.name.split(" ")[0] + "'s game") : null, also ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-svysub",
+    style: {
+      marginTop: 20
+    }
+  }, "Also worth watching: " + also.trim()) : null, fix ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-meplan"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-svysub",
+    style: {
+      margin: "0 0 10px"
+    }
+  }, "What to work on"), /*#__PURE__*/React.createElement(Rich, {
+    text: fix.trim()
+  })) : null, !why && plan ? /*#__PURE__*/React.createElement(Rich, {
     text: plan
-  }) : null) : /*#__PURE__*/React.createElement("div", {
+  }) : null)) : /*#__PURE__*/React.createElement("div", {
     className: "fr-svyin"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-step",
@@ -5494,37 +5733,7 @@ function Survey({
     className: "fr-svyq"
   }, step.q), /*#__PURE__*/React.createElement("p", {
     className: "fr-svysub"
-  }, step.sub), step.opts === undefined && !step.ph ? null : null, step.ph ? /*#__PURE__*/React.createElement("input", {
-    className: "fr-input",
-    autoFocus: true,
-    value: p[step.k] || "",
-    placeholder: step.ph,
-    onChange: function (e) {
-      set(step.k, e.target.value);
-    },
-    onKeyDown: function (e) {
-      if (e.key === "Enter") {
-        if (i === SURVEY.length - 1) build(p);else go(i + 1);
-      }
-    }
-  }) : /*#__PURE__*/React.createElement("div", {
-    className: "fr-svychips"
-  }, opts.map(function (v) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: v,
-      className: "fr-svychip",
-      "data-on": p[step.k] === v ? "1" : "0",
-      onClick: function () {
-        const next = set(step.k, p[step.k] === v ? "" : v);
-        /* Picking an answer moves you on by itself. One tap per question. */
-        if (p[step.k] !== v) {
-          if (i === SURVEY.length - 1) build(next);else setTimeout(function () {
-            go(i + 1);
-          }, 160);
-        }
-      }
-    }, v);
-  })))), /*#__PURE__*/React.createElement("div", {
+  }, step.sub), field(step)))), /*#__PURE__*/React.createElement("div", {
     className: "fr-svyfootwrap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-svyfoot"
@@ -5532,6 +5741,7 @@ function Survey({
     className: "fr-svyskip",
     onClick: function () {
       setPlan("");
+      setFace(null);
       setErr("");
       go(0);
     }
@@ -5556,7 +5766,7 @@ function Survey({
     onClick: function () {
       if (i === SURVEY.length - 1) build(p);else go(i + 1);
     }
-  }, i === SURVEY.length - 1 ? "See my plan" : "Next"))))));
+  }, i === SURVEY.length - 1 ? "See my plan" : "Next")))));
 }
 
 function Train({
@@ -5575,6 +5785,7 @@ function Train({
   const [chatId, setChatId] = useState(null);
   const restored = useRef(false);
   const pushTimer = useRef(null);
+  const pending = useRef(null);
   const [showHistory, setShowHistory] = useState(false);
   const [mode, setMode] = useState(function () {
     try {
@@ -5765,22 +5976,54 @@ function Train({
     rememberOpen(sport, id);
     // Debounced so a fast back and forth is one write, not ten.
     if (pushTimer.current) clearTimeout(pushTimer.current);
+    pending.current = {
+      sport: sport,
+      chats: next,
+      id: id
+    };
     pushTimer.current = setTimeout(function () {
-      pushChats(user, sport, next).then(function () {
-        // Marked as reached the account, so a later sync will not treat it
-        // as unsaved and put a deleted chat back.
-        setChats(function (now) {
-          const marked = now.map(function (c) {
-            return c.id === id ? Object.assign({}, c, {
-              synced: 1
-            }) : c;
-          });
-          saveChats(user && user.uid, marked);
-          return marked;
+      flush();
+    }, 800);
+  }, [msgs.length, msgs]);
+
+  /* The write used to sit behind a timer with nothing to fire it early. Read the
+     answer, swap apps, and the timer died with the tab: that chat then existed on
+     one device and nowhere else, which is exactly how two devices drift apart.
+     Anything waiting is now sent the moment the page is hidden or unloaded. */
+  function flush() {
+    const job = pending.current;
+    if (!job || !user) return;
+    pending.current = null;
+    if (pushTimer.current) {
+      clearTimeout(pushTimer.current);
+      pushTimer.current = null;
+    }
+    return pushChats(user, job.sport, job.chats).then(function () {
+      // Marked as reached the account, so a later sync will not treat it
+      // as unsaved and put a deleted chat back.
+      setChats(function (now) {
+        const marked = now.map(function (c) {
+          return c.id === job.id ? Object.assign({}, c, {
+            synced: 1
+          }) : c;
         });
+        saveChats(user && user.uid, marked);
+        return marked;
       });
-    }, 1500);
-  }, [msgs.length]);
+    });
+  }
+  useEffect(function () {
+    function bye() {
+      if (document.visibilityState === "hidden") flush();
+    }
+    document.addEventListener("visibilitychange", bye);
+    window.addEventListener("pagehide", flush);
+    return function () {
+      document.removeEventListener("visibilitychange", bye);
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  });
   function newChat() {
     setChatId(null);
     setMsgs([]);
@@ -6385,7 +6628,17 @@ function App() {
           });
           const next = unsent.length ? mergeChats(unsent, remote) : remote;
           saveChats(user.uid, next);
-          if (unsent.length) pushChats(user, null, next);
+          /* Everything this device kept before any of this existed gets sent up
+             now, rather than only chats made from here on. */
+          if (unsent.length) pushChats(user, null, next).then(function () {
+            const marked = next.map(function (c) {
+              return Object.assign({}, c, {
+                synced: 1
+              });
+            });
+            saveChats(user.uid, marked);
+            setChats(marked);
+          });
           return next;
         });
       });
@@ -6555,12 +6808,26 @@ function App() {
   }
   function openItem(item) {
     if (item.kind === "concept") return openFilm(item.q, "any");
+    /* A tactic is explained in five or ten minutes. Sending it through the
+       full-game filter asks for videos over twenty minutes and finds nothing. */
+    if (item.g === "Tactics") return openFilm(item.q, "any");
     if (item.kind === "game") return openFilm(item.q, "long");
     push({
       page: "player",
       player: item
     });
   }
+  /* The reveal offers to go and watch him. Without this the button did nothing. */
+  useEffect(function () {
+    function onStudy(e) {
+      const name = e && e.detail;
+      if (name) openFilm(name + " " + D.term + " tactical analysis film breakdown", "any");
+    }
+    window.addEventListener("fr-study", onStudy);
+    return function () {
+      window.removeEventListener("fr-study", onStudy);
+    };
+  }, []);
   function openFilm(query, duration) {
     setSeed({
       q: query,
