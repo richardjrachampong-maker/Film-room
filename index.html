@@ -509,7 +509,8 @@ body { background: #EDF0F2; }
   font-size:14px; color:var(--dim); padding:10px 2px; }
 .fr-svyskip:hover { color:var(--text); }
 .fr-svynext { margin-left:auto; }
-.fr-plan { max-width:560px; margin:0 auto; padding:4px 24px 40px; width:100%; }
+.fr-plan { max-width:560px; width:100%; margin:0 auto; padding:4px 24px 40px;
+  align-self:center; }
 .fr-two { display:flex; gap:12px; }
 .fr-num { flex:1; display:block; }
 .fr-num span { display:block; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
@@ -517,17 +518,21 @@ body { background: #EDF0F2; }
 .fr-num .fr-input { font-size:26px; font-family:'Outfit',sans-serif; font-weight:600;
   padding:14px 16px; }
 /* Build screen */
-.fr-build { text-align:center; padding:10px 0 0; }
-.fr-bust { width:104px; height:104px; margin:0 auto 22px; border-radius:50%;
+.fr-build { text-align:center; padding:10px 0 0; display:flex;
+  flex-direction:column; align-items:center; }
+.fr-build > * { width:100%; }
+.fr-bust { width:104px; height:104px; margin:0 auto 22px; flex:0 0 auto; border-radius:50%;
   background:var(--glass-2); border:1px solid var(--edge); position:relative;
   overflow:hidden; }
 .fr-bust::before { content:""; position:absolute; left:50%; top:20%; width:36px; height:36px;
   transform:translateX(-50%); border-radius:50%; background:var(--edge-2); }
 .fr-bust::after { content:""; position:absolute; left:50%; bottom:-16px; width:70px; height:56px;
   transform:translateX(-50%); border-radius:50% 50% 0 0; background:var(--edge-2); }
-.fr-bar { height:4px; border-radius:3px; background:var(--edge); overflow:hidden;
+/* Named apart from .fr-bar, which is the message composer. Sharing that class
+   set the composer to four pixels tall and made the input vanish. */
+.fr-prog { height:4px; border-radius:3px; background:var(--edge); overflow:hidden;
   max-width:300px; margin:0 auto 10px; }
-.fr-bar i { display:block; height:100%; background:var(--amber);
+.fr-prog i { display:block; height:100%; background:var(--amber);
   transition:width .35s ease; }
 .fr-build > b { display:block; font-family:'Outfit',sans-serif; font-size:14px;
   color:var(--dim); margin:0 0 18px; }
@@ -940,7 +945,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b139</div>
+<div class="fr-build">b142</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1895,6 +1900,10 @@ const SG = (n, t, g, q, wiki) => ({
 
 const SO_ROSTER = [SP("Lionel Messi", "Close control", "Forwards"), SP("Cristiano Ronaldo", "Finishing & heading", "Forwards"), SP("Kylian Mbappe", "Running with the ball", "Forwards", "Kylian Mbappé"), SP("Erling Haaland", "Movement in the box", "Forwards"), SP("Vinicius Junior", "One-v-one dribbling", "Forwards", "Vinícius Júnior"), SP("Mohamed Salah", "Cutting inside", "Forwards"), SP("Harry Kane", "Dropping deep", "Forwards"), SP("Robert Lewandowski", "Poacher's timing", "Forwards"), SP("Lamine Yamal", "Wing play", "Forwards"), SP("Bukayo Saka", "Wide attacking", "Forwards"), SP("Jude Bellingham", "Arriving in the box", "Midfielders"), SP("Kevin De Bruyne", "Passing range", "Midfielders"), SP("Rodri", "Screening the back four", "Midfielders"), SP("Pedri", "Receiving under pressure", "Midfielders"), SP("Federico Valverde", "Box to box", "Midfielders"), SP("Declan Rice", "Winning the ball back", "Midfielders"), SP("Phil Foden", "Between the lines", "Midfielders"), SP("Luka Modric", "Turning out of trouble", "Midfielders", "Luka Modrić"), SP("Virgil van Dijk", "Defending the back post", "Defenders"), SP("Ruben Dias", "Reading the game", "Defenders", "Rúben Dias"), SP("Achraf Hakimi", "Overlapping runs", "Defenders"), SP("Alphonso Davies", "Recovery pace", "Defenders"), SP("Alisson", "Sweeping behind", "Keepers", "Alisson Becker"), SP("Thibaut Courtois", "Shot stopping", "Keepers"), SP("Emiliano Martinez", "Penalty saves", "Keepers", "Emiliano Martínez"), SP("Aitana Bonmati", "Half-space play", "Women", "Aitana Bonmatí"), SP("Alexia Putellas", "Arriving late", "Women"), SP("Sam Kerr", "Running in behind", "Women"), SP("Lauren James", "Shot creation", "Women"), SP("Sophia Smith", "Direct running", "Women", "Sophia Wilson"), SP("Trinity Rodman", "Wing dribbling", "Women"), SP("Vivianne Miedema", "Finishing", "Women"), SP("Marta", "Left-foot technique", "Women", "Marta (footballer)"), SP("Pele", "Complete forward play", "Legends", "Pelé"), SP("Diego Maradona", "Dribbling at speed", "Legends"), SP("Zinedine Zidane", "Control and turns", "Legends"), SP("Ronaldinho", "Skill moves", "Legends"), SP("Ronaldo", "Explosive finishing", "Legends", "Ronaldo (Brazilian footballer)"), SP("Thierry Henry", "Cutting in from the left", "Legends"), SP("Johan Cruyff", "Movement and vision", "Legends"), SP("Paolo Maldini", "Defending without fouling", "Legends"), SP("Xavi", "Keeping the ball", "Legends", "Xavi"), SP("Andres Iniesta", "Escaping pressure", "Legends", "Andrés Iniesta"), SC("First Touch", "Technique", "soccer first touch drills tutorial", "Ball control (association football)"), SC("Dribbling", "Technique", "soccer dribbling drills tutorial"), SC("Passing", "Technique", "soccer passing technique tutorial"), SC("Finishing", "Attacking", "soccer finishing drills tutorial", "Shot (association football)"), SC("Free Kick", "Set pieces", "soccer free kick technique tutorial", "Direct free kick"), SC("Penalty Kick", "Set pieces", "soccer penalty kick technique tutorial", "Penalty kick (association football)"), SC("Crossing", "Attacking", "soccer crossing technique tutorial", "Cross (football)"), SC("Heading", "Technique", "soccer heading technique tutorial", "Header (association football)"), SC("Tackling", "Defending", "soccer tackling technique tutorial"), SC("Pressing", "Defending", "soccer pressing tactics explained", "Press (association football)"), SC("Goalkeeping", "Keeping", "soccer goalkeeper training drills", "Goalkeeper (association football)"), SC("Step Over", "Skill moves", "soccer step over tutorial", "Step over (football)"), SC("Through Ball", "Attacking", "soccer through ball tutorial", "Through ball"), SC("Offside Trap", "Defending", "soccer offside trap explained", "Offside (association football)")];
 const SO_GAMES = [SG("Champions League", "Full matches", "Club", "Champions League full match replay", "UEFA Champions League"), SG("Premier League", "Full matches", "Club", "Premier League full match replay", "Premier League"), SG("La Liga", "Full matches", "Club", "La Liga full match replay", "La Liga"), SG("Serie A", "Full matches", "Club", "Serie A full match replay", "Serie A"), SG("Bundesliga", "Full matches", "Club", "Bundesliga full match replay", "Bundesliga"), SG("Ligue 1", "Full matches", "Club", "Ligue 1 full match replay", "Ligue 1"), SG("Europa League", "Full matches", "Club", "Europa League full match replay", "UEFA Europa League"), SG("Copa Libertadores", "Full matches", "Club", "Copa Libertadores full match replay", "Copa Libertadores"), SG("MLS", "Full matches", "Club", "MLS full match replay", "Major League Soccer"), SG("World Cup", "Tournament", "International", "FIFA World Cup full match replay", "FIFA World Cup"), SG("Euros", "Tournament", "International", "UEFA Euro full match replay", "UEFA European Championship"), SG("Copa America", "Tournament", "International", "Copa America full match replay", "Copa América"), SG("AFCON", "Tournament", "International", "Africa Cup of Nations full match replay", "Africa Cup of Nations"), SG("Women's World Cup", "Tournament", "Women", "FIFA Women's World Cup full match replay", "FIFA Women's World Cup"), SG("WSL", "Full matches", "Women", "Women's Super League full match replay", "Women's Super League"), SG("NWSL", "Full matches", "Women", "NWSL full match replay", "National Women's Soccer League")];
+/* Exact article titles. "Barcelona" on its own is the city, "Santos" is a
+   surname, so the club is named explicitly wherever the plain word is ambiguous. */
+const CLUB_WIKI = {"Real Madrid": "Real Madrid CF", "Barcelona": "FC Barcelona", "Manchester City": "Manchester City F.C.", "Liverpool": "Liverpool F.C.", "Arsenal": "Arsenal F.C.", "Manchester United": "Manchester United F.C.", "Chelsea": "Chelsea F.C.", "Tottenham Hotspur": "Tottenham Hotspur F.C.", "Newcastle United": "Newcastle United F.C.", "Aston Villa": "Aston Villa F.C.", "West Ham United": "West Ham United F.C.", "Everton": "Everton F.C.", "Bayern Munich": "FC Bayern Munich", "Borussia Dortmund": "Borussia Dortmund", "Bayer Leverkusen": "Bayer 04 Leverkusen", "RB Leipzig": "RB Leipzig", "Atletico Madrid": "Atlético Madrid", "Sevilla": "Sevilla FC", "Real Betis": "Real Betis", "Villarreal": "Villarreal CF", "Athletic Bilbao": "Athletic Bilbao", "Real Sociedad": "Real Sociedad", "Valencia": "Valencia CF", "Inter Milan": "Inter Milan", "AC Milan": "AC Milan", "Juventus": "Juventus FC", "Napoli": "SSC Napoli", "Roma": "AS Roma", "Lazio": "SS Lazio", "Atalanta": "Atalanta BC", "Fiorentina": "ACF Fiorentina", "Paris Saint-Germain": "Paris Saint-Germain FC", "Marseille": "Olympique de Marseille", "Lyon": "Olympique Lyonnais", "Monaco": "AS Monaco FC", "Lille": "Lille OSC", "Ajax": "AFC Ajax", "PSV Eindhoven": "PSV Eindhoven", "Feyenoord": "Feyenoord", "Benfica": "S.L. Benfica", "Porto": "FC Porto", "Sporting CP": "Sporting CP", "Celtic": "Celtic F.C.", "Rangers": "Rangers F.C.", "Galatasaray": "Galatasaray S.K. (football)", "Fenerbahce": "Fenerbahçe S.K. (football)", "Boca Juniors": "Boca Juniors", "River Plate": "Club Atlético River Plate", "Flamengo": "CR Flamengo", "Palmeiras": "SE Palmeiras", "Santos": "Santos FC", "Corinthians": "Sport Club Corinthians Paulista", "Inter Miami": "Inter Miami CF", "LA Galaxy": "LA Galaxy", "LAFC": "Los Angeles FC", "Seattle Sounders": "Seattle Sounders FC", "Atlanta United": "Atlanta United FC", "New York City FC": "New York City FC", "Club America": "Club América", "Chivas": "C.D. Guadalajara", "Tigres UANL": "Tigres UANL", "Monterrey": "C.F. Monterrey", "Al Hilal": "Al Hilal SFC", "Al Nassr": "Al Nassr FC", "Urawa Red Diamonds": "Urawa Red Diamonds", "Kaizer Chiefs": "Kaizer Chiefs F.C.", "Orlando Pirates": "Orlando Pirates F.C.", "Al Ahly": "Al Ahly SC", "Wydad Casablanca": "Wydad AC", "Mamelodi Sundowns": "Mamelodi Sundowns F.C."};
+
 const SO_CLUBS = ("Real Madrid|Barcelona|Manchester City|Liverpool|Arsenal|Manchester United|" + "Chelsea|Tottenham Hotspur|Newcastle United|Aston Villa|West Ham United|Everton|" + "Bayern Munich|Borussia Dortmund|Bayer Leverkusen|RB Leipzig|Atletico Madrid|Sevilla|" + "Real Betis|Villarreal|Athletic Bilbao|Real Sociedad|Valencia|Inter Milan|AC Milan|" + "Juventus|Napoli|Roma|Lazio|Atalanta|Fiorentina|Paris Saint-Germain|Marseille|Lyon|Monaco|" + "Lille|Ajax|PSV Eindhoven|Feyenoord|Benfica|Porto|Sporting CP|Celtic|Rangers|" + "Galatasaray|Fenerbahce|Boca Juniors|River Plate|Flamengo|Palmeiras|Santos|Corinthians|" + "Inter Miami|LA Galaxy|LAFC|Seattle Sounders|Atlanta United|New York City FC|" + "Club America|Chivas|Tigres UANL|Monterrey|Al Hilal|Al Nassr|Urawa Red Diamonds|" + "Kaizer Chiefs|Orlando Pirates|Al Ahly|Wydad Casablanca|Mamelodi Sundowns").split("|").filter(function (v, i, a) {
   return v && a.indexOf(v) === i;
 });
@@ -1904,6 +1913,7 @@ const SO_CLUB_ITEMS = SO_CLUBS.map(function (n) {
     t: "Full matches",
     g: "Club",
     kind: "game",
+    wiki: CLUB_WIKI[n] || n,
     q: n + " full match replay"
   };
 });
@@ -2192,12 +2202,16 @@ const YT_JUNK = /\b(reaction|reacts?|tier list|ranking|top ?\d+|quiz|prediction|
 /* Anything that means the clip is real coaching or real footage. */
 const YT_GOOD = /\b(analysis|breakdown|film|tactical|explained|why|how|masterclass|scout|coaching|tutorial|session|full match|full game|extended|highlights)\b/i;
 
-function rankVideos(list, wanted) {
+function rankVideos(list, wanted, must) {
   const seen = {};
   const out = [];
   for (const v of list) {
     const t = v.title || "";
     if (YT_JUNK.test(t)) continue;
+    /* Long queries drift: asking for Iniesta returned Aubameyang because YouTube
+       matched the rest of the words and dropped the name. Anything that does not
+       actually mention who was asked for is thrown out. */
+    if (must && !must.test(t)) continue;
     /* Series uploads differ only by a trailing number, so four parts of the same
        thing used to fill the grid. Keep the first and drop the rest. */
     const stem = t.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim().split(" ").slice(0, 6).join(" ");
@@ -2238,11 +2252,67 @@ async function ytSearch(q, opts) {
     channel: unescapeHTML(it.snippet.channelTitle),
     thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
   })).filter(v => v.id);
-  const ranked = rankVideos(out, opts.wanted).slice(0, opts.max || 12);
+  let ranked = rankVideos(out, opts.wanted, opts.must).slice(0, opts.max || 12);
+  /* If insisting on the name leaves too little to show, drop that rule before
+     dropping the search. */
+  if (ranked.length < 3 && opts.must) ranked = rankVideos(out, opts.wanted).slice(0, opts.max || 12);
   /* If the filter was so strict nothing survived, the raw list beats an empty grid. */
   const final = ranked.length ? ranked : out.slice(0, opts.max || 12);
   ytCache[key] = final;
   return final;
+}
+
+/* ----------------------- Crests ----------------------- */
+
+/* Wikipedia gives a club its stadium or a match photo, not its crest. TheSportsDB
+   returns the actual badge, so club tiles come from there and fall back to the
+   Wikipedia picture only when there is no badge to be had.
+   The 123 key is the shared free one: rate limited, so results are cached on the
+   device and each club is only ever asked for once. */
+const BADGE_KEY = "fr-badges";
+let badgeCache = (function () {
+  try {
+    return JSON.parse(window.localStorage.getItem(BADGE_KEY) || "{}") || {};
+  } catch (e) {
+    return {};
+  }
+})();
+function saveBadges() {
+  try {
+    window.localStorage.setItem(BADGE_KEY, JSON.stringify(badgeCache));
+  } catch (e) {}
+}
+async function badgeFor(name) {
+  if (name in badgeCache) return badgeCache[name];
+  try {
+    const res = await fetch("https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=" + encodeURIComponent(name));
+    if (!res.ok) throw 0;
+    const teams = (await res.json()).teams || [];
+    /* Several clubs share a name across sports and countries, so the soccer one
+       is preferred rather than whichever happens to come back first. */
+    const pick = teams.filter(function (t) {
+      return (t.strSport || "").toLowerCase() === "soccer";
+    })[0] || teams[0];
+    const url = pick && (pick.strBadge || pick.strTeamBadge) || null;
+    badgeCache[name] = url;
+    saveBadges();
+    return url;
+  } catch (e) {
+    /* A failed lookup is not cached, so a rate limit now does not blank the
+       crest forever. */
+    return null;
+  }
+}
+async function badgesFor(names) {
+  const need = names.filter(function (n) {
+    return n && !(n in badgeCache);
+  });
+  /* Three at a time: enough to fill a screen quickly without tripping the
+     shared key's limit. */
+  for (let i = 0; i < need.length; i += 3) {
+    await Promise.all(need.slice(i, i + 3).map(badgeFor));
+  }
+  return badgeCache;
 }
 
 /* --------------------- Wikipedia --------------------- */
@@ -4252,23 +4322,42 @@ function Library({
       if (!alive) return;
       const map = {};
       items.forEach(r => {
-        map[r.n] = r.kind === "game" ? null : photoCache[r.wiki || r.n];
+        /* A game tile used to be barred from having a picture. Now it gets one
+           whenever a page has been named for it, and only falls back to the
+           lettering when it has not. */
+        /* A crest beats a stadium photo for a club, so the badge wins where
+           there is one. */
+        map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
       });
       setPhotos(map);
     };
-    wikiPhotos(items.filter(r => r.kind !== "game").map(r => r.wiki || r.n)).then(sync).catch(function () {});
+    wikiPhotos(items.filter(r => r.kind !== "game" || r.wiki).map(r => r.wiki || r.n)).then(sync).catch(function () {});
+    badgesFor(items.filter(r => r.g === "Club").slice(0, 40).map(r => r.n)).then(sync).catch(function () {});
     return () => {
       alive = false;
     };
   }, [title]);
   useEffect(() => {
     let alive = true;
-    const shown = list.slice(0, 40).filter(r => r.kind !== "game").map(r => r.wiki || r.n);
+    const shown = list.slice(0, 40).filter(r => r.kind !== "game" || r.wiki).map(r => r.wiki || r.n);
+    badgesFor(list.slice(0, 40).filter(r => r.g === "Club").map(r => r.n)).then(function () {
+      if (alive) setPhotos(function (m) {
+        const n = {};
+        for (const k in m) n[k] = m[k];
+        list.forEach(function (r) {
+          if (r.g === "Club" && badgeCache[r.n]) n[r.n] = badgeCache[r.n];
+        });
+        return n;
+      });
+    }).catch(function () {});
     wikiPhotos(shown).then(() => {
       if (!alive) return;
       const map = {};
       items.concat(list).forEach(r => {
-        map[r.n] = r.kind === "game" ? null : photoCache[r.wiki || r.n];
+        /* A game tile used to be barred from having a picture. Now it gets one
+           whenever a page has been named for it, and only falls back to the
+           lettering when it has not. */
+        map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
       });
       setPhotos(map);
     }).catch(function () {});
@@ -4394,19 +4483,19 @@ function tabsFor(item) {
     label: "Film study",
     /* "film study breakdown" alone returns compilations, so the words a real
        analyst puts in a title do the filtering instead. */
-    q: item.g === "College" ? item.n + " college " + D.term + " tactical analysis breakdown" : item.n + " " + D.term + " tactical analysis film breakdown how he plays",
+    q: item.g === "College" ? "\"" + item.n + "\" college " + D.term + " analysis" : "\"" + item.n + "\" " + D.term + " analysis breakdown",
     dur: "medium",
     wanted: /\b(analysis|breakdown|tactical|why|how|explained|masterclass|scout)\b/i
   }, {
     id: "highlights",
     label: "Highlights",
-    q: item.n + " " + D.term + " highlights full match performance",
+    q: "\"" + item.n + "\" " + D.term + " highlights",
     dur: "any",
     wanted: /\b(highlights|performance|every touch|all touches|vs\.?)\b/i
   }, {
     id: "games",
     label: "Full games",
-    q: item.n + " " + D.term + " full match extended highlights",
+    q: "\"" + item.n + "\" " + D.term + " full match",
     dur: "long",
     wanted: /\b(full (match|game)|extended|1st half|2nd half|complete)\b/i
   }];
@@ -4446,10 +4535,19 @@ function Player({
       const again = cache === "again";
       /* A second look asks for more than it shows and takes the next slice, so
          pressing it twice does not return the same nine videos. */
+      /* Surnames carry the search. Accents are stripped so Doncic matches
+         Don\u010di\u0107 and the apostrophe in O'Neal does not break the pattern. */
+      const parts = String(player.n || "").split(/\s+/).filter(function (w) {
+        return w.length > 2;
+      });
+      const must = player.kind === "player" && parts.length ? new RegExp(parts.map(function (w) {
+        return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z]/g, "");
+      }).filter(Boolean).join("|"), "i") : null;
       const list = (await ytSearch(t.q, {
         duration: t.dur,
         max: again ? 27 : 9,
         wanted: t.wanted,
+        must: must,
         fresh: again
       })).slice(again ? 9 : 0, again ? 18 : 9);
       setByTab(m => {
@@ -4585,9 +4683,18 @@ function Film({
     try {
       /* Second press digs past the first page rather than handing back the same
          results, which is the whole point of asking again. */
+      /* A typed search usually leads with a name, so the same rule applies: any
+         word over three letters in the query has to show up in the title. */
+      const words = query.split(/\s+/).filter(function (w) {
+        return w.length > 3 && /^[A-Za-z\u00C0-\u024F]+$/.test(w);
+      }).slice(0, 2);
+      const must = words.length ? new RegExp(words.map(function (w) {
+        return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      }).join("|"), "i") : null;
       let list = (await ytSearch(query, {
         duration: dur,
         max: again ? 30 : 12,
+        must: must,
         fresh: again
       })).slice(again ? 12 : 0, again ? 24 : 12);
       if (!list.length && again) list = await ytSearch(query, {
@@ -5666,7 +5773,7 @@ function Survey({
     className: "fr-bust",
     "aria-hidden": "true"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "fr-bar"
+    className: "fr-prog"
   }, /*#__PURE__*/React.createElement("i", {
     style: {
       width: pct + "%"
