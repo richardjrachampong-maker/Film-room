@@ -71,7 +71,10 @@ html, body, #root { height: 100%; margin: 0; }
    and a centred column then sits visibly off to the right. Nothing here needs to
    scroll sideways, so the whole page is pinned to the viewport width. */
 html, body { max-width: 100%; overflow-x: hidden; }
-* { min-width: 0; }
+/* Strips that are meant to scroll sideways must not be squeezed by the page-wide
+   rule above, and must start at their first item rather than part way along. */
+.fr-pills, .fr-links, .fr-trayin { scroll-padding-left:0; }
+.fr-pills > *, .fr-links > *, .fr-trayin > * { flex:0 0 auto; }
 body { background: #EDF0F2; }
 
 .fr[data-theme="dark"] {
@@ -1002,7 +1005,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b146</div>
+<div class="fr-build">b147</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6436,12 +6439,6 @@ function Train({
   const [mode, setMode] = useState(function () {
     return (loadMe(sport) || {}).mode || "quick";
   });
-  /* Preferences belong to the person, not the tablet. When the account's answers
-     arrive they bring the chosen mode with them. */
-  useEffect(function () {
-    const m = (me || {}).mode;
-    if (m && m !== mode) setMode(m);
-  }, [me]);
   const [locked, setLocked] = useState(false);
   const [note, setNote] = useState(function () {
     return loadNote(user && user.uid);
@@ -6553,6 +6550,14 @@ function Train({
       dead = true;
     };
   }, [user && user.uid, sport]);
+
+  /* Preferences belong to the person, not the tablet. This has to sit after `me`
+     exists: a dependency array is read during render, so listing a const that is
+     declared further down throws before anything paints. */
+  useEffect(function () {
+    const m = (me || {}).mode;
+    if (m && m !== mode) setMode(m);
+  }, [me]);
 
   function saveMe(next) {
     ME[sport] = next || undefined;
