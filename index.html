@@ -1028,7 +1028,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b154</div>
+<div class="fr-build">b155</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1367,6 +1367,9 @@ const YT_KEY = "AIzaSyDNfd3BoZss2ZB4UsO9LNjo5luSONrXFfk";
 // https://filmroom.richardachampong075.workers.dev if this ever needs
 // swapping back.
 const AI_PROXY = "https://filmroomai6.richardachampong075.workers.dev";
+/* Cancelling runs through the same worker. It was referenced by name before it
+   existed, so every cancel fell through to the mailto fallback in the catch. */
+const BILLING_WORKER = AI_PROXY;
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -5308,7 +5311,8 @@ function tabsFor(item) {
 function Player({
   player,
   saved,
-  onSave
+  onSave,
+  user
 }) {
   const PT = tabsFor(player);
   const [bio, setBio] = useState(null);
@@ -5456,7 +5460,8 @@ function Player({
 
 function Film({
   seed,
-  clearSeed
+  clearSeed,
+  user
 }) {
   const [q, setQ] = useState("");
   const [mode, setMode] = useState("any");
@@ -7140,9 +7145,9 @@ function Train({
             }, function () {
               setBusy("Google is reading your film \u00b7 " + mins());
             }, function () {
-              return abandoned.current;
+              return stop.current;
             });
-            if (abandoned.current) return;
+            if (stop.current) return;
             setBusy("Breaking it down \u00b7 " + mins());
             media = FD(up.file_uri, up.mime_type);
           }
@@ -7157,7 +7162,7 @@ function Train({
           const whole = await ai(wholeTurns, false, {
             fast: false
           });
-          if (abandoned.current) return;
+          if (stop.current) return;
           setMsgs(m => m.concat([{
             who: "coach",
             text: whole
@@ -7668,6 +7673,35 @@ function App() {
   }
   const [seed, setSeed] = useState(null);
   const [user, setUser] = useState(loadSession);
+  /* The profile — which is where the team code lives — used to be fetched only
+     inside Train. So on a cold load the app had no idea you were in a team until
+     you happened to open that one screen: no Team tab, no Share button, and it
+     read as though joining had never saved. It belongs to the account, so it is
+     pulled here, once, as soon as there is a user. The counter exists purely to
+     re-render the nav when it lands, since myTeamCode() is read during render. */
+  const [meReady, setMeReady] = useState(0);
+  useEffect(function () {
+    let dead = false;
+    if (!user) {
+      clearMe();
+      setMeReady(function (n) {
+        return n + 1;
+      });
+      return;
+    }
+    if (ME_UID !== user.uid) clearMe();
+    pullMe(user).then(function (all) {
+      if (dead) return;
+      ME = all || {};
+      ME_UID = user.uid;
+      setMeReady(function (n) {
+        return n + 1;
+      });
+    });
+    return function () {
+      dead = true;
+    };
+  }, [user && user.uid, sport]);
   const [saved, setSaved] = useState([]);
   const [profile, setProfile] = useState(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -8070,10 +8104,12 @@ function App() {
   }), top.page === "player" && /*#__PURE__*/React.createElement(Player, {
     player: top.player,
     saved: saved.indexOf(top.player.n) > -1,
-    onSave: () => toggleSaved(top.player.n)
+    onSave: () => toggleSaved(top.player.n),
+    user: user
   }), top.page === "film" && /*#__PURE__*/React.createElement(Film, {
     seed: seed,
-    clearSeed: () => setSeed(null)
+    clearSeed: () => setSeed(null),
+    user: user
   }), top.page === "train" && (accountsOn() && !user && !adminFlags().openCoach ? /*#__PURE__*/React.createElement(LockedTrain, {
     onSignIn: () => setShowSignIn(true)
   }) : /*#__PURE__*/React.createElement(Train, {
