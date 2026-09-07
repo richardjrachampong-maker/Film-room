@@ -454,34 +454,13 @@ body { background: #EDF0F2; }
    switch exists, so it is stated on the way in rather than buried in settings.
    The strip drifts on its own so it reads as a thing you can move, then stops
    for good the moment it is touched. */
-/* The coach reads these answers on every reply, but nothing on screen said so.
-   Showing them is what makes a player trust that it is talking to them. */
-.fr-code { font-family:'Outfit',sans-serif; font-weight:700; font-size:20px;
-  letter-spacing:.16em; color:var(--amber); }
-.fr-names { display:flex; flex-wrap:wrap; gap:8px; }
-.fr-namechip { appearance:none; cursor:pointer; font:inherit; font-size:14.5px;
-  padding:10px 15px; border-radius:999px; background:var(--glass-2);
-  border:1px solid var(--edge); color:var(--text); display:inline-flex;
-  align-items:center; gap:8px; }
-.fr-namechip:hover { border-color:var(--amber); }
-.fr-namechip i { font-style:normal; color:var(--amber); }
-.fr-acts { display:flex; flex-wrap:wrap; gap:8px; }
-.fr-share[data-on="1"] { border-color:var(--amber); color:var(--amber); }
-.fr-saveitem { display:block; width:100%; text-align:left; appearance:none; font:inherit;
-  cursor:pointer; padding:13px 15px; border-radius:12px; background:var(--glass);
-  border:1px solid var(--edge); color:var(--text); margin:0 0 8px; }
-.fr-saveitem:hover { border-color:var(--amber); }
-.fr-saveitem b { display:block; font-size:14.5px; font-weight:600; }
-.fr-saveitem span { font-size:12px; color:var(--faint); }
-.fr-share { appearance:none; cursor:pointer; font:inherit; font-size:12.5px;
-  margin:14px 0 0; padding:7px 13px; border-radius:999px; background:none;
-  border:1px solid var(--edge); color:var(--dim); }
-.fr-share:hover { border-color:var(--amber); color:var(--text); }
-.fr-knows { max-width:640px; margin:10px auto 0; padding:9px 15px; cursor:pointer;
-  border-radius:999px; background:var(--glass-2); border:1px solid var(--edge);
-  font-size:12.5px; line-height:1.5; color:var(--dim); text-align:center; }
-.fr-knows:hover { border-color:var(--amber); }
-.fr-knows b { color:var(--text); font-weight:600; }
+/* Sits above everything so it cannot be missed, and is the one place on the site
+   allowed to be loud. */
+.fr-maint { position:sticky; top:0; z-index:70; padding:11px 18px;
+  background:var(--amber); color:var(--onAmber); text-align:center; }
+.fr-maint b { display:block; font-family:'Outfit',sans-serif; font-weight:700;
+  font-size:14px; }
+.fr-maint span { font-size:13px; opacity:.85; }
 .fr-again { appearance:none; cursor:pointer; font:inherit; font-size:13px;
   margin:12px 0 0; padding:9px 15px; border-radius:999px; background:var(--glass-2);
   border:1px solid var(--edge); color:var(--text); }
@@ -1005,7 +984,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b147</div>
+<div class="fr-build">b148</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3454,8 +3433,11 @@ async function readTeam(user, code) {
     return null;
   }
 }
+/* Returns a reason rather than just false. "Check you're signed in" was the wrong
+   thing to say to somebody who plainly was: the real cause is almost always that
+   the Firestore rules have no teams collection yet. */
 async function writeTeam(user, team) {
-  if (!user || !accountsOn() || !team) return false;
+  if (!user || !accountsOn() || !team) return { ok: false, why: "signin" };
   try {
     const res = await fetch(teamPath(team.code) + "?updateMask.fieldPaths=name&updateMask.fieldPaths=coach&updateMask.fieldPaths=members", {
       method: "PATCH",
@@ -3471,9 +3453,10 @@ async function writeTeam(user, team) {
         }
       })
     });
-    return res.ok;
+    if (res.ok) return { ok: true };
+    return { ok: false, why: res.status === 403 || res.status === 401 ? "rules" : "http" + res.status };
   } catch (e) {
-    return false;
+    return { ok: false, why: "offline" };
   }
 }
 /* What a player publishes to their team. Deliberately thin: a name, what they
@@ -3485,8 +3468,8 @@ async function joinTeam(user, code, who) {
   t.members = (t.members || []).filter(function (m) {
     return m.uid !== user.uid;
   }).concat([mine]).slice(0, 200);
-  const ok = await writeTeam(user, t);
-  return ok ? t : null;
+  const r = await writeTeam(user, t);
+  return r.ok ? t : null;
 }
 
 async function loadSaved(user) {
@@ -3728,9 +3711,9 @@ function TeamPanel({
       coach: user.uid,
       members: []
     };
-    const ok = await writeTeam(user, t);
+    const r = await writeTeam(user, t);
     setBusy(false);
-    if (!ok) return setMsg("Couldn't make a team. Check you're signed in.");
+    if (!r.ok) return setMsg(r.why === "rules" ? "Firestore is refusing this. The teams collection has no rule yet \u2014 add the teams rule in the Firebase console." : r.why === "offline" ? "No connection." : "Couldn't make a team (" + r.why + ").");
     remember(c);
     setTeam(t);
   }
@@ -4493,7 +4476,22 @@ function AdminPanel({
     onClick: function () {
       flip("hideNudge");
     }
-  }, flags.hideNudge ? "On" : "Off")), /*#__PURE__*/React.createElement("p", {
+  }, flags.hideNudge ? "On" : "Off")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-srow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "Maintenance mode"), /*#__PURE__*/React.createElement("span", null, "Shows a notice to everyone. You still get in.")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-pill",
+    "data-on": flags.maint ? "1" : "0",
+    onClick: function () {
+      flip("maint");
+    }
+  }, flags.maint ? "On" : "Off")), flags.maint ? /*#__PURE__*/React.createElement("input", {
+    className: "fr-input",
+    value: flags.maintMsg || "",
+    placeholder: "Back in an hour. Fixing the film search.",
+    onChange: function (e) {
+      setFlags(setAdminFlag("maintMsg", e.target.value.slice(0, 140)));
+    }
+  }) : null, /*#__PURE__*/React.createElement("p", {
     className: "fr-slabel"
   }, "Coach"), /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
@@ -7179,13 +7177,7 @@ function Train({
       className: "fr-greet"
     }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
-    }, "Tap + to send a clip. Send two of the same drill weeks apart and it will tell you what changed."), profileBits(sport) ? /*#__PURE__*/React.createElement("p", {
-      className: "fr-knows",
-      onClick: function () {
-        setShowMe(true);
-      },
-      title: "Change what the coach knows"
-    }, /*#__PURE__*/React.createElement("b", null, "Coaching you as"), " ", profileBits(sport)) : null, /*#__PURE__*/React.createElement("p", {
+    }, "Tap + to send a clip. Send two of the same drill weeks apart and it will tell you what changed."), /*#__PURE__*/React.createElement("p", {
       className: "fr-disclaim"
     }, "The coach can get things wrong. Treat it as a second opinion, not a diagnosis — and never train through pain on its say-so."), !ready && /*#__PURE__*/React.createElement(KeyGate, {
       onSaved: () => setReady(true)
@@ -7712,7 +7704,9 @@ function App() {
     onSignIn: () => {
       setShowSignIn(true);
     }
-  }), top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
+  }), adminFlags().maint ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-maint"
+  }, /*#__PURE__*/React.createElement("b", null, "Film Room is being worked on"), /*#__PURE__*/React.createElement("span", null, adminFlags().maintMsg || "Some things may not work for a bit. Try again shortly.")) : null, top.page === "home" && /*#__PURE__*/React.createElement(Landing, {
     go: go,
     sport: sport,
     setSport: setSport
