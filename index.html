@@ -518,6 +518,7 @@ body { background: #EDF0F2; }
    scroll at all. The pad is measured and set in JS instead. */
 .fr-flowtrack { display:flex; gap:14px; width:max-content; }
 .fr-sport { scroll-snap-align:center; position:relative; overflow:hidden;
+  touch-action:manipulation;
   flex:0 0 168px; height:104px;
   cursor:pointer; appearance:none; font:inherit;
   border-radius:16px; background:var(--glass); border:1px solid var(--edge);
@@ -1028,7 +1029,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b156</div>
+<div class="fr-build">b157</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2185,7 +2186,9 @@ const TAC = (n, t, q, wiki, board) => ({
   t: t,
   g: "Tactics",
   q: q,
-  wiki: wiki || board,
+  /* The diagram is the last resort, not the alternative: a tile lists the pages
+     that would make sense and the board catches whatever none of them do. */
+  wiki: wikiList(wiki).concat(board ? [board] : []),
   kind: "game"
 });
 const BOARD = {
@@ -2222,24 +2225,24 @@ const SO_TACTICS = [
 TAC("Press Resistance", "Play through it", "how to play out from the back under pressure football", "Association football tactics", BOARD.so),
 TAC("Counter-Press", "Win it back in six seconds", "gegenpressing counter press explained football", "Gegenpressing", BOARD.so),
 TAC("High Press", "Squeeze them in", "high press explained football tactics", "Press (association football)", BOARD.so),
-TAC("Low Block", "Give them the ball", "low block defending explained football", BOARD.so),
-TAC("Mid Block", "Hold the middle third", "mid block defensive shape football explained", BOARD.so),
-TAC("Playing Out From the Back", "Build up phase one", "playing out from the back explained football", BOARD.so),
-TAC("Third Man Run", "The pass after the pass", "third man run explained football", BOARD.so),
-TAC("Overload to Isolate", "Load one side, switch", "overload to isolate explained football", BOARD.so),
-TAC("Half-Spaces", "The channel that hurts", "half spaces explained football tactics", BOARD.so),
-TAC("Inverted Full Back", "Full back into midfield", "inverted full back explained football", BOARD.so),
+TAC("Low Block", "Give them the ball", "low block defending explained football", ["Defender (association football)", "Defensive tactics (association football)"], BOARD.so),
+TAC("Mid Block", "Hold the middle third", "mid block defensive shape football explained", ["Midfielder", "Defensive midfielder"], BOARD.so),
+TAC("Playing Out From the Back", "Build up phase one", "playing out from the back explained football", ["Goalkeeper (association football)", "Centre-back"], BOARD.so),
+TAC("Third Man Run", "The pass after the pass", "third man run explained football", ["Through ball", "Assist (association football)"], BOARD.so),
+TAC("Overload to Isolate", "Load one side, switch", "overload to isolate explained football", ["Winger (association football)", "Wing play"], BOARD.so),
+TAC("Half-Spaces", "The channel that hurts", "half spaces explained football tactics", ["Attacking midfielder", "Playmaker"], BOARD.so),
+TAC("Inverted Full Back", "Full back into midfield", "inverted full back explained football", ["Full-back (association football)", "Wing-back"], BOARD.so),
 TAC("False Nine", "No striker at all", "false nine explained football", "False 9", BOARD.so),
 TAC("Overlap and Underlap", "Runs off the winger", "overlap underlap runs explained football", "Overlap (football)", BOARD.so),
 TAC("Offside Trap", "Step as one", "offside trap explained football", "Offside (association football)", BOARD.so),
-TAC("Man Marking vs Zonal", "Two ways to defend a corner", "zonal vs man marking corners explained", BOARD.so),
-TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", null, BOARD.so),
+TAC("Man Marking vs Zonal", "Two ways to defend a corner", "zonal vs man marking corners explained", ["Man-to-man marking", "Zonal marking", "Marking (association football)"], BOARD.so),
+TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", ["Fast break", "Transition (association football)"], BOARD.so),
 TAC("Tiki-Taka", "Keep it until it opens", "tiki taka explained football", "Tiki-taka", BOARD.so),
-TAC("Direct Play", "Skip the middle", "direct play long ball tactics football", BOARD.so),
-TAC("4-3-3", "The shape", "4-3-3 formation explained football", null, BOARD.so),
-TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", null, BOARD.so),
-TAC("3-5-2", "The shape", "3-5-2 formation explained football", null, BOARD.so),
-TAC("Set Piece Routines", "Corners and free kicks", "attacking set piece routines football", BOARD.so)];
+TAC("Direct Play", "Skip the middle", "direct play long ball tactics football", ["Long ball", "Route One (football)"], BOARD.so),
+TAC("4-3-3", "The shape", "4-3-3 formation explained football", ["4\u20133\u20133", "Total Football"], BOARD.so),
+TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", ["4\u20132\u20133\u20131", "Defensive midfielder"], BOARD.so),
+TAC("3-5-2", "The shape", "3-5-2 formation explained football", ["3\u20135\u20132", "Wing-back"], BOARD.so),
+TAC("Set Piece Routines", "Corners and free kicks", "attacking set piece routines football", ["Corner kick", "Set piece (association football)"], BOARD.so)];
 
 const HO_TACTICS = [
 TAC("Breakout", "Get out of your own zone", "hockey breakout systems explained", BOARD.ho),
@@ -2294,7 +2297,7 @@ TAC("Special Teams", "The third phase", "special teams explained football", "Spe
 const SPORTS = {
   basketball: {
     label: "Basketball",
-    hero: "Basketball court",
+    hero: ["Basketball arena", "Basketball", "Basketball court"],
     term: "basketball",
     roster: BB_ROSTER,
     games: BB_GAME_ITEMS.concat(BB_TACTICS),
@@ -2306,7 +2309,7 @@ const SPORTS = {
   },
   soccer: {
     label: "Soccer",
-    hero: "Football pitch",
+    hero: ["Soccer-specific stadium", "Association football pitch", "Football pitch"],
     term: "soccer",
     roster: SO_ROSTER,
     games: SO_TACTICS.concat(SO_GAMES, SO_CLUB_ITEMS),
@@ -2319,7 +2322,7 @@ const SPORTS = {
   },
   hockey: {
     label: "Hockey",
-    hero: "Ice hockey rink",
+    hero: ["Ice hockey", "Hockey arena", "Ice hockey rink"],
     term: "hockey",
     roster: HO_ROSTER,
     games: HO_TACTICS.concat(HO_GAMES),
@@ -2331,7 +2334,7 @@ const SPORTS = {
   },
   volleyball: {
     label: "Volleyball",
-    hero: "Volleyball",
+    hero: ["Volleyball", "Volleyball court"],
     term: "volleyball",
     roster: VO_ROSTER,
     games: VO_TACTICS.concat(VO_GAMES),
@@ -2343,7 +2346,7 @@ const SPORTS = {
   },
   football: {
     label: "Football",
-    hero: "American football field",
+    hero: ["American football", "American football field"],
     term: "football",
     roster: FB_ROSTER,
     games: FB_TACTICS.concat(FB_GAMES),
@@ -2576,29 +2579,57 @@ function chunk(arr, size) {
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
-/* Two tiles wearing the same picture reads as a bug even when both lookups were
-   technically right: the three formations all pointed at one article and came
-   back as the same 1887 newspaper. First tile to claim an image keeps it, the
-   rest fall back to the lettering. The board diagrams are exempt, since those
-   are the deliberate backdrop and are meant to repeat. */
-function oneEach(map) {
+/* A tile can name several pages rather than one. Guessing a single Wikipedia
+   title is brittle — the article may exist with no lead image, or turn out to be
+   about a war rather than a game — so a tile lists what would make sense and the
+   first one that actually has a picture wins. */
+function wikiList(v) {
+  if (!v) return [];
+  return (Array.isArray(v) ? v : [v]).filter(Boolean);
+}
+function wikiPick(v, fallbackName) {
+  const all = wikiList(v);
+  for (let i = 0; i < all.length; i++) {
+    if (photoCache[all[i]]) return all[i];
+  }
+  return all[0] || fallbackName;
+}
+/* One pass that both chooses and de-duplicates, because the two decisions are
+   really one. Walking a tile's candidates in order, the first picture nobody
+   else has taken wins; a repeat is skipped rather than blanking the tile, so a
+   second sensible choice gets its turn. The board diagrams are exempt — those
+   are the deliberate backdrop and are meant to repeat — and a tile that runs
+   out of candidates simply shows the lettering. */
+function photoMap(rows) {
   const boards = {};
   Object.keys(BOARD).forEach(function (k) {
     const u = photoCache[BOARD[k]];
     if (u) boards[u] = 1;
   });
   const taken = {};
-  const out = {};
-  Object.keys(map).forEach(function (name) {
-    const u = map[name];
-    if (!u || boards[u]) {
-      out[name] = u;
+  const map = {};
+  rows.forEach(function (r) {
+    if (r.g === "Club" && badgeCache[r.n]) {
+      map[r.n] = badgeCache[r.n];
       return;
     }
-    out[name] = taken[u] ? null : u;
-    taken[u] = 1;
+    const cands = r.wiki ? wikiList(r.wiki) : r.kind === "game" ? [] : [r.n];
+    let got = null;
+    for (let i = 0; i < cands.length; i++) {
+      const u = photoCache[cands[i]];
+      if (!u) continue;
+      if (boards[u]) {
+        got = u;
+        break;
+      }
+      if (taken[u]) continue;
+      taken[u] = 1;
+      got = u;
+      break;
+    }
+    map[r.n] = got;
   });
-  return out;
+  return map;
 }
 async function wikiPhotos(titles) {
   const need = titles.filter(t => t && !(t in photoCache));
@@ -5047,7 +5078,9 @@ function SportFlow({
     let dead = false;
     const titles = SPORT_KEYS.map(function (k) {
       return SPORTS[k].hero;
-    }).filter(Boolean);
+    }).reduce(function (a, h) {
+      return a.concat(wikiList(h));
+    }, []);
     wikiPhotos(titles).then(function (map) {
       if (!dead) setArt(map || {});
     }).catch(function () {});
@@ -5071,12 +5104,14 @@ function SportFlow({
     };
   }, [held]);
 
-  /* The track is centred by flex, so the middle card of the row already sits in
-     the middle of the screen. */
-  const step = 182;
   const rail = useRef(null);
   const track = useRef(null);
   const [pad, setPad] = useState(0);
+  /* The card is 168 wide with a 14 gap, but a hard-coded 182 was a guess about
+     CSS that only had to be wrong once. It is read off the real cards instead,
+     so the maths and the layout cannot drift apart. */
+  const step = useRef(182);
+  const settle = useRef(null);
 
   /* Half the rail minus half a card is what lets the first and last cards reach
      the middle. Recalculated on resize so it survives a rotation. */
@@ -5084,25 +5119,32 @@ function SportFlow({
     function measure() {
       const el = rail.current;
       if (!el) return;
-      setPad(Math.max(0, Math.round(el.clientWidth / 2 - 84)));
+      const cards = track.current ? track.current.children : null;
+      if (cards && cards.length > 1) {
+        const gap = cards[1].offsetLeft - cards[0].offsetLeft;
+        if (gap > 40) step.current = gap;
+      }
+      setPad(Math.max(0, Math.round(el.clientWidth / 2 - (cards && cards[0] ? cards[0].offsetWidth : 168) / 2)));
     }
     measure();
     window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
     return function () {
       window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
     };
   }, []);
 
-  /* Drift is a scroll now, not a transform, so a finger and the timer move the
-     same thing and never fight each other. */
   useEffect(function () {
     const el = rail.current;
     if (!el) return;
-    /* Its own scrolling fires the same event a finger does, so it is flagged
-       while it moves. Without this the strip would pause itself forever. */
+    const want = mid * step.current;
+    /* Already there, so nothing to animate. Re-issuing the scroll on every
+       render is what kept the rail permanently mid-animation. */
+    if (Math.abs(el.scrollLeft - want) < 2) return;
     auto.current = true;
     el.scrollTo({
-      left: mid * step,
+      left: want,
       behavior: pad ? "smooth" : "auto"
     });
     const t = setTimeout(function () {
@@ -5111,17 +5153,35 @@ function SportFlow({
     return function () {
       clearTimeout(t);
     };
-  }, [mid]);
+  }, [mid, pad]);
 
-  /* Whatever ends up nearest the middle becomes the focused card, however it got
-     there. Rounding the scroll position is enough. */
+  /* This used to recalculate the focused card on every scroll event, including
+     the ones the strip fired at itself. Halfway through drifting from one card
+     to the next it would read the position in between, set that as the middle,
+     which restarted the scroll, which fired again — so the rail was always
+     animating, would not settle on a card, and swallowed taps because the
+     browser treats a tap during a scroll as a scroll. Now its own movement is
+     ignored outright, and a finger's movement is only read once the rail has
+     actually stopped. */
   function onScroll() {
     const el = rail.current;
-    if (!el) return;
-    if (!auto.current) bump();
-    const n = Math.max(0, Math.min(SPORT_KEYS.length - 1, Math.round(el.scrollLeft / step)));
-    if (n !== mid) setMid(n);
+    if (!el || auto.current) return;
+    bump();
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(function () {
+      const now = rail.current;
+      if (!now || auto.current) return;
+      const n = Math.max(0, Math.min(SPORT_KEYS.length - 1, Math.round(now.scrollLeft / step.current)));
+      setMid(function (m) {
+        return n === m ? m : n;
+      });
+    }, 120);
   }
+  useEffect(function () {
+    return function () {
+      if (settle.current) clearTimeout(settle.current);
+    };
+  }, []);
 
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     className: "fr-pickq"
@@ -5147,7 +5207,7 @@ function SportFlow({
     const count = (d.pool || []).filter(function (r) {
       return r.kind === "player";
     }).length;
-    const shot = art[d.hero];
+    const shot = art[wikiPick(d.hero, "")];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       className: "fr-sport",
@@ -5327,18 +5387,9 @@ function Library({
     let alive = true;
     const sync = () => {
       if (!alive) return;
-      const map = {};
-      items.forEach(r => {
-        /* A game tile used to be barred from having a picture. Now it gets one
-           whenever a page has been named for it, and only falls back to the
-           lettering when it has not. */
-        /* A crest beats a stadium photo for a club, so the badge wins where
-           there is one. */
-        map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
-      });
-      setPhotos(oneEach(map));
+      setPhotos(photoMap(items));
     };
-    wikiPhotos(items.filter(r => r.kind !== "game" || r.wiki).map(r => r.wiki || r.n)).then(sync).catch(function () {});
+    wikiPhotos(items.filter(r => r.kind !== "game" || r.wiki).reduce((a, r) => a.concat(r.wiki ? wikiList(r.wiki) : [r.n]), [])).then(sync).catch(function () {});
     badgesFor(items.filter(r => r.g === "Club").slice(0, 40).map(r => r.n)).then(sync).catch(function () {});
     return () => {
       alive = false;
@@ -5346,7 +5397,7 @@ function Library({
   }, [title]);
   useEffect(() => {
     let alive = true;
-    const shown = list.slice(0, 40).filter(r => r.kind !== "game" || r.wiki).map(r => r.wiki || r.n);
+    const shown = list.slice(0, 40).filter(r => r.kind !== "game" || r.wiki).reduce((a, r) => a.concat(r.wiki ? wikiList(r.wiki) : [r.n]), []);
     badgesFor(list.slice(0, 40).filter(r => r.g === "Club").map(r => r.n)).then(function () {
       if (alive) setPhotos(function (m) {
         const n = {};
@@ -5359,14 +5410,7 @@ function Library({
     }).catch(function () {});
     wikiPhotos(shown).then(() => {
       if (!alive) return;
-      const map = {};
-      items.concat(list).forEach(r => {
-        /* A game tile used to be barred from having a picture. Now it gets one
-           whenever a page has been named for it, and only falls back to the
-           lettering when it has not. */
-        map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
-      });
-      setPhotos(oneEach(map));
+      setPhotos(photoMap(items.concat(list)));
     }).catch(function () {});
     return () => {
       alive = false;
@@ -5592,10 +5636,10 @@ function Player({
     setActive(null);
     setTab(PT[0].id);
     setErr("");
-    wikiBio(player.wiki || player.n).then(setBio).catch(function () {});
+    wikiBio(wikiList(player.wiki)[0] || player.n).then(setBio).catch(function () {});
     load(PT[0].id, {});
   }, [player.n]);
-  const photo = bio && bio.photo || photoCache[player.wiki || player.n];
+  const photo = bio && bio.photo || photoCache[wikiPick(player.wiki, player.n)];
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
   }, /*#__PURE__*/React.createElement("div", {
@@ -6289,6 +6333,41 @@ async function grabFrames(file, onProgress, fast, pro, sharing, cancelled) {
   const note = function (what) {
     trace.push(what);
   };
+  /* The library is open to stills now, and a photo has no video track to walk.
+     One frame is a perfectly good thing to coach from — a still of the top of
+     someone's jump is often clearer than the clip it came from — so a picture
+     becomes a one-frame clip rather than an error. */
+  if (/^image\//.test(file.type || "")) {
+    const shot = await new Promise(function (resolve, reject) {
+      const img = new Image();
+      const u = URL.createObjectURL(file);
+      img.onload = function () {
+        try {
+          const wide = Math.min(1, 960 / Math.max(img.naturalWidth, img.naturalHeight, 1));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(img.naturalWidth * wide));
+          c.height = Math.max(1, Math.round(img.naturalHeight * wide));
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL("image/jpeg", 0.82).split(",")[1]);
+        } catch (e) {
+          reject(e);
+        }
+        URL.revokeObjectURL(u);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(u);
+        reject(new Error("That photo could not be opened."));
+      };
+      img.src = u;
+    });
+    if (onProgress) onProgress(1, 1);
+    return {
+      frames: [shot],
+      duration: 0,
+      count: 1,
+      still: true
+    };
+  }
   const url = URL.createObjectURL(file);
   const video = document.createElement("video");
   video.src = url;
@@ -7409,7 +7488,7 @@ function Train({
         if (!parts.length) {
           throw new Error("Could not read any usable frames from that file. If it is a screen recording, try trimming it or exporting it as a video first.");
         }
-        parts.push(T(many ? "You are an elite " + D.term + " skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player, in the order sent. Compare them: say what is consistent, what changes between them, and which is better. If they look like the same drill at different times, treat it as progress: say plainly what has improved, what has not moved at all, and whether the thing you told them to fix last time actually changed. Be specific about the frame where they differ." + "\n\n" : "You are an elite " + D.term + " skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". " + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
+        parts.push(T(many ? "You are an elite " + D.term + " skills coach. You have been sent " + grabs.length + " separate clips of the same player, each broken into stills in order. Treat them as different reps or angles of the same player, in the order sent. Compare them: say what is consistent, what changes between them, and which is better. If they look like the same drill at different times, treat it as progress: say plainly what has improved, what has not moved at all, and whether the thing you told them to fix last time actually changed. Be specific about the frame where they differ." + "\n\n" : (got.still ? "You are an elite " + D.term + " skills coach. This is a single photograph of one player, not a clip. Read the position they are caught in \u2014 balance, alignment, where their eyes are, what the body is about to do. Say plainly what you cannot judge from one frame rather than guessing at it. " : "You are an elite " + D.term + " skills coach. These " + got.count + " stills are evenly spaced through a " + Math.round(got.duration) + " second clip of one player, in order, frame 1 to " + got.count + ". ") + "Nobody told you what it is \u2014 work it out.\n\n" + filmRules(said) + "\nWhen you are giving the full read, cover: what they are doing and roughly what level it " + "looks like; a letter grade, then a grade for each skill you can actually see; the mechanics " + "phase by phase; what is already good; what is breaking down and what it costs them in a game; " + "the single thing to fix first; then the drills.\n\n" + coachExtra() + memoryOf(chats, chatId, note) + "\n\nTalk to them like you are courtside. Plain text, no JSON. Short ## headings and - bullets. " + "Be blunt and specific. Under 500 words."));
       } else if (history.length) {
         parts = [T(said + "\n\n(Answer as the coach, still looking at that same film. Only describe what you can actually see in those frames \u2014 never invent details about this player. Plain text, short ## headings and - bullets allowed. Under 200 words.)" + memoryOf(chats, chatId, note))];
       } else {
@@ -7706,7 +7785,7 @@ function Train({
     })), /*#__PURE__*/React.createElement("input", {
       ref: input,
       type: "file",
-      accept: "video/*",
+      accept: "video/*,image/*",
       style: {
         display: "none"
       },
@@ -7781,7 +7860,7 @@ function Train({
   })), /*#__PURE__*/React.createElement("input", {
     ref: input,
     type: "file",
-    accept: "video/*",
+    accept: "video/*,image/*",
     multiple: true,
     style: {
       display: "none"
