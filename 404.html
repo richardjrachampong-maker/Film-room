@@ -984,7 +984,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b148</div>
+<div class="fr-build">b149</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3521,7 +3521,10 @@ function startGoogle() {
   try {
     window.sessionStorage.setItem("fr-nonce", nonce);
   } catch (e) {}
-  const redirect = window.location.origin + window.location.pathname;
+  /* Google only knows about the site root. Once players got real addresses,
+     signing in from /p/robert-lewandowski handed Google a redirect it had never
+     been given, which is the redirect_uri_mismatch. Always go back to the root. */
+  const redirect = window.location.origin + "/";
   const url = "https://accounts.google.com/o/oauth2/v2/auth" + "?client_id=" + encodeURIComponent(GOOGLE_CLIENT_ID) + "&redirect_uri=" + encodeURIComponent(redirect) + "&response_type=id_token" + "&scope=" + encodeURIComponent("openid email profile") + "&nonce=" + encodeURIComponent(nonce) + "&prompt=select_account";
   window.location.href = url;
 }
@@ -3542,7 +3545,7 @@ async function finishGoogle() {
     },
     body: JSON.stringify({
       postBody: "id_token=" + token + "&providerId=google.com",
-      requestUri: window.location.origin + window.location.pathname,
+      requestUri: window.location.origin + "/",
       returnIdpCredential: true,
       returnSecureToken: true
     })
@@ -7329,6 +7332,7 @@ function App() {
       page: "home"
     }]);
     setShowSettings(false);
+    clearPath();
     window.scrollTo({
       top: 0,
       behavior: "smooth"
@@ -7526,7 +7530,19 @@ function App() {
       behavior: "smooth"
     });
   }
+  /* Any move that is not into a player returns the address to the root. Without
+     this the URL stayed on the last player, so a refresh reopened him however far
+     away you had navigated. */
+  function clearPath() {
+    try {
+      if (window.location.pathname !== "/") {
+        window.history.pushState({}, "", "/");
+        setPageMeta("Film Room", "Send one clip. Get it graded, told exactly where it breaks, and given the drills that fix it.", "/");
+      }
+    } catch (e) {}
+  }
   function go(page) {
+    clearPath();
     if (top.page === page) return;
     if (page === "home") {
       setStack([{
@@ -7611,6 +7627,7 @@ function App() {
     };
   }, []);
   function openFilm(query, duration) {
+    clearPath();
     setSeed({
       q: query,
       duration: duration || "any"
