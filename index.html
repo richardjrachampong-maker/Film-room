@@ -1028,7 +1028,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b155</div>
+<div class="fr-build">b156</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -2012,13 +2012,109 @@ const SO_CLUB_SEARCH = SO_CLUBS.map(function (n) {
     q: n + " full match replay"
   };
 });
+/* The deep pool used to arrive with no position on it at all, so tapping
+   MIDFIELDERS could only ever show the eight on the shortlist. This is that
+   missing column: every name in the pool placed in the chip it belongs to.
+   Women and Legends win over position, which is how the shortlist already
+   reads — Bonmati sits under Women, not Midfielders. */
+const SO_POS = {
+  Forwards: "Ademola Lookman|Alejandro Garnacho|Aleksandar Mitrovic|Alexander Isak|Alexander Sorloth|Alexandre Lacazette|" +
+  "Alexis Sanchez|Alvaro Morata|Anders Dreyer|Anthony Gordon|Antoine Griezmann|Antoine Semenyo|Antony|" +
+  "Artem Dovbyk|Ayoze Perez|Ben Brereton Diaz|Benjamin Sesko|Bradley Barcola|Brennan Johnson|Bryan Mbeumo|" +
+  "Bukayo Saka|Christian Benteke|Christian Pulisic|Cody Gakpo|Cristiano Ronaldo|Cucho Hernandez|Cyle Larin|" +
+  "Darwin Nunez|Denis Bouanga|Desire Doue|Dominic Calvert-Lewin|Dusan Vlahovic|Emmanuel Latte Lath|Endrick|" +
+  "Erling Haaland|Estevao Willian|Federico Chiesa|Ferran Torres|Folarin Balogun|Gabriel Jesus|Gabriel Martinelli|" +
+  "Gerard Moreno|Gianluca Scamacca|Harry Kane|Hirving Lozano|Hugo Duro|Hugo Ekitike|Hulk|Hwang Hee-chan|" +
+  "Iliman Ndiaye|Inaki Williams|Ismaila Sarr|Ivan Toney|Jack Grealish|Jamie Gittens|Jarrod Bowen|Jeremy Doku|" +
+  "Jhon Duran|Joao Felix|Joao Pedro|Jonathan David|Jordan Ayew|Jose Luis Morales|Julian Alvarez|Kai Havertz|" +
+  "Kaoru Mitoma|Karim Adeyemi|Karim Benzema|Khvicha Kvaratskhelia|Kingsley Coman|Kylian Mbappe|Lautaro Martinez|" +
+  "Leandro Trossard|Leroy Sane|Liam Delap|Lois Openda|Luis Diaz|Luis Suarez|Malcom|Malick Fofana|Marcus Rashford|" +
+  "Marcus Thuram|Mason Greenwood|Mateo Retegui|Matheus Cunha|Mathys Tel|Mohamed Salah|Neymar|Nico Williams|" +
+  "Nicolas Jackson|Noni Madueke|Ollie Watkins|Omar Marmoush|Ousmane Dembele|Patrik Schick|Pedro|Pedro Neto|" +
+  "Pierre-Emerick Aubameyang|Rafael Leao|Raphinha|Rasmus Hojlund|Raul Jimenez|Ricardo Pepi|Richarlison|" +
+  "Riyad Mahrez|Robert Lewandowski|Roberto Firmino|Rodrygo|Romelu Lukaku|Sadio Mane|Sam Surridge|Samuel Chukwueze|" +
+  "Santiago Gimenez|Savinho|Serge Gnabry|Serhou Guirassy|Son Heung-min|Tajon Buchanan|Tim Weah|Trezeguet|" +
+  "Victor Boniface|Victor Osimhen|Viktor Gyokeres|Vinicius Junior|Youssef En-Nesyri",
+  Midfielders: "Adrien Rabiot|Aleksandar Pavlovic|Alex Baena|Alex Iwobi|Alexis Mac Allister|Amad Diallo|Amadou Onana|" +
+  "Andre-Frank Zambo Anguissa|Andreas Pereira|Ao Tanaka|Arda Guler|Arturo Vidal|Aurelien Tchouameni|" +
+  "Bernardo Silva|Bilal El Khannouss|Brahim Diaz|Bruno Fernandes|Bruno Guimaraes|Charles De Ketelaere|" +
+  "Christoph Baumgartner|Cole Palmer|Conor Gallagher|Curtis Jones|Daichi Kamada|Dani Olmo|Declan Rice|" +
+  "Dejan Kulusevski|Diego Luna|Dominik Szoboszlai|Edson Alvarez|Eduardo Camavinga|Emre Can|Enzo Fernandez|" +
+  "Ethan Nwaneri|Evander|Exequiel Palacios|Fabian Ruiz|Facundo Pellistri|Federico Valverde|Fermin Lopez|" +
+  "Florian Wirtz|Franco Mastantuono|Frenkie de Jong|Gavi|Gerson|Gio Reyna|Giovani Lo Celso|Granit Xhaka|" +
+  "Hakan Calhanoglu|Hakim Ziyech|Harvey Elliott|Ilkay Gundogan|Isco|Ismael Kone|Jamal Musiala|James Maddison|" +
+  "James Rodriguez|Jhon Arias|Joao Neves|Johnny Cardoso|Jonas Hofmann|Joshua Kimmich|Julian Brandt|Kenan Yildiz|" +
+  "Kobbie Mainoo|Koke|Konrad Laimer|Leandro Paredes|Lee Kang-in|Leon Goretzka|Lorenzo Pellegrini|Lucas Bergvall|" +
+  "Lucas Paqueta|Malik Tillman|Manuel Locatelli|Manuel Ugarte|Marc Casado|Marcelo Brozovic|Marcos Llorente|" +
+  "Marten de Roon|Martin Odegaard|Martin Zubimendi|Matheus Nunes|Michael Olise|Mikel Oyarzabal|Mohammed Kudus|" +
+  "Moises Caicedo|Morgan Rogers|N'Golo Kante|Nico Gonzalez|Nicolo Barella|Oihan Sancet|Pape Gueye|Pape Matar Sarr|" +
+  "Pascal Gross|Paulo Dybala|Rayan Cherki|Richard Rios|Ritsu Doan|Rodrigo Bentancur|Ruben Loftus-Cheek|" +
+  "Ruben Neves|Ryan Gravenberch|Sandro Tonali|Scott McTominay|Sergio Busquets|Sofyan Amrabat|Stephen Eustaquio|" +
+  "Take Kubo|Takefusa Kubo|Takumi Minamino|Teun Koopmeiners|Thomas Partey|Tijjani Reijnders|Toni Kroos|" +
+  "Tyler Adams|Valentin Carboni|Vitinha|Warren Zaire-Emery|Wataru Endo|Weston McKennie|Wilfred Ndidi|Xavi Simons|" +
+  "Youri Tielemans|Youssouf Fofana|Yunus Musah",
+  Defenders: "Achraf Hakimi|Alejandro Balde|Alejandro Grimaldo|Alessandro Bastoni|Alphonso Davies|Amir Rrahmani|" +
+  "Andrea Cambiaso|Andrew Robertson|Antonee Robinson|Antonio Rudiger|Archie Gray|Ben White|Calvin Bassey|" +
+  "Cesar Montes|Chris Richards|Conor Bradley|Cristian Romero|Dani Carvajal|Daniel Munoz|David Alaba|" +
+  "Dayot Upamecano|Dean Huijsen|Denzel Dumfries|Diogo Dalot|Evan Ndicka|Ezri Konsa|Federico Dimarco|" +
+  "Federico Gatti|Ferland Mendy|Fikayo Tomori|Fran Garcia|Francesco Acerbi|Gabriel Magalhaes|Giovanni Di Lorenzo|" +
+  "Ibrahima Konate|Inigo Martinez|James Tarkowski|Jarrad Branthwaite|Jeremie Frimpong|John Stones|Jonathan Tah|" +
+  "Jordi Alba|Jose Gimenez|Josko Gvardiol|Jules Kounde|Kalidou Koulibaly|Kim Min-jae|Leny Yoro|Leonardo Balerdi|" +
+  "Levi Colwill|Lisandro Martinez|Malo Gusto|Marc Cucurella|Marquinhos|Mats Hummels|Matthijs de Ligt|" +
+  "Michael Keane|Micky van de Ven|Milos Kerkez|Mohammed Salisu|Myles Lewis-Skelly|Nahuel Molina|Nathan Ake|" +
+  "Nico Schlotterbeck|Nicolas Otamendi|Nicolas Tagliafico|Noussair Mazraoui|Nuno Mendes|Ola Aina|Patrick Dorgu|" +
+  "Pau Cubarsi|Raul Asencio|Reece James|Riccardo Calafiori|Ronald Araujo|Ruben Dias|Sergino Dest|Sven Botman|" +
+  "Theo Hernandez|Trent Alexander-Arnold|Virgil van Dijk|Willi Orban|William Saliba|Willian Pacho",
+  Keepers: "Alex Meret|Alisson|Andre Onana|Andriy Lunin|Bono|David Raya|Ederson|Edouard Mendy|Emiliano Martinez|" +
+  "Gianluigi Donnarumma|Gregor Kobel|Guglielmo Vicario|Guillermo Ochoa|Jan Oblak|Jordan Pickford|Keylor Navas|" +
+  "Lucas Chevalier|Manuel Neuer|Marc-Andre ter Stegen|Matt Turner|Michele Di Gregorio|Mike Maignan|Mile Svilar|" +
+  "Nick Pope|Robert Sanchez|Unai Simon|Wojciech Szczesny|Yann Sommer",
+  Women: "Abby Wambach|Ada Hegerberg|Aitana Bonmati|Alessia Russo|Alex Morgan|Alexandra Popp|Alexia Putellas|" +
+  "Alyssa Naeher|Ann-Katrin Berger|Ary Borges|Asisat Oshoala|Barbara Bonansea|Barbra Banda|Becky Sauerbrunn|" +
+  "Beth Mead|Caitlin Foord|Carli Lloyd|Caroline Graham Hansen|Cata Coll|Catarina Macario|Chloe Kelly|Cho So-hyun|" +
+  "Claudia Pina|Cristiana Girelli|Crystal Dunn|Danielle van de Donk|Debinha|Delphine Cascarino|Ella Toone|" +
+  "Ellie Carpenter|Emily Fox|Emily van Egmond|Esmee Brugts|Ewa Pajor|Fridolina Rolfo|Georgia Stanway|Giulia Gwinn|" +
+  "Grace Clinton|Grace Geyoro|Guro Reiten|Hannah Hampton|Hayley Raso|Hinata Miyazawa|Hope Solo|Irene Paredes|" +
+  "Jaedyn Shaw|Ji So-yun|Jill Roord|Jule Brand|Julie Ertz|Kadidiatou Diani|Keira Walsh|Kerolin|Khadija Shaw|" +
+  "Klara Buhl|Kosovare Asllani|Lauren Hemp|Lauren James|Lea Schuller|Leah Williamson|Lena Oberdorf|Lieke Martens|" +
+  "Lindsey Heaps|Lucy Bronze|Magdalena Eriksson|Mallory Swanson|Mapi Leon|Marta|Mary Earps|Mary Fowler|" +
+  "Megan Rapinoe|Mia Hamm|Millie Bright|Naomi Girma|Olivia Moultrie|Ona Batlle|Patri Guijarro|Pernille Harder|" +
+  "Racheal Kundananji|Rose Lavelle|Saki Kumagai|Sakina Karchaoui|Salma Paralluelo|Sam Kerr|Sherida Spitse|" +
+  "Sophia Wilson|Steph Catley|Stina Blackstenius|Tamires|Thembi Kgatlana|Tobin Heath|Trinity Rodman|" +
+  "Vivianne Miedema|Wendie Renard|Yui Hasegawa|Zecira Musovic",
+  Legends: "Alan Shearer|Alessandro Del Piero|Alessandro Nesta|Alfredo Di Stefano|Andrea Pirlo|Andriy Shevchenko|" +
+  "Arjen Robben|Bastian Schweinsteiger|Bebeto|Bobby Charlton|Bobby Moore|Cafu|Careca|Carles Puyol|Cesc Fabregas|" +
+  "Clarence Seedorf|David Beckham|David Silva|David Trezeguet|David Villa|Deco|Dennis Bergkamp|Didier Deschamps|" +
+  "Didier Drogba|Edwin van der Sar|Emmanuel Adebayor|Eric Cantona|Eusebio|Fabien Barthez|Fabio Cannavaro|" +
+  "Ferenc Puskas|Fernando Hierro|Fernando Torres|Filippo Inzaghi|Francesco Totti|Franck Ribery|Franco Baresi|" +
+  "Frank Lampard|Frank Rijkaard|Franz Beckenbauer|Garrincha|Gary Lineker|Gennaro Gattuso|George Best|George Weah|" +
+  "Gerd Muller|Gianluigi Buffon|Hristo Stoichkov|Ian Wright|Iker Casillas|Jay-Jay Okocha|Johan Cruyff|John Terry|" +
+  "Jurgen Klinsmann|Kaka|Lev Yashin|Lilian Thuram|Lionel Messi|Lothar Matthaus|Luis Figo|Marcel Desailly|" +
+  "Marco Tardelli|Marco Verratti|Marco van Basten|Mesut Ozil|Michael Ballack|Michael Essien|Michel Platini|" +
+  "Miroslav Klose|Mohamed Aboutrika|Nuno Gomes|Nwankwo Kanu|Oliver Kahn|Paolo Maldini|Patrick Vieira|Paul Scholes|" +
+  "Pavel Nedved|Peter Schmeichel|Philipp Lahm|Rai|Raul|Rio Ferdinand|Rivaldo|Roberto Baggio|Roberto Carlos|" +
+  "Robin van Persie|Romario|Ronaldinho|Ronaldo|Roy Keane|Rui Costa|Ruud Gullit|Ruud van Nistelrooy|Ryan Giggs|" +
+  "Samuel Eto'o|Samuel Etoo|Sergio Ramos|Socrates|Steven Gerrard|Thierry Henry|Thomas Muller|Wayne Rooney|" +
+  "Wesley Sneijder|Xabi Alonso|Yaya Toure|Zico|Zinedine Zidane",
+};
+const SO_GROUP = (function () {
+  const m = {};
+  Object.keys(SO_POS).forEach(function (g) {
+    SO_POS[g].split("|").forEach(function (n) {
+      if (n) m[n] = g;
+    });
+  });
+  return m;
+})();
 const SO_MORE = ("Antoine Griezmann|Jamal Musiala|Florian Wirtz|Bruno Fernandes|Martin Odegaard|" + "Son Heung-min|Victor Osimhen|Rafael Leao|Khvicha Kvaratskhelia|Nico Williams|Julian Alvarez|" + "Cole Palmer|Alejandro Garnacho|Eduardo Camavinga|Aurelien Tchouameni|Frenkie de Jong|" + "Joshua Kimmich|Toni Kroos|Ilkay Gundogan|Bernardo Silva|Riyad Mahrez|Sadio Mane|" + "Marcus Rashford|Ollie Watkins|Dominik Szoboszlai|Alexis Mac Allister|Enzo Fernandez|" + "Moises Caicedo|William Saliba|Gabriel Magalhaes|Josko Gvardiol|Trent Alexander-Arnold|" + "Andrew Robertson|Theo Hernandez|Antonio Rudiger|Marquinhos|Ederson|Gianluigi Donnarumma|" + "Jan Oblak|Manuel Neuer|Keylor Navas|Mary Earps|Beth Mead|Leah Williamson|Lucy Bronze|" + "Caitlin Foord|Khadija Shaw|Ewa Pajor|Barbra Banda|Mallory Swanson|Naomi Girma|" + "Catarina Macario|Rose Lavelle|Debinha|Wendie Renard|Ada Hegerberg|Megan Rapinoe|" + "Abby Wambach|Mia Hamm|Michel Platini|Franz Beckenbauer|George Best|Eusebio|" + "Roberto Baggio|Alessandro Del Piero|Francesco Totti|Steven Gerrard|Frank Lampard|" + "Paul Scholes|Roy Keane|Patrick Vieira|Didier Drogba|Samuel Etoo|Kaka|Iker Casillas" + "|Kylian Mbappe|Vinicius Junior|Rodrygo|Federico Valverde|Aurelien Tchouameni|Eduardo Camavinga|Antonio Rudiger|David Alaba|Dani Carvajal|Ferland Mendy|Andriy Lunin|Arda Guler|Endrick|Brahim Diaz|Fran Garcia|Raul Asencio|Dean Huijsen|Trent Alexander-Arnold|Robert Lewandowski|Raphinha|Frenkie de Jong|Gavi|Ronald Araujo|Jules Kounde|Alejandro Balde|Marc-Andre ter Stegen|Wojciech Szczesny|Dani Olmo|Ferran Torres|Pau Cubarsi|Marc Casado|Fermin Lopez|Inigo Martinez|Erling Haaland|Bernardo Silva|Ilkay Gundogan|Josko Gvardiol|Ruben Dias|Ederson|Jack Grealish|Jeremy Doku|Savinho|Matheus Nunes|John Stones|Nathan Ake|Omar Marmoush|Nico Gonzalez|Tijjani Reijnders|Rayan Cherki|Mohamed Salah|Virgil van Dijk|Alisson|Luis Diaz|Cody Gakpo|Darwin Nunez|Dominik Szoboszlai|Alexis Mac Allister|Ryan Gravenberch|Ibrahima Konate|Andrew Robertson|Conor Bradley|Curtis Jones|Harvey Elliott|Federico Chiesa|Florian Wirtz|Hugo Ekitike|Milos Kerkez|Jeremie Frimpong|Bukayo Saka|Martin Odegaard|Declan Rice|William Saliba|Gabriel Magalhaes|Gabriel Martinelli|Kai Havertz|Leandro Trossard|Gabriel Jesus|David Raya|Ben White|Riccardo Calafiori|Myles Lewis-Skelly|Ethan Nwaneri|Viktor Gyokeres|Martin Zubimendi|Son Heung-min|James Maddison|Cristian Romero|Micky van de Ven|Dejan Kulusevski|Guglielmo Vicario|Brennan Johnson|Pape Matar Sarr|Archie Gray|Lucas Bergvall|Mathys Tel|Cole Palmer|Enzo Fernandez|Moises Caicedo|Nicolas Jackson|Reece James|Levi Colwill|Robert Sanchez|Noni Madueke|Pedro Neto|Marc Cucurella|Malo Gusto|Joao Pedro|Liam Delap|Estevao Willian|Bruno Fernandes|Marcus Rashford|Kobbie Mainoo|Alejandro Garnacho|Rasmus Hojlund|Lisandro Martinez|Diogo Dalot|Andre Onana|Matthijs de Ligt|Amad Diallo|Manuel Ugarte|Leny Yoro|Patrick Dorgu|Bryan Mbeumo|Matheus Cunha|Alexander Isak|Bruno Guimaraes|Anthony Gordon|Sandro Tonali|Nick Pope|Sven Botman|Ollie Watkins|Morgan Rogers|Emiliano Martinez|Youri Tielemans|Ezri Konsa|Jhon Duran|Amadou Onana|Jarrod Bowen|Lucas Paqueta|Mohammed Kudus|Jarrad Branthwaite|Jordan Pickford|Iliman Ndiaye|Dominic Calvert-Lewin|Michael Keane|James Tarkowski|Harry Kane|Jamal Musiala|Michael Olise|Alphonso Davies|Joshua Kimmich|Leon Goretzka|Manuel Neuer|Dayot Upamecano|Kingsley Coman|Serge Gnabry|Leroy Sane|Konrad Laimer|Aleksandar Pavlovic|Jonathan Tah|Karim Adeyemi|Julian Brandt|Emre Can|Gregor Kobel|Nico Schlotterbeck|Serhou Guirassy|Jamie Gittens|Pascal Gross|Granit Xhaka|Alejandro Grimaldo|Patrik Schick|Jonas Hofmann|Exequiel Palacios|Xavi Simons|Benjamin Sesko|Willi Orban|Lois Openda|Christoph Baumgartner|Lautaro Martinez|Nicolo Barella|Hakan Calhanoglu|Alessandro Bastoni|Federico Dimarco|Marcus Thuram|Denzel Dumfries|Yann Sommer|Francesco Acerbi|Rafael Leao|Theo Hernandez|Christian Pulisic|Mike Maignan|Fikayo Tomori|Alvaro Morata|Ruben Loftus-Cheek|Youssouf Fofana|Santiago Gimenez|Dusan Vlahovic|Federico Gatti|Manuel Locatelli|Kenan Yildiz|Andrea Cambiaso|Michele Di Gregorio|Teun Koopmeiners|Weston McKennie|Victor Osimhen|Khvicha Kvaratskhelia|Romelu Lukaku|Giovanni Di Lorenzo|Alex Meret|Scott McTominay|Andre-Frank Zambo Anguissa|Amir Rrahmani|Paulo Dybala|Lorenzo Pellegrini|Artem Dovbyk|Evan Ndicka|Mile Svilar|Mats Hummels|Ademola Lookman|Charles De Ketelaere|Mateo Retegui|Gianluca Scamacca|Marten de Roon|Ousmane Dembele|Vitinha|Achraf Hakimi|Marquinhos|Gianluigi Donnarumma|Nuno Mendes|Bradley Barcola|Warren Zaire-Emery|Joao Neves|Desire Doue|Lucas Chevalier|Fabian Ruiz|Willian Pacho|Mason Greenwood|Pierre-Emerick Aubameyang|Leonardo Balerdi|Adrien Rabiot|Alexandre Lacazette|Malick Fofana|Antoine Griezmann|Jan Oblak|Julian Alvarez|Koke|Marcos Llorente|Alexander Sorloth|Jose Gimenez|Conor Gallagher|Isco|Antony|Giovani Lo Celso|Nico Williams|Inaki Williams|Oihan Sancet|Unai Simon|Mikel Oyarzabal|Take Kubo|Alex Baena|Gerard Moreno|Ayoze Perez|Jose Luis Morales|Hugo Duro|Cristiano Ronaldo|Karim Benzema|Sadio Mane|Neymar|Riyad Mahrez|Ruben Neves|N'Golo Kante|Roberto Firmino|Aleksandar Mitrovic|Kalidou Koulibaly|Malcom|Ivan Toney|Joao Felix|Marcelo Brozovic|Bono|Lionel Messi|Luis Suarez|Jordi Alba|Sergio Busquets|Hirving Lozano|Denis Bouanga|Cucho Hernandez|Emmanuel Latte Lath|Sam Surridge|Anders Dreyer|Evander|Diego Luna|Christian Benteke|Kim Min-jae|Lee Kang-in|Hwang Hee-chan|Kaoru Mitoma|Takefusa Kubo|Daichi Kamada|Wataru Endo|Ao Tanaka|Ritsu Doan|Takumi Minamino|Youssef En-Nesyri|Sofyan Amrabat|Hakim Ziyech|Noussair Mazraoui|Bilal El Khannouss|Trezeguet|Victor Boniface|Wilfred Ndidi|Alex Iwobi|Samuel Chukwueze|Calvin Bassey|Ola Aina|Thomas Partey|Jordan Ayew|Antoine Semenyo|Ismaila Sarr|Pape Gueye|Edouard Mendy|Mohammed Salisu|Tyler Adams|Gio Reyna|Yunus Musah|Antonee Robinson|Sergino Dest|Matt Turner|Folarin Balogun|Ricardo Pepi|Malik Tillman|Tim Weah|Chris Richards|Johnny Cardoso|Jonathan David|Cyle Larin|Tajon Buchanan|Ismael Kone|Stephen Eustaquio|Edson Alvarez|Raul Jimenez|Guillermo Ochoa|Cesar Montes|Alexis Sanchez|Arturo Vidal|Ben Brereton Diaz|James Rodriguez|Jhon Arias|Richard Rios|Daniel Munoz|Rodrigo Bentancur|Facundo Pellistri|Richarlison|Andreas Pereira|Gerson|Pedro|Hulk|Nicolas Otamendi|Nahuel Molina|Nicolas Tagliafico|Leandro Paredes|Franco Mastantuono|Valentin Carboni|Zinedine Zidane|Ronaldinho|Ronaldo|Roberto Carlos|Cafu|Rivaldo|Romario|Socrates|Garrincha|Zico|Kaka|Bebeto|Rai|Careca|Franz Beckenbauer|Gerd Muller|Lothar Matthaus|Jurgen Klinsmann|Oliver Kahn|Michael Ballack|Miroslav Klose|Philipp Lahm|Bastian Schweinsteiger|Mesut Ozil|Toni Kroos|Thomas Muller|Michel Platini|Thierry Henry|Patrick Vieira|Marcel Desailly|Lilian Thuram|Fabien Barthez|Didier Deschamps|David Trezeguet|Franck Ribery|Paolo Maldini|Franco Baresi|Alessandro Nesta|Fabio Cannavaro|Gianluigi Buffon|Andrea Pirlo|Francesco Totti|Roberto Baggio|Alessandro Del Piero|Filippo Inzaghi|Marco Verratti|Gennaro Gattuso|Raul|Iker Casillas|Sergio Ramos|Carles Puyol|David Villa|Fernando Torres|Xabi Alonso|David Silva|Cesc Fabregas|Fernando Hierro|Bobby Charlton|Bobby Moore|Gary Lineker|Alan Shearer|David Beckham|Steven Gerrard|Frank Lampard|Paul Scholes|Rio Ferdinand|John Terry|Wayne Rooney|Peter Schmeichel|Ryan Giggs|Roy Keane|Eric Cantona|Dennis Bergkamp|Ian Wright|Johan Cruyff|Marco van Basten|Ruud Gullit|Frank Rijkaard|Edwin van der Sar|Ruud van Nistelrooy|Arjen Robben|Wesley Sneijder|Robin van Persie|Clarence Seedorf|George Best|Ferenc Puskas|Eusebio|Lev Yashin|Alfredo Di Stefano|Marco Tardelli|Hristo Stoichkov|Pavel Nedved|Andriy Shevchenko|Luis Figo|Rui Costa|Deco|Nuno Gomes|Didier Drogba|Samuel Eto'o|Yaya Toure|Michael Essien|Jay-Jay Okocha|George Weah|Nwankwo Kanu|Emmanuel Adebayor|Mohamed Aboutrika|Aitana Bonmati|Alexia Putellas|Salma Paralluelo|Ona Batlle|Irene Paredes|Cata Coll|Mapi Leon|Patri Guijarro|Claudia Pina|Esmee Brugts|Sam Kerr|Lauren James|Lucy Bronze|Leah Williamson|Millie Bright|Mary Earps|Hannah Hampton|Beth Mead|Chloe Kelly|Alessia Russo|Georgia Stanway|Ella Toone|Keira Walsh|Lauren Hemp|Grace Clinton|Sophia Wilson|Trinity Rodman|Mallory Swanson|Naomi Girma|Emily Fox|Lindsey Heaps|Rose Lavelle|Crystal Dunn|Alyssa Naeher|Catarina Macario|Jaedyn Shaw|Olivia Moultrie|Alex Morgan|Megan Rapinoe|Julie Ertz|Becky Sauerbrunn|Tobin Heath|Carli Lloyd|Abby Wambach|Mia Hamm|Hope Solo|Vivianne Miedema|Lieke Martens|Jill Roord|Danielle van de Donk|Sherida Spitse|Ada Hegerberg|Caroline Graham Hansen|Guro Reiten|Pernille Harder|Magdalena Eriksson|Fridolina Rolfo|Kosovare Asllani|Stina Blackstenius|Zecira Musovic|Marta|Debinha|Kerolin|Tamires|Ary Borges|Wendie Renard|Kadidiatou Diani|Delphine Cascarino|Sakina Karchaoui|Grace Geyoro|Barbara Bonansea|Cristiana Girelli|Lena Oberdorf|Alexandra Popp|Giulia Gwinn|Klara Buhl|Ann-Katrin Berger|Jule Brand|Lea Schuller|Khadija Shaw|Asisat Oshoala|Barbra Banda|Racheal Kundananji|Thembi Kgatlana|Saki Kumagai|Hinata Miyazawa|Yui Hasegawa|Ji So-yun|Cho So-hyun|Caitlin Foord|Ellie Carpenter|Mary Fowler|Steph Catley|Hayley Raso|Emily van Egmond").split("|").filter(function (v, i, a) {
   return v && a.indexOf(v) === i;
 }).map(function (n) {
   return {
     n: n,
     t: "Player",
-    g: "More",
+    /* "More" still means unplaced, so anyone missed stays searchable but out
+       of the position chips rather than landing in the wrong one. */
+    g: SO_GROUP[n] || "More",
     kind: "player"
   };
 });
@@ -2137,12 +2233,12 @@ TAC("False Nine", "No striker at all", "false nine explained football", "False 9
 TAC("Overlap and Underlap", "Runs off the winger", "overlap underlap runs explained football", "Overlap (football)", BOARD.so),
 TAC("Offside Trap", "Step as one", "offside trap explained football", "Offside (association football)", BOARD.so),
 TAC("Man Marking vs Zonal", "Two ways to defend a corner", "zonal vs man marking corners explained", BOARD.so),
-TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", "Counter-attack", BOARD.so),
+TAC("Counter Attack", "Five seconds to hurt them", "counter attacking football tactics explained", null, BOARD.so),
 TAC("Tiki-Taka", "Keep it until it opens", "tiki taka explained football", "Tiki-taka", BOARD.so),
 TAC("Direct Play", "Skip the middle", "direct play long ball tactics football", BOARD.so),
-TAC("4-3-3", "The shape", "4-3-3 formation explained football", "Formation (association football)", BOARD.so),
-TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", "Formation (association football)", BOARD.so),
-TAC("3-5-2", "The shape", "3-5-2 formation explained football", "Formation (association football)", BOARD.so),
+TAC("4-3-3", "The shape", "4-3-3 formation explained football", null, BOARD.so),
+TAC("4-2-3-1", "The shape", "4-2-3-1 formation explained football", null, BOARD.so),
+TAC("3-5-2", "The shape", "3-5-2 formation explained football", null, BOARD.so),
 TAC("Set Piece Routines", "Corners and free kicks", "attacking set piece routines football", BOARD.so)];
 
 const HO_TACTICS = [
@@ -2288,7 +2384,36 @@ const YT_JUNK = /\b(reaction|reacts?|tier list|ranking|top ?\d+|quiz|prediction|
 /* Anything that means the clip is real coaching or real footage. */
 const YT_GOOD = /\b(analysis|breakdown|film|tactical|explained|why|how|masterclass|scout|coaching|tutorial|session|full match|full game|extended|highlights)\b/i;
 
-function rankVideos(list, wanted, must) {
+/* Any-word matching was too generous: "Angel Gomes" would accept an Angel City
+   video, because "Angel" is in the title. The surname is what actually
+   identifies a footballer, so that is the word a title has to carry. A single
+   name — Rodri, Pedri, Marta — is its own surname and works unchanged. */
+function nameTest(full) {
+  const parts = String(full || "").split(/\s+/).map(function (w) {
+    return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z-]/g, "");
+  }).filter(function (w) {
+    return w.length > 2;
+  });
+  if (!parts.length) return null;
+  const surname = parts[parts.length - 1];
+  try {
+    return new RegExp("\\b" + surname + "\\b", "i");
+  } catch (e) {
+    return null;
+  }
+}
+function wholeTest(full) {
+  const parts = String(full || "").split(/\s+/).map(function (w) {
+    return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z-]/g, "");
+  }).filter(Boolean);
+  if (parts.length < 2) return null;
+  try {
+    return new RegExp(parts.join("\\W+"), "i");
+  } catch (e) {
+    return null;
+  }
+}
+function rankVideos(list, wanted, must, whole) {
   const seen = {};
   const out = [];
   for (const v of list) {
@@ -2307,6 +2432,9 @@ function rankVideos(list, wanted, must) {
     let score = 0;
     if (YT_GOOD.test(t)) score += 3;
     if (wanted && wanted.test(t)) score += 4;
+    /* A surname is enough to be about the right person, but a title carrying the
+       whole name is far more likely to be about them specifically, so it leads. */
+    if (whole && whole.test(t)) score += 6;
     if (/\b(vs\.?|v)\b/i.test(t)) score += 1;
     v._s = score;
     out.push(v);
@@ -2338,12 +2466,33 @@ async function ytSearch(q, opts) {
     channel: unescapeHTML(it.snippet.channelTitle),
     thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
   })).filter(v => v.id);
-  let ranked = rankVideos(out, opts.wanted, opts.must).slice(0, opts.max || 12);
-  /* If insisting on the name leaves too little to show, drop that rule before
-     dropping the search. */
-  if (ranked.length < 3 && opts.must) ranked = rankVideos(out, opts.wanted).slice(0, opts.max || 12);
-  /* If the filter was so strict nothing survived, the raw list beats an empty grid. */
-  const final = ranked.length ? ranked : out.slice(0, opts.max || 12);
+  let ranked = rankVideos(out, opts.wanted, opts.must, opts.whole).slice(0, opts.max || 12);
+  /* This used to drop the name rule whenever it left fewer than three, and then
+     fall back to the raw list on top of that. For anyone less famous than
+     Ronaldo that meant a search for Angel Gomes answering with a Man Utd v
+     Arsenal review — the words matched, the player was nowhere in it. A wrong
+     video is worse than none, so the name now holds. When it leaves nothing,
+     the query was the problem, not the filter: one simpler search follows,
+     with the name still enforced. */
+  if (!ranked.length && opts.must && opts.alt && !opts.noAlt) {
+    try {
+      const more = await ytSearch(opts.alt, {
+        duration: opts.duration,
+        max: opts.max,
+        wanted: opts.wanted,
+        must: opts.must,
+        noAlt: true,
+        fresh: opts.fresh
+      });
+      if (more.length) {
+        ytCache[key] = more;
+        return more;
+      }
+    } catch (e) {}
+  }
+  /* Without a name to check against there is nothing to be wrong about, so the
+     raw list still beats an empty grid. With one, empty is the honest answer. */
+  const final = ranked.length ? ranked : opts.must ? [] : out.slice(0, opts.max || 12);
   ytCache[key] = final;
   return final;
 }
@@ -2368,17 +2517,34 @@ function saveBadges() {
     window.localStorage.setItem(BADGE_KEY, JSON.stringify(badgeCache));
   } catch (e) {}
 }
+/* Case, accents and punctuation all differ between what we ask for and what
+   comes back, so both sides are flattened before they are compared. */
+function norm(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
 async function badgeFor(name) {
   if (name in badgeCache) return badgeCache[name];
   try {
     const res = await fetch("https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=" + encodeURIComponent(name));
     if (!res.ok) throw 0;
     const teams = (await res.json()).teams || [];
-    /* Several clubs share a name across sports and countries, so the soccer one
-       is preferred rather than whichever happens to come back first. */
-    const pick = teams.filter(function (t) {
+    /* This search is fuzzy and will happily answer a league with a club, or a
+       club with something from another sport entirely: "Serie A" came back as
+       the World Series of Poker, "La Liga" as LDU Quito. So the name has to
+       actually match before a crest is trusted. Nothing convincing means no
+       crest at all, which is better than a confidently wrong one. */
+    const want = norm(name);
+    const named = teams.filter(function (t) {
+      const got = norm(t.strTeam || "");
+      if (!got) return false;
+      /* Either the same name, or the crest's name contains ours as whole words
+         — "Arsenal" matching "Arsenal FC" is fine, "Serie A" matching
+         "World Series of Poker" is not. */
+      return got === want || got.indexOf(want + " ") === 0 || got.indexOf(" " + want) === got.length - want.length - 1;
+    });
+    const pick = named.filter(function (t) {
       return (t.strSport || "").toLowerCase() === "soccer";
-    })[0] || teams[0];
+    })[0] || named[0] || null;
     const url = pick && (pick.strBadge || pick.strTeamBadge) || null;
     badgeCache[name] = url;
     saveBadges();
@@ -2408,6 +2574,30 @@ const bioCache = {};
 function chunk(arr, size) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+/* Two tiles wearing the same picture reads as a bug even when both lookups were
+   technically right: the three formations all pointed at one article and came
+   back as the same 1887 newspaper. First tile to claim an image keeps it, the
+   rest fall back to the lettering. The board diagrams are exempt, since those
+   are the deliberate backdrop and are meant to repeat. */
+function oneEach(map) {
+  const boards = {};
+  Object.keys(BOARD).forEach(function (k) {
+    const u = photoCache[BOARD[k]];
+    if (u) boards[u] = 1;
+  });
+  const taken = {};
+  const out = {};
+  Object.keys(map).forEach(function (name) {
+    const u = map[name];
+    if (!u || boards[u]) {
+      out[name] = u;
+      return;
+    }
+    out[name] = taken[u] ? null : u;
+    taken[u] = 1;
+  });
   return out;
 }
 async function wikiPhotos(titles) {
@@ -5060,7 +5250,24 @@ function Library({
   const [photos, setPhotos] = useState({});
   const q = term.trim().toLowerCase();
   const searchable = pool || items;
-  let list = filter === "All" ? items : items.filter(r => r.g === filter);
+  /* "All" is the shortlist — a browsable front page, deliberately small. But a
+     position chip is a question about the whole index, so it answers from the
+     pool. The shortlist entries come first because they carry a real skill line
+     and a picture; the rest of the position follows, deduped by name since a
+     shortlisted player is in the pool too. */
+  let list;
+  if (filter === "All") {
+    list = items;
+  } else {
+    const front = items.filter(r => r.g === filter);
+    const seen = {};
+    front.forEach(r => {
+      seen[r.n] = 1;
+    });
+    const rest = (pool || items).filter(r => r.g === filter && !seen[r.n]);
+    rest.sort((a, b) => a.n.localeCompare(b.n));
+    list = front.concat(rest);
+  }
   // Anyone they have saved comes first, in the order they saved them, and a
   // saved player who is not on the shortlist is added so they are reachable.
   // Only the ones who belong to this sport. A saved basketball player has
@@ -5129,7 +5336,7 @@ function Library({
            there is one. */
         map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
       });
-      setPhotos(map);
+      setPhotos(oneEach(map));
     };
     wikiPhotos(items.filter(r => r.kind !== "game" || r.wiki).map(r => r.wiki || r.n)).then(sync).catch(function () {});
     badgesFor(items.filter(r => r.g === "Club").slice(0, 40).map(r => r.n)).then(sync).catch(function () {});
@@ -5159,7 +5366,7 @@ function Library({
            lettering when it has not. */
         map[r.n] = r.g === "Club" && badgeCache[r.n] ? badgeCache[r.n] : r.kind === "game" && !r.wiki ? null : photoCache[r.wiki || r.n];
       });
-      setPhotos(map);
+      setPhotos(oneEach(map));
     }).catch(function () {});
     return () => {
       alive = false;
@@ -5338,17 +5545,17 @@ function Player({
          pressing it twice does not return the same nine videos. */
       /* Surnames carry the search. Accents are stripped so Doncic matches
          Don\u010di\u0107 and the apostrophe in O'Neal does not break the pattern. */
-      const parts = String(player.n || "").split(/\s+/).filter(function (w) {
-        return w.length > 2;
-      });
-      const must = player.kind === "player" && parts.length ? new RegExp(parts.map(function (w) {
-        return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z]/g, "");
-      }).filter(Boolean).join("|"), "i") : null;
+      const must = player.kind === "player" ? nameTest(player.n) : null;
       const list = (await ytSearch(t.q, {
         duration: t.dur,
         max: again ? 27 : 9,
         wanted: t.wanted,
         must: must,
+        whole: player.kind === "player" ? wholeTest(player.n) : null,
+        /* The analyst words that sharpen a search for a famous player starve one
+           for anyone else: there simply is no "Angel Gomes tactical breakdown".
+           Name and sport alone is the fallback, and it still has to be him. */
+        alt: t.alt || "\"" + player.n + "\" " + D.term,
         fresh: again
       })).slice(again ? 9 : 0, again ? 18 : 9);
       setByTab(m => {
@@ -5492,13 +5699,13 @@ function Film({
       const words = query.split(/\s+/).filter(function (w) {
         return w.length > 3 && /^[A-Za-z\u00C0-\u024F]+$/.test(w);
       }).slice(0, 2);
-      const must = words.length ? new RegExp(words.map(function (w) {
-        return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      }).join("|"), "i") : null;
+      const must = words.length ? nameTest(words.join(" ")) : null;
       let list = (await ytSearch(query, {
         duration: dur,
         max: again ? 30 : 12,
         must: must,
+        whole: wholeTest(words.join(" ")),
+        alt: words.join(" ") + " " + D.term,
         fresh: again
       })).slice(again ? 12 : 0, again ? 24 : 12);
       if (!list.length && again) list = await ytSearch(query, {
