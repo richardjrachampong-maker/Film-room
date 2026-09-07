@@ -468,7 +468,26 @@ body { background: #EDF0F2; }
 .fr-teamtop .fr-code { margin-left:auto; }
 .fr-roster { display:flex; flex-wrap:wrap; gap:7px; }
 .fr-who { font-size:13px; padding:6px 12px; border-radius:999px;
-  background:var(--glass-2); border:1px solid var(--edge); color:var(--dim); }
+  background:var(--glass-2); border:1px solid var(--edge); color:var(--dim);
+  display:inline-flex; align-items:center; gap:7px; }
+.fr-who[data-host="1"] { color:var(--text); border-color:var(--amber); }
+.fr-who i { font-style:normal; font-size:9.5px; font-weight:700; letter-spacing:.1em;
+  color:var(--amber); }
+.fr-board { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);
+  gap:18px; margin-top:18px; align-items:start; }
+.fr-col { min-width:0; }
+/* The reading side is the bigger one, and gets a surface so it reads as a panel
+   rather than a second list. */
+.fr-colwide { background:var(--glass); border:1px solid var(--edge);
+  border-radius:18px; padding:16px 16px 6px; }
+.fr-colwide .fr-post { background:var(--glass-2); }
+.fr-colhead { display:flex; align-items:center; gap:9px; margin:0 0 10px;
+  font-family:'Outfit',sans-serif; font-weight:600; font-size:13px;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
+.fr-colhead i { font-style:normal; font-size:11px; letter-spacing:0;
+  padding:2px 8px; border-radius:999px; background:var(--glass-2);
+  border:1px solid var(--edge); color:var(--faint); }
+@media (max-width:820px) { .fr-board { grid-template-columns:1fr; gap:26px; } }
 .fr-post { border:1px solid var(--edge); border-radius:14px; margin:0 0 10px;
   background:var(--glass); overflow:hidden; }
 .fr-posthead { appearance:none; cursor:pointer; font:inherit; width:100%;
@@ -494,8 +513,10 @@ body { background: #EDF0F2; }
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); }
 .fr-flow::-webkit-scrollbar { display:none; }
-.fr-flowtrack { display:flex; gap:14px; width:max-content;
-  padding:0 calc(50% - 84px); }
+/* No percentage padding on a max-content track: during intrinsic sizing the
+   percentage resolves to zero, the track never overflows, and the rail cannot
+   scroll at all. The pad is measured and set in JS instead. */
+.fr-flowtrack { display:flex; gap:14px; width:max-content; }
 .fr-sport { scroll-snap-align:center; position:relative; overflow:hidden;
   flex:0 0 168px; height:104px;
   cursor:pointer; appearance:none; font:inherit;
@@ -1007,7 +1028,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b152</div>
+<div class="fr-build">b154</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3216,8 +3237,11 @@ function VideoList({
   active,
   setActive,
   onRefresh,
-  refreshing
+  refreshing,
+  user,
+  sport
 }) {
+  const [sent, setSent] = useState(false);
   if (!vids || !vids.length) return null;
   return /*#__PURE__*/React.createElement(React.Fragment, null, active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("iframe", {
     className: "fr-player",
@@ -3240,7 +3264,28 @@ function VideoList({
     onClick: onRefresh,
     disabled: refreshing,
     title: "Search YouTube again for different videos"
-  }, refreshing ? "Looking\u2026" : "\u21BB  Different videos") : null, /*#__PURE__*/React.createElement("div", {
+  }, refreshing ? "Looking\u2026" : "\u21BB  Different videos") : null, active && myTeamCode() ? /*#__PURE__*/React.createElement("button", {
+    className: "fr-again",
+    "data-on": sent ? "1" : "0",
+    style: {
+      marginLeft: 8
+    },
+    onClick: function () {
+      if (sent) return;
+      setSent(true);
+      postToTeam(user, myTeamCode(), {
+        title: active.title,
+        video: active.id,
+        channel: active.channel || "",
+        sport: sport
+      }).then(function (ok) {
+        if (!ok) setSent(false);
+      });
+      try {
+        window.track("shared-video", {});
+      } catch (e) {}
+    }
+  }, sent ? "Shared" : "Share with the team") : null, /*#__PURE__*/React.createElement("div", {
     className: "fr-vids",
     style: {
       marginTop: 16
@@ -3755,7 +3800,8 @@ function TeamPage({
     const m = ((team && team.members) || []).filter(function (x) {
       return x.uid === uid;
     })[0];
-    return m ? m.who : "Someone";
+    if (!m) return "Someone";
+    return m.who + (team && team.coach === uid ? " \u00b7 host" : "");
   }
 
   if (!code) return /*#__PURE__*/React.createElement("div", {
@@ -3769,6 +3815,43 @@ function TeamPage({
   }, "Join one with a code, or make one as a coach. It is in Settings, under Team.")));
 
   const posts = (team && team.posts) || [];
+  /* Two boards, not one list: film on the left to watch, what the coach has to
+     say on the right to read. They are used differently so they are shown apart. */
+  const film = posts.filter(function (x) {
+    return x.video;
+  });
+  const reads = posts.filter(function (x) {
+    return !x.video;
+  });
+
+  function card(post) {
+    const isOpen = open === post.id;
+    return /*#__PURE__*/React.createElement("div", {
+      key: post.id,
+      className: "fr-post"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "fr-posthead",
+      onClick: function () {
+        setOpen(isOpen ? null : post.id);
+      }
+    }, /*#__PURE__*/React.createElement("b", null, post.title || "Breakdown"), /*#__PURE__*/React.createElement("span", null, nameOf(post.by) + "  \u00b7  " + post.when + (post.sport ? "  \u00b7  " + post.sport : ""))), isOpen ? /*#__PURE__*/React.createElement("div", {
+      className: "fr-postbody"
+    }, post.video ? /*#__PURE__*/React.createElement("iframe", {
+      className: "fr-player",
+      src: "https://www.youtube.com/embed/" + post.video,
+      title: post.title || "Film",
+      allow: "accelerometer; clipboard-write; encrypted-media; picture-in-picture",
+      allowFullScreen: true,
+      loading: "lazy"
+    }) : null, post.text ? /*#__PURE__*/React.createElement(Rich, {
+      text: post.text
+    }) : null, mine || post.by === (user && user.uid) ? /*#__PURE__*/React.createElement("button", {
+      className: "fr-share",
+      onClick: function () {
+        removePost(user, code, post.id).then(load);
+      }
+    }, "Take it down") : null) : null);
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-page"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3790,10 +3873,12 @@ function TeamPage({
   }, code)), /*#__PURE__*/React.createElement("div", {
     className: "fr-roster"
   }, ((team && team.members) || []).map(function (m) {
+    const isHost = team && team.coach === m.uid;
     return /*#__PURE__*/React.createElement("span", {
       key: m.uid,
-      className: "fr-who"
-    }, m.who);
+      className: "fr-who",
+      "data-host": isHost ? "1" : "0"
+    }, m.who, isHost ? /*#__PURE__*/React.createElement("i", null, "HOST") : null);
   })), busy ? /*#__PURE__*/React.createElement("p", {
     className: "fr-note",
     style: {
@@ -3810,31 +3895,21 @@ function TeamPage({
     style: {
       margin: "8px 0 0"
     }
-  }, "Get a breakdown in Train, then tap Share to team underneath it. Everyone here will see it.")) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 18
-    }
-  }, posts.map(function (post) {
-    const isOpen = open === post.id;
-    return /*#__PURE__*/React.createElement("div", {
-      key: post.id,
-      className: "fr-post"
-    }, /*#__PURE__*/React.createElement("button", {
-      className: "fr-posthead",
-      onClick: function () {
-        setOpen(isOpen ? null : post.id);
-      }
-    }, /*#__PURE__*/React.createElement("b", null, post.title || "Breakdown"), /*#__PURE__*/React.createElement("span", null, nameOf(post.by) + "  \u00b7  " + post.when + (post.sport ? "  \u00b7  " + post.sport : ""))), isOpen ? /*#__PURE__*/React.createElement("div", {
-      className: "fr-postbody"
-    }, /*#__PURE__*/React.createElement(Rich, {
-      text: post.text || ""
-    }), mine || post.by === (user && user.uid) ? /*#__PURE__*/React.createElement("button", {
-      className: "fr-share",
-      onClick: function () {
-        removePost(user, code, post.id).then(load);
-      }
-    }, "Take it down") : null) : null);
-  }))));
+  }, "Share a video from any player page, or a breakdown from Train, and it lands here for everyone.")) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-board"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-col"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-colhead"
+  }, "Film", /*#__PURE__*/React.createElement("i", null, film.length)), film.length ? film.map(card) : /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "No film shared yet.")), /*#__PURE__*/React.createElement("div", {
+    className: "fr-col fr-colwide"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "fr-colhead"
+  }, "From the coach", /*#__PURE__*/React.createElement("i", null, reads.length)), reads.length ? reads.map(card) : /*#__PURE__*/React.createElement("p", {
+    className: "fr-note"
+  }, "No breakdowns shared yet.")))));
 }
 
 function TeamPanel({
@@ -4807,6 +4882,23 @@ function SportFlow({
      the middle of the screen. */
   const step = 182;
   const rail = useRef(null);
+  const track = useRef(null);
+  const [pad, setPad] = useState(0);
+
+  /* Half the rail minus half a card is what lets the first and last cards reach
+     the middle. Recalculated on resize so it survives a rotation. */
+  useEffect(function () {
+    function measure() {
+      const el = rail.current;
+      if (!el) return;
+      setPad(Math.max(0, Math.round(el.clientWidth / 2 - 84)));
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return function () {
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   /* Drift is a scroll now, not a transform, so a finger and the timer move the
      same thing and never fight each other. */
@@ -4818,7 +4910,7 @@ function SportFlow({
     auto.current = true;
     el.scrollTo({
       left: mid * step,
-      behavior: "smooth"
+      behavior: pad ? "smooth" : "auto"
     });
     const t = setTimeout(function () {
       auto.current = false;
@@ -4850,6 +4942,11 @@ function SportFlow({
     onWheel: bump
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-flowtrack",
+    ref: track,
+    style: {
+      paddingLeft: pad,
+      paddingRight: pad
+    },
     role: "group",
     "aria-label": "Choose a sport"
   }, SPORT_KEYS.map(function (k, n) {
@@ -5346,6 +5443,8 @@ function Player({
     vids: byTab[tab],
     active: active,
     setActive: setActive,
+    user: user,
+    sport: SPORTS[SPORT] ? SPORTS[SPORT].label : "",
     refreshing: busy,
     onRefresh: function () {
       load(tab, "again");
@@ -5460,6 +5559,8 @@ function Film({
     vids: vids,
     active: active,
     setActive: setActive,
+    user: user,
+    sport: SPORTS[SPORT] ? SPORTS[SPORT].label : "",
     refreshing: busy,
     onRefresh: function () {
       const L = last.current;
