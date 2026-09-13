@@ -558,6 +558,31 @@ body { background: #EDF0F2; }
   width:max-content; max-width:min(300px,78vw); padding:10px 13px; border-radius:14px;
   font-size:12.5px; line-height:1.45; color:var(--text);
   animation:pop .2s cubic-bezier(.2,.7,.3,1) both; }
+/* ---------- The bubble ---------- */
+/* Its own thing, in the corner, not a item in the tab row. Big enough to hit
+   without looking, clear of the home indicator, and above everything. */
+.fr-bubble { position:fixed; z-index:75; right:16px;
+  bottom:calc(18px + env(safe-area-inset-bottom, 0px)); }
+.fr-bubble .fr-orbwrap { position:relative; }
+.fr-bubble .fr-orb { width:60px; height:60px; padding:0; margin:0;
+  background:linear-gradient(150deg, rgba(24,30,38,.96), rgba(12,16,21,.96));
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 10px 30px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.fr-bubble .fr-orb svg { width:26px; height:26px; }
+.fr-bubble .fr-orb:active { transform:scale(.94); }
+.fr-bubble .fr-orbring { inset:-4px; border-width:2px; }
+.fr-bubble .fr-orbring2 { inset:-9px; }
+.fr-bubble .fr-orb[data-state="idle"], .fr-bubble .fr-orb[data-state="off"] {
+  animation:bubblein .4s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes bubblein { from { transform:scale(.6); opacity:0; } }
+/* The caption opens upward and to the left, since the bubble sits bottom-right. */
+.fr-bubble .fr-orbtrouble { top:auto; bottom:calc(100% + 10px); left:auto; right:0;
+  max-width:min(300px,74vw); }
+@media (min-width:900px){
+  .fr-bubble { right:26px; bottom:26px; }
+  .fr-bubble .fr-orb { width:64px; height:64px; }
+}
 /* ---------- Mind ---------- */
 /* The reader. A column of text at a sane measure, the chrome kept out of the way. */
 /* An ordinary page, not a takeover. The site header stays where it is and the
@@ -1307,7 +1332,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b178</div>
+<div class="fr-build">b180</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6006,13 +6031,150 @@ let onWord = null;
    no use for telling a refusal apart from a short line that already finished. */
 let spokeCount = 0;
 
-function stopSpeaking() {
-  if (!canSpeak()) return;
+/* ---------------------- REAL VOICE ---------------------- */
+
+/* speechSynthesis was the wrong tool. On iOS it plays through the ringer
+   channel, which means the side switch silences it, the volume buttons do not
+   control it, and it reports success the whole time. That is why it has been
+   mute.
+
+   An <audio> element does not have that problem: Safari plays it through the
+   media channel like a video, so the silent switch is irrelevant and the volume
+   buttons work. So the words are generated as actual audio by Gemini and played
+   through one audio element that is unlocked on the first tap.
+
+   speechSynthesis stays as the fallback for anything without a key. */
+
+const TTS_MODEL = "gemini-2.5-flash-preview-tts";
+const TTS_VOICE = "Charon";
+
+let player = null;
+let playerReady = false;
+
+/* iOS will only let an audio element play if it has been started inside a real
+   tap at least once. This is that once: a moment of silence, played on the
+   first touch, after which the element can be used whenever. */
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+
+function unlockAudio() {
+  if (playerReady) return;
   try {
-    window.speechSynthesis.cancel();
+    if (!player) {
+      player = new window.Audio();
+      player.preload = "auto";
+      /* Tells Safari this is media, not a notification sound. */
+      player.setAttribute("playsinline", "");
+    }
+    player.src = SILENCE;
+    const p = player.play();
+    if (p && p.then) p.then(function () {
+      playerReady = true;
+    }).catch(function () {});else playerReady = true;
   } catch (e) {}
-  speaking = false;
-  if (onSpeakChange) onSpeakChange(false);
+}
+
+/* Gemini hands back raw PCM, which no browser will play on its own. Forty-four
+   bytes of header turn it into a WAV, which every browser plays. */
+function pcmToWav(b64, rate) {
+  const bin = window.atob(b64);
+  const n = bin.length;
+  const buf = new ArrayBuffer(44 + n);
+  const view = new DataView(buf);
+  const put = function (off, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+  };
+  put(0, "RIFF");
+  view.setUint32(4, 36 + n, true);
+  put(8, "WAVE");
+  put(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits
+  put(36, "data");
+  view.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) view.setUint8(44 + i, bin.charCodeAt(i));
+  let out = "";
+  const bytes = new Uint8Array(buf);
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return "data:audio/wav;base64," + window.btoa(out);
+}
+
+async function ttsAudio(line) {
+  const key = aiKey();
+  if (!key) return null;
+  const url = (AI_PROXY ? AI_PROXY.replace(/\/$/, "") + "/v1beta/models/" : "https://generativelanguage.googleapis.com/v1beta/models/") + TTS_MODEL + ":generateContent?key=" + key;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: line
+        }]
+      }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: TTS_VOICE
+            }
+          }
+        }
+      }
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "voice failed");
+  const part = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const inline = (part[0] || {}).inlineData || (part[0] || {}).inline_data;
+  if (!inline || !inline.data) throw new Error("no audio came back");
+  const mime = inline.mimeType || inline.mime_type || "";
+  const rate = parseInt((/rate=(\d+)/.exec(mime) || [])[1] || "24000", 10);
+  return pcmToWav(inline.data, rate);
+}
+
+/* Plays it, and reports each moment so the bubble can move with the words. */
+function playAudio(src) {
+  return new Promise(function (done, fail) {
+    try {
+      if (!player) {
+        player = new window.Audio();
+        player.setAttribute("playsinline", "");
+      }
+      player.onplay = function () {
+        speaking = true;
+        spokeCount++;
+        if (onSpeakChange) onSpeakChange(true);
+      };
+      player.onended = player.onerror = function () {
+        speaking = false;
+        if (onSpeakChange) onSpeakChange(false);
+        done();
+      };
+      /* No amplitude without Web Audio, and Web Audio on an element costs the
+         silent-switch immunity, so the ring is driven off the clock instead. */
+      player.ontimeupdate = function () {
+        if (onWord) onWord(0.55 + Math.abs(Math.sin(player.currentTime * 9)) * 0.45);
+      };
+      player.src = src;
+      const p = player.play();
+      if (p && p.catch) p.catch(function (e) {
+        fail(e);
+      });
+    } catch (e) {
+      fail(e);
+    }
+  });
 }
 
 /* Safari will not speak unless something has already spoken inside a real tap.
@@ -6020,38 +6182,61 @@ function stopSpeaking() {
    every answer is refused without an error and the page just sits there mute. */
 let unlocked = false;
 function unlockVoice() {
+  /* The audio element must be started inside a tap on iOS, so this is the one
+     that matters. The speech fallback is unlocked at the same time. */
+  unlockAudio();
   if (unlocked || !canSpeak()) return;
   try {
     const u = new window.SpeechSynthesisUtterance(" ");
-    u.volume = 0.01;
+    u.volume = 1;
+    u.rate = 1;
     window.speechSynthesis.speak(u);
     unlocked = true;
   } catch (e) {}
 }
-function speak(text) {
-  if (!canSpeak() || !voiceOn()) return;
-  /* iOS sometimes leaves the queue paused after a page has been backgrounded,
-     and a paused queue swallows everything put into it. */
+function stopSpeaking() {
   try {
-    window.speechSynthesis.resume();
+    if (player) {
+      player.pause();
+      player.currentTime = 0;
+    }
   } catch (e) {}
-  const clean = String(text || "")
+  if (!canSpeak()) {
+    speaking = false;
+    if (onSpeakChange) onSpeakChange(false);
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel();
+  } catch (e) {}
+  speaking = false;
+  if (onSpeakChange) onSpeakChange(false);
+}
+
+function tidy(text) {
+  return String(text || "")
     /* Markdown read aloud sounds like someone reciting punctuation. */
     .replace(/```[\s\S]*?```/g, " ").replace(/[*_#>`]/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1").replace(/\s+/g, " ").trim();
-  if (!clean) return;
-  stopSpeaking();
-  const u = new window.SpeechSynthesisUtterance(clean.slice(0, 1200));
+}
+
+/* Why nothing came out, when nothing comes out. */
+let voiceTrouble = null;
+
+function utter(line, tries) {
+  const u = new window.SpeechSynthesisUtterance(line);
   const v = pickVoice();
   if (v) u.voice = v;
+  u.lang = v && v.lang || "en-US";
   u.rate = 1.03;
   u.pitch = 0.96;
+  u.volume = 1;
+  let started = false;
   u.onstart = function () {
+    started = true;
     speaking = true;
     spokeCount++;
     if (onSpeakChange) onSpeakChange(true);
   };
-  /* Fired as it reaches each word. Safari is patchy about this, so the ring has
-     its own gentle fallback animation when nothing arrives. */
   u.onboundary = function (ev) {
     if (onWord) onWord(ev && ev.charLength > 6 ? 1 : 0.72);
   };
@@ -6062,6 +6247,73 @@ function speak(text) {
   try {
     window.speechSynthesis.speak(u);
   } catch (e) {}
+
+  /* Safari accepts the utterance, says nothing, and reports no error. One
+     retry, then it admits what has happened rather than leaving you staring at
+     a silent button. */
+  setTimeout(function () {
+    if (started) return;
+    if (tries > 0) {
+      try {
+        window.speechSynthesis.resume();
+      } catch (e) {}
+      utter(line, tries - 1);
+      return;
+    }
+    if (voiceTrouble) {
+      voiceTrouble("No sound is coming out. On an iPhone or iPad the side switch " + "silences this \u2014 flick it off silent, or turn the volume up with a video playing.");
+    }
+  }, 1100);
+}
+
+/* Real audio first, the browser's own voice only if that is not available.
+   Kept in order so that if the key is missing or the request fails, something
+   still comes out rather than nothing. */
+async function speak(text) {
+  if (!voiceOn()) return;
+  const clean = tidy(text);
+  if (!clean) return;
+  stopSpeaking();
+  if (aiKey()) {
+    try {
+      const src = await ttsAudio(clean.slice(0, 700));
+      if (src) {
+        await playAudio(src);
+        return;
+      }
+    } catch (e) {
+      /* Falls through to the browser voice, which at least works with the
+         silent switch off. */
+      if (voiceTrouble) voiceTrouble("");
+    }
+  }
+  speakLocal(clean);
+}
+function speakLocal(clean) {
+  if (!canSpeak()) {
+    if (voiceTrouble) voiceTrouble("This browser has no voice available.");
+    return;
+  }
+  /* iOS leaves the queue paused after the page has been in the background, and
+     a paused queue swallows everything put into it. */
+  try {
+    window.speechSynthesis.resume();
+  } catch (e) {}
+
+  /* This is what has been breaking it. cancel() on iOS does not finish before
+     the next line runs, and whatever you hand it in that window is thrown away
+     without an error. So nothing is cancelled unless something really is
+     talking, and when it is, the new line waits for the old one to clear. */
+  if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+    setTimeout(function () {
+      utter(clean.slice(0, 1200), 1);
+    }, 160);
+    return;
+  }
+  utter(clean.slice(0, 1200), 1);
 }
 
 /* What it says when you arrive. Built from the clock, your name and the log, so
@@ -6386,6 +6638,8 @@ function VoiceOrb({
   }, []);
 
   useEffect(function () {
+    /* So a device that accepts the words and makes no sound can say so. */
+    voiceTrouble = setTrouble;
     onSpeakChange = function (yes) {
       setState(function (s) {
         return yes ? "talking" : s === "talking" ? "idle" : s;
@@ -6396,6 +6650,7 @@ function VoiceOrb({
     return function () {
       onSpeakChange = null;
       onWord = null;
+      voiceTrouble = null;
     };
   }, []);
 
@@ -6497,6 +6752,7 @@ function VoiceOrb({
   }
 
   function tap() {
+    if (holdEnd()) return;
     unlockVoice();
     /* One control, and what it does depends on what it is doing. Talking, and a
        tap shuts it up \u2014 which is what you want when it is mid-sentence and
@@ -6585,6 +6841,26 @@ function VoiceOrb({
     }
   }
 
+  /* Hold the bubble and it says one line, so you can find out in a second
+     whether this device makes any sound at all, without asking it anything. */
+  const held2 = useRef(null);
+  function holdStart() {
+    held2.current = setTimeout(function () {
+      held2.current = "fired";
+      unlockVoice();
+      setTrouble("");
+      speak("Voice is working. Good to go.");
+    }, 550);
+  }
+  function holdEnd() {
+    if (held2.current === "fired") {
+      held2.current = null;
+      return true;
+    }
+    clearTimeout(held2.current);
+    held2.current = null;
+    return false;
+  }
   function mute() {
     stopSpeaking();
     stopListening();
@@ -6604,6 +6880,12 @@ function VoiceOrb({
     },
     onClick: tap,
     onDoubleClick: mute,
+    onPointerDown: holdStart,
+    onPointerUp: function () {},
+    onPointerLeave: function () {
+      clearTimeout(held2.current);
+      held2.current = null;
+    },
     title: label,
     "aria-label": label
   }, /*#__PURE__*/React.createElement(Mark2, {
@@ -11666,7 +11948,35 @@ function App() {
     "aria-label": "Go back"
   }, /*#__PURE__*/React.createElement("span", {
     "aria-hidden": "true"
-  }, "\u2190")), /*#__PURE__*/React.createElement(VoiceOrb, {
+  }, "\u2190")), /*#__PURE__*/React.createElement("button", {
+    className: "fr-brand fr-brandword",
+    onClick: () => go("home")
+  }, /*#__PURE__*/React.createElement(Mark2, {
+    size: 22
+  }), "Film Room"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-links"
+  }, NAV.concat(myTeamCode() ? [{
+    id: "team",
+    label: "Team"
+  }] : []).map(n => /*#__PURE__*/React.createElement("button", {
+    key: n.id,
+    className: "fr-link",
+    "data-on": top.page === n.id ? "1" : "0",
+    onClick: () => go(n.id)
+  }, n.label))), user && /*#__PURE__*/React.createElement(AskMeter, {
+    asks: profile && profile.asks || 0,
+    used: profile && profile.used || 0,
+    pro: isPro(user, profile),
+    // An admin is never ending: there is no subscription behind it.
+    ending: !isAdmin(user) && profile && profile.proEnds || "",
+    onFull: () => setShowUpgrade(true)
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-sun fr-gear",
+    onClick: () => setShowSettings(true),
+    "aria-label": "Settings"
+  }, user ? user.email.slice(0, 1).toUpperCase() : "\u2699"))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-bubble"
+  }, /*#__PURE__*/React.createElement(VoiceOrb, {
     sport: sport,
     onOpenTrain: function () {
       go("train");
@@ -11689,31 +11999,7 @@ function App() {
       } catch (e) {}
       go("train");
     }
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "fr-brand fr-brandword",
-    onClick: () => go("home")
-  }, "Film Room"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-links"
-  }, NAV.concat(myTeamCode() ? [{
-    id: "team",
-    label: "Team"
-  }] : []).map(n => /*#__PURE__*/React.createElement("button", {
-    key: n.id,
-    className: "fr-link",
-    "data-on": top.page === n.id ? "1" : "0",
-    onClick: () => go(n.id)
-  }, n.label))), user && /*#__PURE__*/React.createElement(AskMeter, {
-    asks: profile && profile.asks || 0,
-    used: profile && profile.used || 0,
-    pro: isPro(user, profile),
-    // An admin is never ending: there is no subscription behind it.
-    ending: !isAdmin(user) && profile && profile.proEnds || "",
-    onFull: () => setShowUpgrade(true)
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "fr-sun fr-gear",
-    onClick: () => setShowSettings(true),
-    "aria-label": "Settings"
-  }, user ? user.email.slice(0, 1).toUpperCase() : "\u2699"))), showSignIn && /*#__PURE__*/React.createElement(SignIn, {
+  })), showSignIn && /*#__PURE__*/React.createElement(SignIn, {
     onClose: () => setShowSignIn(false),
     onDone: u => {
       setUser(u);
