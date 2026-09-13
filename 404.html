@@ -545,6 +545,9 @@ body { background: #EDF0F2; }
   color:var(--faint); text-align:center; }
 .fr-readnote a { color:var(--amber); }
 .fr-bookacts { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.fr-bookalt { font-size:12.5px; color:var(--faint); text-decoration:none;
+  border-bottom:1px solid var(--edge); padding-bottom:1px; }
+.fr-bookalt:hover { color:var(--text); }
 .fr-readnow { background:var(--amber); border:0; color:#14181d; font:inherit;
   font-weight:700; font-size:13.5px; border-radius:999px; padding:9px 18px;
   cursor:pointer; touch-action:manipulation; }
@@ -576,26 +579,33 @@ body { background: #EDF0F2; }
    turned right round. */
 .fr3d-back { transform:rotateY(180deg) translateZ(20px); border-radius:5px 2px 2px 5px;
   box-shadow:inset 14px 0 26px -16px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.06); }
-.fr3d-spine { width:40px; height:180px; left:40px; transform:rotateY(-90deg) translateZ(20px);
+.fr3d-spine { width:40px; height:180px; left:40px; transform:rotateY(-90deg) translateZ(60px);
   display:flex; align-items:center; justify-content:center;
   box-shadow:inset 0 0 18px rgba(0,0,0,.45); }
 .fr3d-spine span { font-family:'Outfit',sans-serif; font-weight:600; font-size:9.5px;
   letter-spacing:.03em; white-space:nowrap; overflow:hidden; max-height:158px;
   writing-mode:vertical-rl; text-orientation:mixed; opacity:.92; }
 /* The page block: cream, with ruling so it reads as stacked paper. */
-.fr3d-edge { width:40px; height:180px; left:40px; transform:rotateY(90deg) translateZ(100px);
-  background:repeating-linear-gradient(90deg,#f2ece0 0 1.5px,#d3cbb9 1.5px 3px);
-  box-shadow:inset 0 0 14px rgba(0,0,0,.28); }
+/* Paper, not corduroy. The hard 1.5px stripe moired into those spirals at any
+   angle; this is a soft wash with a couple of faint gathers, which is what a
+   closed page block actually looks like from across a room. */
+.fr3d-edge { width:40px; height:180px; left:40px; transform:rotateY(90deg) translateZ(60px);
+  background:linear-gradient(90deg,#cfc7b4 0%,#f4efe4 14%,#e8e1d2 44%,#f2ece0 72%,#c9c1ae 100%);
+  box-shadow:inset 0 0 16px rgba(0,0,0,.3); }
 .fr3d-top, .fr3d-bottom { width:120px; height:40px; left:0;
-  background:repeating-linear-gradient(90deg,#f2ece0 0 1.5px,#ddd5c3 1.5px 3px); }
+  background:linear-gradient(180deg,#f4efe4 0%,#e6dfd0 55%,#cdc5b2 100%); }
 .fr3d-top { top:70px; transform:rotateX(90deg) translateZ(90px);
   box-shadow:inset 0 0 12px rgba(0,0,0,.22); }
 .fr3d-bottom { top:70px; transform:rotateX(-90deg) translateZ(90px);
   box-shadow:inset 0 0 12px rgba(0,0,0,.3); }
 /* A shadow on the ground, so it is standing somewhere rather than floating. */
-.fr3d-book::after { content:""; position:absolute; left:-16px; right:-16px; bottom:-26px;
-  height:20px; border-radius:50%; background:radial-gradient(ellipse,rgba(0,0,0,.5),transparent 70%);
-  transform:rotateX(90deg) translateZ(-92px); }
+/* On the stage, not on the book: a shadow that turns with the object is not a
+   shadow, it is a smear. */
+.fr3d-stage { position:relative; }
+.fr3d-stage::after { content:""; position:absolute; left:50%; bottom:18px;
+  width:130px; height:16px; margin-left:-65px; border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.42),transparent 72%);
+  filter:blur(3px); pointer-events:none; }
 .fr3d-drawn { position:absolute; inset:0; padding:15px 12px; display:flex;
   flex-direction:column; justify-content:space-between; text-align:left;
   border:1px solid rgba(255,255,255,.14); border-radius:2px 5px 5px 2px; }
@@ -1154,7 +1164,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b163</div>
+<div class="fr-build">b164</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -8451,6 +8461,12 @@ function Train({
 
 const FREE = id => "https://www.gutenberg.org/ebooks/" + id;
 const BORROW = q => "https://openlibrary.org/search?q=" + encodeURIComponent(q);
+/* Two more ways to pay nothing without anyone being robbed. WorldCat finds the
+   book in a real library near you, which is the oldest free-books system there
+   is. LibriVox is volunteers reading out-of-copyright books aloud, so anything
+   on the free shelf here can also be listened to. */
+const LIBRARY = q => "https://search.worldcat.org/search?q=" + encodeURIComponent(q);
+const LISTEN = q => "https://librivox.org/search?q=" + encodeURIComponent(q) + "&search_form=advanced";
 
 const MIND_SHELVES = [{
   id: "flow",
@@ -8993,7 +9009,8 @@ function coverColours(url) {
 }
 function Book3D({
   book,
-  hue
+  hue,
+  onOpen
 }) {
   const [cover, setCover] = useState(null);
   const [dead, setDead] = useState(false);
@@ -9029,8 +9046,10 @@ function Book3D({
       clearInterval(t);
     };
   }, []);
+  const moved = useRef(0);
   function down(e) {
     held.current = true;
+    moved.current = 0;
     const p = e.touches ? e.touches[0] : e;
     from.current = {
       x: p.clientX,
@@ -9042,12 +9061,17 @@ function Book3D({
   function move(e) {
     if (!held.current || !from.current) return;
     const p = e.touches ? e.touches[0] : e;
+    moved.current = Math.max(moved.current, Math.abs(p.clientX - from.current.x) + Math.abs(p.clientY - from.current.y));
     setSpin(from.current.spin + (p.clientX - from.current.x) * 0.7);
     setTilt(Math.max(-60, Math.min(60, from.current.tilt - (p.clientY - from.current.y) * 0.4)));
   }
+  /* A tap opens it, a drag turns it. Anything under about a finger's width of
+     travel was meant as a tap, however shaky the hand. */
   function up() {
+    const wasDrag = moved.current > 9;
     held.current = false;
     from.current = null;
+    if (!wasDrag && onOpen) onOpen();
   }
   /* Straighten up but keep turning, so a book left at a wild angle drifts back
      to level rather than staying tipped over. */
@@ -9180,7 +9204,13 @@ function MindPage({
       key: b.id
     }, /*#__PURE__*/React.createElement(Book3D, {
       book: b,
-      hue: b.hue
+      hue: b.hue,
+      onOpen: function () {
+        /* Tapping the book opens the book. For the ones that can be read here
+           that means straight into the text; for a loan there is nothing to
+           open, so it shows what it is and where to get it. */
+        if (b.how === "free") setReading(b);else setOpen(b.id);
+      }
     }), /*#__PURE__*/React.createElement("button", {
       className: "fr-bookmeta",
       onClick: function () {
@@ -9231,7 +9261,12 @@ function MindPage({
     href: shown.u,
     target: "_blank",
     rel: "noopener noreferrer"
-  }, shown.how === "free" ? "Open on Project Gutenberg" : "Borrow on Open Library")))) : null);
+  }, shown.how === "free" ? "Open on Project Gutenberg" : "Borrow on Open Library"), /*#__PURE__*/React.createElement("a", {
+    className: "fr-bookalt",
+    href: shown.how === "free" ? LISTEN(shown.t) : LIBRARY(shown.t + " " + shown.a),
+    target: "_blank",
+    rel: "noopener noreferrer"
+  }, shown.how === "free" ? "Listen free on LibriVox" : "Find it in a library near you")))) : null);
 }
 const NAV = [{
   id: "players",
