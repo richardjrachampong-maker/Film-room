@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b185</div>
+<div class="fr-build">b186</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3489,7 +3489,12 @@ async function aiGemini(turns, wantJSON, opts) {
     };else if (opts.fast && level >= 1) body.generationConfig.thinkingConfig = {
       thinkingBudget: 0
     };
-    if (opts.fast && level >= 2) body.model = "fast";
+    /* The fast alias points at the small model, and the small model refuses a
+       thinking budget — which Google reports as INVALID_ARGUMENT, i.e. a
+       flat refusal rather than a retry. So anything that has been asked to
+       think goes to the full model, and only the genuinely quick questions take
+       the fast one. This is what broke asking out loud. */
+    if (opts.fast && level >= 2 && !opts.think) body.model = "fast";
     return body;
   }
   const url = AI_PROXY ? AI_PROXY : "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
@@ -3521,6 +3526,9 @@ async function aiGemini(turns, wantJSON, opts) {
     data = await postRetrying(build(level));
     if (!data.error) break; // worked
     if (level === floor) break; // nothing left to strip
+    /* A refusal is exactly what the next rung down is for: it drops the
+       optional parts one at a time. Only a genuine dead end should reach the
+       player as an error. */
   }
   if (busy(data)) {
     throw new Error("Google's servers are busy right now. Nothing is wrong with your clip \u2014 give it a minute and send it again.");
@@ -6247,10 +6255,12 @@ async function ttsAudio(line) {
         voiceCache[line] = got;
         return got;
       }
-      tried.push("the voice worker answered without audio");
+      tried.push("voice worker: answered, but with no audio in it");
     } catch (e) {
       if (e && e.resting) throw e;
-      tried.push("the voice worker is not reachable \u2014 deploy it, or check the name matches");
+      /* Naming the route matters: the same words from the voice worker and from
+         the text worker mean completely different things to fix. */
+      tried.push("voice worker: " + (e && e.message || "not reachable \u2014 check the name matches"));
     }
   }
 
@@ -6267,7 +6277,7 @@ async function ttsAudio(line) {
       });
       const got = readAudioPart(await res.json());
       if (got) return got;
-      tried.push("the worker answered without audio \u2014 it is almost certainly forwarding to the text model and ignoring the speech one");
+      tried.push("text worker: no audio, as expected \u2014 it only knows the text model");
     } catch (e) {
       if (e && e.resting) throw e;
       tried.push("the worker: " + (e && e.message || "failed"));
