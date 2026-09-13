@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b186</div>
+<div class="fr-build">b187</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6411,9 +6411,9 @@ function utter(line, tries) {
       utter(line, tries - 1);
       return;
     }
-    if (voiceTrouble) {
-      voiceTrouble("No sound is coming out. On an iPhone or iPad the side switch " + "silences this \u2014 flick it off silent, or turn the volume up with a video playing.");
-    }
+    try {
+      console.warn("browser voice produced no sound");
+    } catch (e) {}
   }, 1100);
 }
 
@@ -6422,12 +6422,13 @@ function utter(line, tries) {
    still comes out rather than nothing. */
 async function speak(text) {
   if (!voiceOn()) return;
+  /* Resolves either way, because callers chain listening onto it. */
   const clean = tidy(text);
   if (!clean) return;
   stopSpeaking();
   lastVoiceFail = "";
   try {
-    const src = await ttsAudio(clean.slice(0, 700));
+    const src = await ttsAudio(clean.slice(0, 1400));
     if (src) {
       await playAudio(src);
       return;
@@ -6440,11 +6441,14 @@ async function speak(text) {
   /* Nothing real came back, so the browser's own voice is the last resort. It
      is the one that goes through the ringer channel and is often mute, which is
      why the reason is surfaced rather than swallowed. */
-  /* Said once. Repeating it every few seconds is what turned one problem into
-     a screen full of warnings. */
-  if (voiceTrouble && lastVoiceFail && lastVoiceFail !== toldAbout) {
+  /* Failures are logged, not announced. Nobody standing in a gym can act on
+     "the voice worker answered without audio", and a panel over the page is
+     worse than a quieter voice. */
+  if (lastVoiceFail && lastVoiceFail !== toldAbout) {
     toldAbout = lastVoiceFail;
-    voiceTrouble("Voice: " + lastVoiceFail + ". Using the browser voice meanwhile.");
+    try {
+      console.warn("voice fell back:", lastVoiceFail);
+    } catch (e) {}
   }
   speakLocal(clean);
 }
@@ -6564,7 +6568,9 @@ async function askAloud(question) {
     /* Room for the reasoning is separate from room for the answer, but a model
        that has thought has more to say, so the cap moves with it. Still short
        enough to be sayable. */
-    maxTokens: think ? 320 : 200
+    /* It was stopping mid-sentence, which sounds like a fault even when the
+       answer was right. Enough room to finish what it started. */
+    maxTokens: think ? 700 : 450
   });
 }
 
@@ -6631,6 +6637,11 @@ function parseCommand(raw) {
   if (!t) return null;
   const low = t.toLowerCase();
 
+  if (/\b(unmute|un mute|speak again|voice on|turn (your )?voice on|you can talk)\b/i.test(low)) {
+    return {
+      kind: "unmute"
+    };
+  }
   if (/\b(stop|quiet|shut up|be quiet|silence|mute)\b/i.test(low) && low.split(/\s+/).length <= 4) {
     return {
       kind: "mute"
@@ -6865,7 +6876,11 @@ function VoiceOrb({
     if (canSpeak() && window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = tryNow;
     }
-    function onTouch() {
+    function onTouch(e) {
+      /* The tap that starts a conversation is not an arrival. Greeting on it is
+         how it ended up talking over you. */
+      if (e && e.target && e.target.closest && e.target.closest(".fr-orb")) return;
+      if (speaking || rec.current) return;
       greet("touch");
     }
     document.addEventListener("pointerdown", onTouch);
@@ -6890,13 +6905,43 @@ function VoiceOrb({
   }
 
   async function answer(q) {
+    if (!voiceOn()) {
+      /* It heard you, it just cannot answer out loud. Saying nothing here is
+         how you end up talking to a phone that has quietly stopped listening. */
+      setTrouble("I am muted \u2014 say \u201cunmute\u201d.");
+      const cmd0 = parseCommand(q);
+      if (!cmd0 || cmd0.kind !== "unmute") {
+        if (live.current) setTimeout(listen, 400);
+        return;
+      }
+    }
     /* Orders first. They are free, they are instant, and they are most of what
        you actually say to a thing like this. */
     const cmd = parseCommand(q);
     if (cmd) {
-      if (cmd.kind === "mute") return mute();
+      if (cmd.kind === "mute") {
+        /* Muted, but still listening — otherwise you would have to reach for
+           the phone to turn it back on, which is the thing voice is for. */
+        stopSpeaking();
+        setOn(false);
+        setVoiceOn(false);
+        setTrouble("Muted. Say \u201cunmute\u201d when you want me back.");
+        if (live.current) setTimeout(listen, 250);
+        return;
+      }
+      if (cmd.kind === "unmute") {
+        setOn(true);
+        setVoiceOn(true);
+        setTrouble("");
+        speak("Back.").then(function () {
+          if (live.current) listen();
+        });
+        return;
+      }
       if (cmd.kind === "status") return speak(statusLine());
-      speak(aye());
+      speak(aye()).then(function () {
+        if (live.current) listen();
+      });
       setState("idle");
       /* A beat, so the acknowledgement is heard before the screen changes
          under it. */
@@ -6908,7 +6953,11 @@ function VoiceOrb({
     setState("thinking");
     try {
       const out = await askAloud(q);
-      speak(out);
+      /* Listening resumes once it has finished the sentence, so a conversation
+         is one press, not one press per question. */
+      speak(out).then(function () {
+        if (live.current) listen();
+      });
       /* If the engine refuses — which iOS does silently when it has not been
          unlocked — nothing will fire onstart, so this is the backstop that
          stops the ring spinning for ever. */
@@ -6925,32 +6974,12 @@ function VoiceOrb({
     }
   }
 
-  function tap() {
-    if (holdEnd()) return;
-    unlockVoice();
-    /* One control, and what it does depends on what it is doing. Talking, and a
-       tap shuts it up \u2014 which is what you want when it is mid-sentence and
-       someone walks over. */
-    if (state === "talking") {
-      stopSpeaking();
-      setState("idle");
-      return;
-    }
-    if (state === "listening") {
-      stopListening();
-      return;
-    }
-    if (!on) {
-      setOn(true);
-      setVoiceOn(true);
-      return;
-    }
-    if (!canHear()) {
-      setTrouble("This browser cannot listen. Opening the coach instead.");
-      speak("This browser cannot listen. I will open the coach instead.");
-      if (onOpenTrain) setTimeout(onOpenTrain, 700);
-      return;
-    }
+  /* True while a conversation is open. Tapping opens one and tapping again
+     closes it; inside one, it goes back to listening after every answer so you
+     never press anything twice. */
+  const live = useRef(false);
+  function listen() {
+    if (!canHear()) return;
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new R();
     r.lang = "en-US";
@@ -6973,7 +7002,7 @@ function VoiceOrb({
       if (!heard.trim()) {
         try { r.stop(); } catch (e2) {}
         setState("idle");
-        setTrouble(micGranted() ? "I did not catch that. Tap and speak a little sooner." : "I could not hear anything. Tap \u24d8 in the address bar, then Website Settings, and set Microphone to Allow \u2014 not Ask.");
+        setTrouble(micGranted() ? "" : "Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
       }
     }, 7000);
     r.onresult = function (e) {
@@ -6995,7 +7024,8 @@ function VoiceOrb({
       const why = e && e.error || "";
       /* Silence with no explanation is the worst possible outcome, so anything
          that goes wrong here says what it was. */
-      setTrouble(why === "not-allowed" || why === "service-not-allowed" ? "Microphone blocked. Tap \u24d8 in the address bar, then Website Settings, and set Microphone to Allow \u2014 choosing Ask means it forgets every time." : why === "no-speech" ? "I did not catch that." : why === "network" ? "The speech service could not be reached." : "");
+      /* Only the one thing a tap can fix. Everything else is noise. */
+      setTrouble(why === "not-allowed" || why === "service-not-allowed" ? "Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow." : "");
       stopListening();
     };
     r.onend = function () {
@@ -7013,6 +7043,42 @@ function VoiceOrb({
     } catch (e) {
       stopListening();
     }
+  }
+  function tap() {
+    if (holdEnd()) return;
+    unlockVoice();
+    /* One control, and what it does depends on what it is doing. Talking, and a
+       tap shuts it up \u2014 which is what you want when it is mid-sentence and
+       someone walks over. */
+    if (state === "talking") {
+      /* Tapping mid-sentence means stop talking, not end the conversation, so
+         it goes straight back to listening. */
+      stopSpeaking();
+      if (live.current) {
+        listen();
+        return;
+      }
+      setState("idle");
+      return;
+    }
+    if (state === "listening") {
+      live.current = false;
+      stopListening();
+      return;
+    }
+    if (!on) {
+      setOn(true);
+      setVoiceOn(true);
+      return;
+    }
+    if (!canHear()) {
+      speak("This browser cannot listen. I will open the coach instead.");
+      if (onOpenTrain) setTimeout(onOpenTrain, 700);
+      return;
+    }
+    live.current = true;
+    listen();
+
   }
 
   /* Hold the bubble and it says one line, so you can find out in a second
@@ -7073,54 +7139,14 @@ function VoiceOrb({
   }), /*#__PURE__*/React.createElement("span", {
     className: "fr-orbring fr-orbring2"
   }));
-  /* The button on its own when everything is working. A caption only when
-     something has gone wrong, because silence you cannot explain is worse than
-     a line of text. */
+  /* The button, and nothing else. A short line appears only for the one problem
+     a person can actually do something about: a blocked microphone. */
   if (!trouble) return orb;
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-orbwrap"
   }, orb, /*#__PURE__*/React.createElement("div", {
     className: "fr-glass fr-orbtrouble"
-  }, /*#__PURE__*/React.createElement("p", null, trouble), keying ? /*#__PURE__*/React.createElement("div", {
-    className: "fr-keyrow"
-  }, /*#__PURE__*/React.createElement("input", {
-    className: "fr-addinput",
-    type: "password",
-    value: keyText,
-    placeholder: "Paste your Gemini key",
-    onChange: function (e) {
-      setKeyText(e.target.value);
-    },
-    onKeyDown: function (e) {
-      if (e.key === "Enter" && keyText.trim()) {
-        saveKey(keyText.trim());
-        setKeying(false);
-        setTrouble("");
-        speak("Voice key saved. Say something.");
-      }
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "fr-readnow fr-addgo",
-    onClick: function () {
-      if (!keyText.trim()) return;
-      saveKey(keyText.trim());
-      setKeying(false);
-      setTrouble("");
-      speak("Voice key saved. Say something.");
-    }
-  }, "Save")) : /*#__PURE__*/React.createElement("div", {
-    className: "fr-keyrow"
-  }, /*#__PURE__*/React.createElement("a", {
-    className: "fr-bookgo",
-    href: "https://aistudio.google.com/apikey",
-    target: "_blank",
-    rel: "noopener noreferrer"
-  }, "Get a free key"), /*#__PURE__*/React.createElement("button", {
-    className: "fr-filterclear",
-    onClick: function () {
-      setKeying(true);
-    }
-  }, "Paste it here"))));
+  }, trouble));
 }
 
 function Landing({
