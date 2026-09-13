@@ -1302,7 +1302,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b173</div>
+<div class="fr-build">b176</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3430,11 +3430,16 @@ async function aiGemini(turns, wantJSON, opts) {
         };
       }),
       generationConfig: {
-        maxOutputTokens: 3000
+        maxOutputTokens: opts.maxTokens || 3000
       }
     };
     if (wantJSON) body.generationConfig.responseMimeType = "application/json";
-    if (opts.fast && level >= 1) body.generationConfig.thinkingConfig = {
+    /* An explicit budget beats the fast flag. Zero is off, a number is how much
+       room it gets to reason before it starts writing, and leaving it unset is
+       the model's own default. */
+    if (typeof opts.think === "number") body.generationConfig.thinkingConfig = {
+      thinkingBudget: opts.think
+    };else if (opts.fast && level >= 1) body.generationConfig.thinkingConfig = {
       thinkingBudget: 0
     };
     if (opts.fast && level >= 2) body.model = "fast";
@@ -3452,7 +3457,7 @@ async function aiGemini(turns, wantJSON, opts) {
     return st === "UNAVAILABLE" || st === "RESOURCE_EXHAUSTED" || st === "INTERNAL" || code === 429 || code === 500 || code === 503;
   }
   async function postRetrying(body) {
-    const waits = [800, 2000, 4500];
+    const waits = opts.hurry ? [600] : [800, 2000, 4500];
     let d = await post(url, body, headers);
     for (let i = 0; i < waits.length && busy(d); i++) {
       await new Promise(function (r) {
@@ -3464,10 +3469,11 @@ async function aiGemini(turns, wantJSON, opts) {
   }
   let data = null;
   const start = opts.fast ? 2 : 0;
-  for (let level = start; level >= 0; level--) {
+  const floor = opts.hurry ? 1 : 0;
+  for (let level = start; level >= floor; level--) {
     data = await postRetrying(build(level));
     if (!data.error) break; // worked
-    if (level === 0) break; // nothing left to strip
+    if (level === floor) break; // nothing left to strip
   }
   if (busy(data)) {
     throw new Error("Google's servers are busy right now. Nothing is wrong with your clip \u2014 give it a minute and send it again.");
@@ -6059,19 +6065,218 @@ function greetLine(log, sport) {
 /* Asking out loud, from any page. Kept deliberately short: an answer that is
    read aloud has to be sayable, and nobody wants six hundred words spoken at
    them while they are standing on a court. */
+/* A spoken question was being sent with the entire coaching brief attached —
+   the whole naming rule, the full profile, the training plan, eight rows of
+   log. All of that is right for a clip breakdown and wasted on "how do I stop
+   fading on my jumper", and every word of it is time before you hear anything.
+   This is the short version: who they are in one line, and the one thing that
+   keeps going wrong. */
+function voiceContext() {
+  const me = loadMe(SPORT) || {};
+  const who = [me.name ? "Name: " + me.name : "", me.pos || "", me.level || "", me.height || ""].filter(Boolean).join(", ");
+  const mine = (TRAIN_LOG || []).filter(function (e) {
+    return e && e.sport === SPORT;
+  });
+  const last = mine[mine.length - 1];
+  return (who ? "\n\nThe player: " + who + "." : "") + (last ? "\nLast clip you graded: " + last.skill + (last.grade ? ", " + last.grade : "") + (last.broke ? ", broke at " + last.broke : "") + "." : "");
+}
+/* How much room to think, decided by the question. "How many reps" wants an
+   answer now; "why do I keep fading on my jumper" wants it to actually work
+   something out, and four seconds is a fair price for that. Getting this wrong
+   in either direction is what makes an assistant feel stupid or sluggish. */
+function thinkBudget(q) {
+  const t = String(q || "").trim();
+  const words = t.split(/\s+/).length;
+  /* A real question about cause, choice or comparison. */
+  const deep = /\b(why|how come|should i|what if|better|instead of|compare|difference between|keep|always|still|fix|wrong with|explain|breakdown|break down|plan|routine|program)\b/i.test(t);
+  /* Asking it to choose or recommend. Not as heavy as a why, but it should not
+     be answering off the top of its head either. */
+  const pick = /\b(best|which|recommend|worth|drill for|help me|good for|any tips)\b/i.test(t);
+  /* A lookup or a one-liner. */
+  const quick = /^(what|who|when|where|how many|how long|how much|is |are |can i|do i)\b/i.test(t) && !deep && !pick;
+  if (deep || words > 12) return 2048;
+  if (pick) return 768;
+  if (quick || words <= 6) return 0;
+  return 768;
+}
 async function askAloud(question) {
   const turns = [{
     role: "user",
-    parts: [T("You are an elite " + D.term + " coach, answering out loud. The player is probably " + "holding a phone in a gym, so this will be spoken, not read.\n\n" + "Answer in at most three sentences. No headings, no bullets, no markdown, no lists. " + "Plain spoken English. If they need a full breakdown, say so and tell them to send the " + "clip in Train rather than trying to give it here.\n\n" + "THEY SAID: \"" + String(question || "").slice(0, 500) + "\"" + coachExtra())]
+    parts: [T("You are an elite " + D.term + " coach, answering out loud to a player holding a " + "phone in a gym. Answer in spoken sentences \u2014 no headings, no bullets, no lists, no " + "markdown. Keep it to two or three sentences unless they asked something that genuinely " + "needs more, and never more than five. Reason it out before you answer, then give them " + "the conclusion rather than the working. If it needs film to answer properly, say so and " + "tell them to send the clip in Train." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
   }];
+  const think = thinkBudget(question);
   return ai(turns, false, {
-    fast: true
+    fast: true,
+    hurry: true,
+    think: think,
+    /* Room for the reasoning is separate from room for the answer, but a model
+       that has thought has more to say, so the cap moves with it. Still short
+       enough to be sayable. */
+    maxTokens: think ? 320 : 200
   });
+}
+
+/* ---------------------- COMMANDS ---------------------- */
+
+/* Some of what you say is a question and some of it is an order. An order does
+   not need a language model — it needs doing, now. "Pull film on Kyrie" should
+   put you on Kyrie's page before a request would even have left the phone.
+
+   So everything spoken is checked against this first. If it is an order it is
+   obeyed locally, instantly and for free. Only what is left over goes to the
+   coach. */
+
+const WAKE = /^(hey\s+)?(film\s*room|filmroom|jarvis|coach)[,.\s]*/i;
+
+/* Said back the moment it understands, before the screen moves, because the
+   gap between asking and arriving is exactly where it feels dead. */
+const AYES = ["Yes sir.", "On it.", "Right away.", "Got it.", "Say no more."];
+let ayeAt = 0;
+function aye() {
+  ayeAt = (ayeAt + 1) % AYES.length;
+  return AYES[ayeAt];
+}
+
+const PAGE_WORDS = [[/\b(train|coach|breakdown|break down my film|grade my film)\b/i, "train"], [/\b(players|player list|roster|browse players)\b/i, "players"], [/\b(games|full games|tactics|matches)\b/i, "games"], [/\b(mind|library|books|reading|read)\b/i, "mind"], [/\b(team|my team|team board)\b/i, "team"], [/\b(home|start|main)\b/i, "home"]];
+
+const SPORT_WORDS = [[/\bbasketball|hoops|nba\b/i, "basketball"], [/\bsoccer|football club|premier league|la liga\b/i, "soccer"], [/\bhockey|nhl\b/i, "hockey"], [/\bvolleyball\b/i, "volleyball"], [/\b(american football|nfl|gridiron)\b/i, "football"]];
+
+/* Names are matched against the index for the sport you are in, surname first,
+   because that is what people say and what a recogniser gets right. */
+function findPlayer(said) {
+  const want = norm(said);
+  if (!want || want.length < 3) return null;
+  const pool = (D && D.pool || []).filter(function (r) {
+    return r && r.kind === "player";
+  });
+  let best = null,
+    score = 0;
+  pool.forEach(function (r) {
+    const n = norm(r.n);
+    if (!n) return;
+    let s = 0;
+    if (n === want) s = 100;else if (n.indexOf(want) === 0) s = 80;else if ((" " + n).indexOf(" " + want) > -1) s = 70;else {
+      const parts = n.split(" ");
+      const sur = parts[parts.length - 1];
+      const w = want.split(" ");
+      const wsur = w[w.length - 1];
+      /* Surname on its own — "pull film on Doncic". */
+      if (sur === want) s = 60;
+      /* A shortened first name with the right surname — "Steph Curry" for
+         Stephen Curry, "Bron" for LeBron. People do not say the passport
+         version out loud and a recogniser writes down what it hears. */else if (w.length > 1 && sur === wsur && parts[0].indexOf(w[0]) === 0) s = 65;else if (w.length === 1 && sur.indexOf(want) === 0 && want.length > 3) s = 40;
+    }
+    if (s > score) {
+      score = s;
+      best = r;
+    }
+  });
+  return score >= 40 ? best : null;
+}
+
+function parseCommand(raw) {
+  let t = String(raw || "").trim().replace(WAKE, "").trim();
+  if (!t) return null;
+  const low = t.toLowerCase();
+
+  if (/\b(stop|quiet|shut up|be quiet|silence|mute)\b/i.test(low) && low.split(/\s+/).length <= 4) {
+    return {
+      kind: "mute"
+    };
+  }
+
+  /* Starting a session: a clean thread, the way saying it to a person would
+     mean "forget the last thing, we are on something new". */
+  if (/\b(start|begin|new)\b.*\b(session|recording|chat|workout|training)\b/i.test(low) || /\bstart recording\b/i.test(low)) {
+    return {
+      kind: "session"
+    };
+  }
+
+  /* Pull film. The thing after the preposition is what you want. */
+  const film = /\b(pull (up )?(the )?film|pull (up )?tape|show me|watch|find film|film)\b\s*(on|from|of|about|for)?\s*(.+)$/i.exec(t);
+  if (film && film[6]) {
+    const subject = film[6].replace(/\bfilm\b/ig, "").trim();
+    const who = findPlayer(subject);
+    if (who) return {
+      kind: "player",
+      item: who
+    };
+    if (subject.length > 2) return {
+      kind: "film",
+      q: subject
+    };
+  }
+
+  /* A bare name, when it is clearly a name and nothing else. */
+  if (low.split(/\s+/).length <= 4 && !/\?$/.test(t) && !/^(what|why|how|when|who|should|can|is|are|do)\b/i.test(low)) {
+    const who = findPlayer(t);
+    if (who) return {
+      kind: "player",
+      item: who
+    };
+  }
+
+  for (let i = 0; i < SPORT_WORDS.length; i++) {
+    if (/\b(switch|change|go|set|put me)\b/i.test(low) && SPORT_WORDS[i][0].test(low)) {
+      return {
+        kind: "sport",
+        to: SPORT_WORDS[i][1]
+      };
+    }
+  }
+
+  /* "Open X", "go to X", "take me to X". */
+  if (/\b(open|go to|take me to|show|bring up|pull up)\b/i.test(low)) {
+    for (let i = 0; i < PAGE_WORDS.length; i++) {
+      if (PAGE_WORDS[i][0].test(low)) return {
+        kind: "nav",
+        to: PAGE_WORDS[i][1]
+      };
+    }
+  }
+
+  /* Questions about their own record are answered from the log rather than by
+     asking a model what it cannot know. */
+  if (/\b(how am i doing|my last grade|what did i get|my record|my progress|how have i been|last clip)\b/i.test(low)) {
+    return {
+      kind: "status"
+    };
+  }
+  return null;
+}
+
+/* Spoken straight from the log. No request, no wait. */
+function statusLine() {
+  const mine = (TRAIN_LOG || []).filter(function (e) {
+    return e && e.sport === SPORT;
+  });
+  if (!mine.length) return "I have not graded anything for you yet. Send me a clip in Train and I will.";
+  const last = mine[mine.length - 1];
+  const counts = {};
+  mine.forEach(function (e) {
+    const k = (e.broke || "").toLowerCase();
+    if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  let worst = "",
+    n = 0;
+  Object.keys(counts).forEach(function (k) {
+    if (counts[k] > n) {
+      n = counts[k];
+      worst = k;
+    }
+  });
+  return mine.length + (mine.length === 1 ? " clip graded. It was " : " clips graded. The last was ") + last.skill + (last.grade ? ", " + last.grade : "") + ", " + agoWords(last.on) + "." + (n > 2 ? " " + n + " of them broke at the " + worst + "." : "");
 }
 
 function VoiceOrb({
   sport,
-  onOpenTrain
+  onOpenTrain,
+  onGo,
+  onItem,
+  onFilm,
+  onSport,
+  onSession
 }) {
   const [on, setOn] = useState(voiceOn);
   const [state, setState] = useState("idle");
@@ -6207,6 +6412,21 @@ function VoiceOrb({
   }
 
   async function answer(q) {
+    /* Orders first. They are free, they are instant, and they are most of what
+       you actually say to a thing like this. */
+    const cmd = parseCommand(q);
+    if (cmd) {
+      if (cmd.kind === "mute") return mute();
+      if (cmd.kind === "status") return speak(statusLine());
+      speak(aye());
+      setState("idle");
+      /* A beat, so the acknowledgement is heard before the screen changes
+         under it. */
+      setTimeout(function () {
+        if (cmd.kind === "player" && onItem) onItem(cmd.item);else if (cmd.kind === "film" && onFilm) onFilm(cmd.q);else if (cmd.kind === "sport" && onSport) onSport(cmd.to);else if (cmd.kind === "session" && onSession) onSession();else if (cmd.kind === "nav" && onGo) onGo(cmd.to);
+      }, 420);
+      return;
+    }
     setState("thinking");
     try {
       speak(await askAloud(q));
@@ -6245,9 +6465,18 @@ function VoiceOrb({
     r.interimResults = true;
     r.continuous = false;
     let heard = "";
+    let done = false;
     r.onresult = function (e) {
       heard = "";
-      for (let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript;
+      for (let i = 0; i < e.results.length; i++) {
+        heard += e.results[i][0].transcript;
+        if (e.results[i].isFinal) done = true;
+      }
+      /* The moment it is sure of the words, cut it off. Waiting for its own
+         silence timer was adding a second or two to every single question. */
+      if (done && heard.trim()) try {
+        r.stop();
+      } catch (e2) {}
     };
     r.onerror = function () {
       stopListening();
@@ -11344,6 +11573,24 @@ function App() {
   }, "\u2190")), /*#__PURE__*/React.createElement(VoiceOrb, {
     sport: sport,
     onOpenTrain: function () {
+      go("train");
+    },
+    onGo: go,
+    onItem: openItem,
+    onFilm: function (q) {
+      openFilm(q, "any");
+    },
+    onSport: function (k) {
+      if (k !== sport) {
+        setSportData(k);
+        setSportState(k);
+      }
+    },
+    onSession: function () {
+      /* "Start recording the session" means a clean thread, then the coach. */
+      try {
+        rememberOpen(sport, null);
+      } catch (e) {}
       go("train");
     }
   }), /*#__PURE__*/React.createElement("button", {
