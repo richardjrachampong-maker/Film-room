@@ -538,6 +538,12 @@ body { background: #EDF0F2; }
   letter-spacing:.06em; margin:32px 0 10px; color:var(--amber); }
 .fr-readinner p { margin:0 0 1.05em; }
 .fr-readinner p + p { text-indent:1.3em; }
+.fr-page { position:relative; padding-bottom:34px; }
+.fr-page + .fr-page { border-top:1px solid var(--edge); padding-top:30px; }
+.fr-pageno { position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+  font-family:'Outfit',sans-serif; font-size:11px; letter-spacing:.12em;
+  color:var(--faint); }
+.fr-readpct { opacity:.6; }
 .fr-readend { margin-top:36px !important; text-indent:0 !important; font-size:.78em;
   color:var(--faint); border-top:1px solid var(--edge); padding-top:14px; }
 .fr-readframe { width:100%; height:78vh; border:0; border-radius:14px; background:#fff; }
@@ -555,66 +561,109 @@ body { background: #EDF0F2; }
    reads as one object rather than two. */
 .fr3d-backart { position:absolute; inset:0; background-size:cover; background-position:center;
   transform:scaleX(-1); opacity:.16; filter:blur(1px); }
+.fr-mindtabs { margin-bottom:10px; }
+/* The filters fold into one control, the way a settings button does, so the
+   shelf starts near the top of the screen instead of below two rows of chips. */
+.fr-filterbox { position:relative; display:inline-block; margin:0 0 4px; }
+.fr-filterbtn { display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+  appearance:none; font:inherit; font-size:13px; font-weight:600;
+  padding:8px 14px; border-radius:999px; background:var(--glass-2);
+  border:1px solid var(--edge); color:var(--text); touch-action:manipulation; }
+.fr-filterbtn svg { opacity:.75; flex:0 0 auto; }
+.fr-filterbtn:hover { border-color:var(--edge-2); }
+.fr-filterbtn[data-on="1"] { border-color:var(--amber); color:var(--amber); }
+.fr-filterdot { font-style:normal; font-size:11px; font-weight:600; letter-spacing:.02em;
+  padding:2px 8px; border-radius:999px; background:var(--amber); color:#0B1215; }
+.fr-filterpanel { position:absolute; z-index:40; top:calc(100% + 8px); left:0;
+  width:max-content; min-width:250px; max-width:min(340px,86vw);
+  padding:15px 16px 13px; border-radius:16px;
+  animation:pop .2s cubic-bezier(.2,.7,.3,1) both; }
+.fr-filtergroup { margin-bottom:13px; }
+.fr-filtergroup .fr-filterlab { display:block; margin:0 0 8px; }
+.fr-filtergroup .fr-chip { padding:6px 11px; font-size:12.5px; }
+.fr-filterfoot { display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding-top:11px; border-top:1px solid var(--edge); }
+.fr-filterclear { appearance:none; background:none; border:0; cursor:pointer;
+  font:inherit; font-size:13px; color:var(--faint); padding:4px 2px;
+  touch-action:manipulation; }
+.fr-filterclear:hover { color:var(--text); }
+.fr-filterdone { padding:7px 16px; font-size:13px; }
+.fr-filterlab { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint); }
+.fr-count { margin:12px 0 16px; font-size:12.5px; color:var(--faint); }
 .fr-books { display:grid; gap:22px 14px; grid-template-columns:repeat(2,1fr); margin:16px 0 34px; }
 @media (min-width:640px){ .fr-books { grid-template-columns:repeat(3,1fr);} }
 @media (min-width:900px){ .fr-books { grid-template-columns:repeat(4,1fr);} }
 .fr-bookcard { display:flex; flex-direction:column; align-items:center; gap:10px; }
 /* The stage gives the book somewhere to be. Perspective on the parent rather
    than the book itself, so every face shares one vanishing point. */
-.fr3d-stage { width:100%; height:230px; perspective:620px; perspective-origin:50% 42%;
-  display:flex; align-items:center; justify-content:center; cursor:grab;
-  touch-action:none; user-select:none; -webkit-user-select:none; }
+.fr3d-stage { position:relative; width:100%; height:240px; perspective:1000px;
+  perspective-origin:50% 44%; display:flex; align-items:center; justify-content:center;
+  cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
 .fr3d-stage:active { cursor:grabbing; }
-/* 40px of spine between the boards, on a 120x180 cover. A thinner book at this
-   perspective just reads as a card, which is what it looked like before. */
-.fr3d-book { position:relative; width:120px; height:180px; transform-style:preserve-3d;
-  will-change:transform; }
+.fr3d-stage::after { content:""; position:absolute; left:50%; bottom:20px;
+  width:132px; height:15px; margin-left:-66px; border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.45),transparent 72%);
+  filter:blur(4px); pointer-events:none; }
+.fr3d-book { position:relative; width:124px; height:188px; transform-style:preserve-3d; }
 .fr3d-face { position:absolute; backface-visibility:hidden;
   -webkit-backface-visibility:hidden; }
-.fr3d-front, .fr3d-back { width:120px; height:180px; background-size:cover;
-  background-position:center; overflow:hidden; }
-.fr3d-front { transform:translateZ(20px); border-radius:2px 5px 5px 2px;
-  box-shadow:inset -14px 0 26px -16px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.07); }
-/* Rotated to face outward, so the back of the book is what you see when it has
-   turned right round. */
-.fr3d-back { transform:rotateY(180deg) translateZ(20px); border-radius:5px 2px 2px 5px;
-  box-shadow:inset 14px 0 26px -16px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.06); }
-.fr3d-spine { width:40px; height:180px; left:40px; transform:rotateY(-90deg) translateZ(60px);
+/* Belt and braces: the board that is turned away is also hidden outright, since
+   Safari was drawing it through the book. */
+.fr3d-face[data-hide="1"] { opacity:0; }
+.fr3d-front, .fr3d-back { width:124px; height:188px; background-size:cover;
+  background-position:center; background-color:#1b1f26; overflow:hidden; }
+/* A real cover is not a flat rectangle: the board curls a little at the fore
+   edge, catches light down the hinge, and is darker in the gutter. */
+.fr3d-front { transform:translateZ(21px); border-radius:2px 6px 6px 2px;
+  box-shadow:inset -16px 0 30px -18px rgba(0,0,0,.85),
+             inset 13px 0 16px -13px rgba(0,0,0,.75),
+             inset 0 0 0 1px rgba(255,255,255,.08); }
+.fr3d-front::after { content:""; position:absolute; inset:0; border-radius:2px 6px 6px 2px;
+  background:linear-gradient(108deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.05) 22%,
+    transparent 44%,transparent 76%,rgba(0,0,0,.22) 100%); pointer-events:none; }
+.fr3d-back { transform:rotateY(180deg) translateZ(21px); border-radius:6px 2px 2px 6px;
+  box-shadow:inset 16px 0 30px -18px rgba(0,0,0,.85),
+             inset 0 0 0 1px rgba(255,255,255,.07); }
+/* Blurb lines and a barcode, so the back reads as the back of a book. */
+.fr3d-blurb { position:absolute; left:14px; right:14px; top:34px; display:flex;
+  flex-direction:column; gap:7px; }
+.fr3d-blurb em { display:block; height:3px; border-radius:2px;
+  background:rgba(255,255,255,.22); }
+.fr3d-blurb em:nth-child(2){ width:92%; } .fr3d-blurb em:nth-child(3){ width:97%; }
+.fr3d-blurb em:nth-child(4){ width:88%; } .fr3d-blurb em:nth-child(5){ width:54%; }
+.fr3d-barcode { position:absolute; left:16px; bottom:16px; width:46px; height:26px;
+  border-radius:2px; background:repeating-linear-gradient(90deg,#12151a 0 1px,#f4f2ec 1px 2.6px);
+  box-shadow:0 0 0 3px #f4f2ec; }
+.fr3d-spine { width:42px; height:188px; left:41px; transform:rotateY(-90deg) translateZ(62px);
   display:flex; align-items:center; justify-content:center;
-  box-shadow:inset 0 0 18px rgba(0,0,0,.45); }
+  box-shadow:inset 11px 0 16px -12px rgba(0,0,0,.8), inset -11px 0 16px -12px rgba(0,0,0,.8),
+             inset 0 0 0 1px rgba(255,255,255,.06); }
 .fr3d-spine span { font-family:'Outfit',sans-serif; font-weight:600; font-size:9.5px;
-  letter-spacing:.03em; white-space:nowrap; overflow:hidden; max-height:158px;
-  writing-mode:vertical-rl; text-orientation:mixed; opacity:.92; }
-/* The page block: cream, with ruling so it reads as stacked paper. */
-/* Paper, not corduroy. The hard 1.5px stripe moired into those spirals at any
-   angle; this is a soft wash with a couple of faint gathers, which is what a
-   closed page block actually looks like from across a room. */
-.fr3d-edge { width:40px; height:180px; left:40px; transform:rotateY(90deg) translateZ(60px);
-  background:linear-gradient(90deg,#cfc7b4 0%,#f4efe4 14%,#e8e1d2 44%,#f2ece0 72%,#c9c1ae 100%);
-  box-shadow:inset 0 0 16px rgba(0,0,0,.3); }
-.fr3d-top, .fr3d-bottom { width:120px; height:40px; left:0;
-  background:linear-gradient(180deg,#f4efe4 0%,#e6dfd0 55%,#cdc5b2 100%); }
-.fr3d-top { top:70px; transform:rotateX(90deg) translateZ(90px);
-  box-shadow:inset 0 0 12px rgba(0,0,0,.22); }
-.fr3d-bottom { top:70px; transform:rotateX(-90deg) translateZ(90px);
-  box-shadow:inset 0 0 12px rgba(0,0,0,.3); }
-/* A shadow on the ground, so it is standing somewhere rather than floating. */
-/* On the stage, not on the book: a shadow that turns with the object is not a
-   shadow, it is a smear. */
-.fr3d-stage { position:relative; }
-.fr3d-stage::after { content:""; position:absolute; left:50%; bottom:18px;
-  width:130px; height:16px; margin-left:-65px; border-radius:50%;
-  background:radial-gradient(ellipse,rgba(0,0,0,.42),transparent 72%);
-  filter:blur(3px); pointer-events:none; }
-.fr3d-drawn { position:absolute; inset:0; padding:15px 12px; display:flex;
+  letter-spacing:.03em; white-space:nowrap; overflow:hidden; max-height:162px;
+  writing-mode:vertical-rl; text-orientation:mixed; opacity:.95;
+  text-shadow:0 1px 1px rgba(0,0,0,.35); }
+/* The page block: warm paper, darker where it meets the boards, with a couple
+   of soft gathers rather than a hard stripe that moires into spirals. */
+.fr3d-edge { width:42px; height:188px; left:41px; transform:rotateY(90deg) translateZ(62px);
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.34) 0%,transparent 12%,transparent 88%,rgba(0,0,0,.34) 100%),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.055) 0 2px,transparent 2px 5px),
+    linear-gradient(90deg,#ddd5c2,#f7f3ea 30%,#ece5d7 62%,#f4efe4 84%,#d5cdba); }
+.fr3d-top, .fr3d-bottom { width:124px; height:42px; left:0;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.3) 0%,transparent 10%,transparent 90%,rgba(0,0,0,.18) 100%),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 2px,transparent 2px 5px),
+    linear-gradient(180deg,#f7f3ea,#e6dfd0 60%,#cfc7b4); }
+.fr3d-top { top:73px; transform:rotateX(90deg) translateZ(94px); }
+.fr3d-bottom { top:73px; transform:rotateX(-90deg) translateZ(94px); }
+.fr3d-drawn { position:absolute; inset:0; padding:16px 13px; display:flex;
   flex-direction:column; justify-content:space-between; text-align:left;
-  border:1px solid rgba(255,255,255,.14); border-radius:2px 5px 5px 2px; }
+  border:1px solid rgba(255,255,255,.14); border-radius:2px 6px 6px 2px; }
 .fr3d-drawn b { font-family:'Outfit',sans-serif; font-weight:700; font-size:12.5px;
   line-height:1.2; color:#fff; letter-spacing:-.01em; }
 .fr3d-drawn i { font-style:normal; font-size:9.5px; color:rgba(255,255,255,.66);
   letter-spacing:.05em; text-transform:uppercase; }
-.fr3d-backart { position:absolute; inset:0; background-size:cover; background-position:center;
-  transform:scaleX(-1); opacity:.2; filter:blur(1.5px) saturate(.7); }
 .fr-bookmeta { background:none; border:0; padding:0; cursor:pointer; font:inherit;
   color:var(--text); text-align:center; display:flex; flex-direction:column; gap:2px; }
 .fr-bookmeta b { font-size:13.5px; font-weight:600; line-height:1.25; }
@@ -1164,7 +1213,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b164</div>
+<div class="fr-build">b167</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1487,7 +1536,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 const {
   useState,
   useRef,
-  useEffect
+  useEffect,
+  useMemo
 } = React;
 
 /* ============================================================
@@ -8474,309 +8524,596 @@ const MIND_SHELVES = [{
   hue: 196,
   title: "Flow and attention",
   blurb: "The state where it stops feeling like effort, and what reliably brings it on.",
-  books: [{
+  books: [
+  {
+    t: "Talks to Teachers on Psychology",
+    a: "William James",
+    y: "1899",
+    why: "Lectures on attention, habit and effort, written to be understood. The habit lecture is four pages and worth more than most modern chapters on discipline.",
+    how: "free",
+    u: FREE(16287)
+  },
+  {
+    t: "The Principles of Psychology, Vol. 1",
+    a: "William James",
+    y: "1890",
+    why: "Where the study of attention and habit starts. Heavy going, and still quoted in coaching books written last year.",
+    how: "free",
+    u: FREE(57628)
+  },
+  {
+    t: "The Principles of Psychology, Vol. 2",
+    a: "William James",
+    y: "1890",
+    why: "The second half, and the better one for an athlete: will, effort, and the feeling of deciding to move.",
+    how: "free",
+    u: FREE(57634)
+  },
+  {
+    t: "Your Mind and How to Use It",
+    a: "William Walker Atkinson",
+    y: "1911",
+    why: "The chapter on voluntary attention is the point: you can train what you notice, and the only method is practising on things you find boring.",
+    how: "free",
+    u: FREE(42055)
+  },
+  {
     t: "Flow: The Psychology of Optimal Experience",
     a: "Mihaly Csikszentmihalyi",
     y: "1990",
     why: "The book the phrase comes from. The chapter on the balance between challenge and skill is the one to read twice \u2014 it explains why a game you are winning easily feels as flat as one you are losing badly.",
     how: "borrow",
-    u: BORROW("Flow Csikszentmihalyi")
-  }, {
+    u: BORROW("Flow: The Psychology of Optimal Experience Mihaly Csikszentmihalyi")
+  },
+  {
     t: "The Inner Game of Tennis",
     a: "W. Timothy Gallwey",
     y: "1974",
-    why: "About tennis for maybe a fifth of it. The rest is the argument that the voice instructing you mid-rally is the thing making you miss. Short, and coaches in every sport quote it.",
+    why: "About tennis for maybe a fifth of it. The rest argues that the voice instructing you mid-rally is the thing making you miss. Short, and coaches in every sport quote it.",
     how: "borrow",
-    u: BORROW("Inner Game of Tennis Gallwey")
-  }, {
+    u: BORROW("The Inner Game of Tennis W. Timothy Gallwey")
+  },
+  {
     t: "The Rise of Superman",
     a: "Steven Kotler",
     y: "2014",
-    why: "Flow in action sports, where the consequences of losing it are broken bones. Uneven in places, but the reporting on how the best get into it deliberately is worth the time.",
+    why: "Flow in action sports, where losing it breaks bones. Uneven, but the reporting on how the best get into it deliberately is worth the time.",
     how: "borrow",
-    u: BORROW("Rise of Superman Kotler")
-  }, {
-    t: "The Principles of Psychology",
-    a: "William James",
-    y: "1890",
-    why: "Where the study of attention and habit starts. Heavy going, but the chapters on habit and on will are still quoted in coaching books written last year. Free, in full.",
-    how: "free",
-    u: FREE(57628)  }, {
-    t: "Your Mind and How to Use It",
-    a: "William Walker Atkinson",
-    y: "1911",
-    why: "The chapter on voluntary attention is the point: you can train what you notice, and the only method is practising on things you find boring. Written a century before anyone said the word focus at you.",
-    how: "free",
-    u: FREE(42055)  }, {
+    u: BORROW("The Rise of Superman Steven Kotler")
+  },
+  {
     t: "Deep Work",
     a: "Cal Newport",
     y: "2016",
-    why: "Not about sport at all, which is why it is useful. The argument is that the ability to concentrate hard for long stretches is now rare, and rare things are worth building.",
+    why: "Not about sport at all, which is why it is useful. The ability to concentrate hard for long stretches is now rare, and rare things are worth building.",
     how: "borrow",
-    u: BORROW("Deep Work Cal Newport")  }, {
-    t: "Endure",
-    a: "Alex Hutchinson",
-    y: "2018",
-    why: "On where the limit actually is. The evidence that fatigue is decided in the head before the body has run out is the best-reported part of it.",
+    u: BORROW("Deep Work Cal Newport")
+  },
+  {
+    t: "Stealing Fire",
+    a: "Steven Kotler and Jamie Wheal",
+    y: "2017",
+    why: "On deliberately engineering altered states, including the ones teams find together. Take the claims with salt and keep the questions.",
     how: "borrow",
-    u: BORROW("Endure Alex Hutchinson")
-  }]
+    u: BORROW("Stealing Fire Steven Kotler and Jamie Wheal")
+  },
+  {
+    t: "The Art of Learning",
+    a: "Josh Waitzkin",
+    y: "2007",
+    why: "A chess prodigy who became a world champion in martial arts, on what transferred. The section on making smaller and smaller circles is the best thing written on refining a skill.",
+    how: "borrow",
+    u: BORROW("The Art of Learning Josh Waitzkin")
+  },
+  {
+    t: "Focus",
+    a: "Daniel Goleman",
+    y: "2013",
+    why: "Attention as a muscle with three separate jobs: on yourself, on other people, on the wider situation. Useful for anyone who has to read a game.",
+    how: "borrow",
+    u: BORROW("Focus Daniel Goleman")
+  }
+  ]
 }, {
   id: "mentality",
   label: "Pressure",
   hue: 28,
   title: "Mentality and pressure",
   blurb: "Nerves, slumps, confidence, and what actually happens in the last two minutes.",
-  books: [{
-    t: "Mindset: The New Psychology of Success",
-    a: "Carol Dweck",
-    y: "2006",
-    why: "Fixed versus growth mindset, from the researcher who ran the studies. The sports chapter is short; the school and parenting chapters are the ones that will change how you take being told you are bad at something.",
-    how: "borrow",
-    u: BORROW("Mindset Carol Dweck")
-  }, {
-    t: "The Champion's Mind",
-    a: "Jim Afremow",
-    y: "2013",
-    why: "The most practical of these. Written by a sports psychologist who works with pros, and organised as things to actually do rather than studies to admire.",
-    how: "borrow",
-    u: BORROW("Champion's Mind Afremow")
-  }, {
-    t: "Mind Gym: An Athlete's Guide to Inner Excellence",
-    a: "Gary Mack",
-    y: "2001",
-    why: "Forty short chapters, each one a single idea with a story attached. Good if you do not finish books \u2014 nothing depends on the chapter before it.",
-    how: "borrow",
-    u: BORROW("Mind Gym Gary Mack")
-  }, {
+  books: [
+  {
     t: "Meditations",
     a: "Marcus Aurelius",
     y: "c. 180",
-    why: "A Roman emperor's private notes on not being ruled by what he could not control. Read it as a book about composure and it is startlingly close to what a sports psychologist will tell you about a bad call.",
+    why: "A Roman emperor's private notes on not being ruled by what he could not control. Read it as a book about composure and it is startlingly close to a sports psychologist on a bad call.",
     how: "free",
     u: FREE(2680)
-  }, {
+  },
+  {
     t: "The Enchiridion",
     a: "Epictetus",
     y: "c. 125",
     why: "Shorter than Meditations and blunter. Opens by dividing everything into what is up to you and what is not, which is most of what a coach means by control the controllables.",
     how: "free",
-    u: FREE(45109)  }, {
+    u: FREE(45109)
+  },
+  {
     t: "The Power of Concentration",
     a: "Theron Q. Dumont",
     y: "1918",
-    why: "Twenty short lessons, each ending in something to actually practise. Of its time and occasionally silly, but the exercises on holding attention on a dull object are the real thing.",
+    why: "Twenty short lessons, each ending in something to practise. Of its time and occasionally silly, but the exercises on holding attention on a dull object are the real thing.",
     how: "free",
-    u: FREE(1570)  }, {
+    u: FREE(1570)
+  },
+  {
+    t: "Self Mastery Through Conscious Autosuggestion",
+    a: "\u00c9mile Cou\u00e9",
+    y: "1922",
+    why: "The origin of talking to yourself on purpose. Overclaims wildly, and the mechanism he describes is what a modern book means by self-talk and cue words.",
+    how: "free",
+    u: FREE(27203)
+  },
+  {
+    t: "As a Man Thinketh",
+    a: "James Allen",
+    y: "1903",
+    why: "Twenty minutes end to end. Closer to a long poem than a manual, and quoted by so many athletes it is worth knowing where the lines come from.",
+    how: "free",
+    u: FREE(4507)
+  },
+  {
+    t: "Mindset: The New Psychology of Success",
+    a: "Carol Dweck",
+    y: "2006",
+    why: "Fixed versus growth mindset, from the researcher who ran the studies. The sports chapter is short; the school and parenting chapters will change how you take being told you are bad at something.",
+    how: "borrow",
+    u: BORROW("Mindset: The New Psychology of Success Carol Dweck")
+  },
+  {
+    t: "The Champion's Mind",
+    a: "Jim Afremow",
+    y: "2013",
+    why: "The most practical of these. By a sports psychologist who works with pros, organised as things to do rather than studies to admire.",
+    how: "borrow",
+    u: BORROW("The Champion's Mind Jim Afremow")
+  },
+  {
+    t: "Mind Gym",
+    a: "Gary Mack",
+    y: "2001",
+    why: "Forty short chapters, each one idea with a story attached. Good if you do not finish books \u2014 nothing depends on the chapter before it.",
+    how: "borrow",
+    u: BORROW("Mind Gym Gary Mack")
+  },
+  {
     t: "The Obstacle Is the Way",
     a: "Ryan Holiday",
     y: "2014",
-    why: "Stoicism repackaged for people who were not going to read Marcus Aurelius. If you did read Meditations here, you can skip this; if you did not, start here and go back.",
+    why: "Stoicism repackaged for people who were not going to read Marcus Aurelius. If you read Meditations here you can skip it; if you did not, start here and go back.",
     how: "borrow",
-    u: BORROW("Obstacle Is the Way Ryan Holiday")  }, {
+    u: BORROW("The Obstacle Is the Way Ryan Holiday")
+  },
+  {
     t: "With Winning in Mind",
     a: "Lanny Bassham",
     y: "1988",
-    why: "By an Olympic shooting champion who lost a gold he should have won and then spent years working out why. The most specific book here on what to do in the minutes before you compete.",
+    why: "By an Olympic shooting champion who lost a gold he should have won and spent years working out why. The most specific book here on the minutes before you compete.",
     how: "borrow",
-    u: BORROW("With Winning in Mind Bassham")  }, {
+    u: BORROW("With Winning in Mind Lanny Bassham")
+  },
+  {
     t: "The Confident Mind",
     a: "Nate Zinsser",
     y: "2022",
-    why: "From the man who ran mental training at West Point. Treats confidence as something you build a store of on ordinary days and spend on hard ones, rather than a mood you wait for.",
+    why: "From the man who ran mental training at West Point. Treats confidence as a store you build on ordinary days and spend on hard ones, not a mood you wait for.",
     how: "borrow",
-    u: BORROW("Confident Mind Nate Zinsser")  }, {
+    u: BORROW("The Confident Mind Nate Zinsser")
+  },
+  {
     t: "Relentless",
     a: "Tim Grover",
     y: "2013",
-    why: "Jordan and Kobe's trainer, and it reads like him. Closer to a provocation than a method, and worth arguing with. Read it after the others, not instead of them.",
+    why: "Jordan and Kobe's trainer, and it reads like him. Closer to a provocation than a method, and worth arguing with. Read it after the others.",
     how: "borrow",
     u: BORROW("Relentless Tim Grover")
-  }]
+  },
+  {
+    t: "10-Minute Toughness",
+    a: "Jason Selk",
+    y: "2008",
+    why: "A pre-performance routine you can actually finish before a game. Short, repetitive, and designed to be used rather than admired.",
+    how: "borrow",
+    u: BORROW("10-Minute Toughness Jason Selk")
+  },
+  {
+    t: "Chop Wood Carry Water",
+    a: "Joshua Medcalf",
+    y: "2015",
+    why: "A parable about a boy training to be an archer. Corny in places and it lands anyway, especially young.",
+    how: "borrow",
+    u: BORROW("Chop Wood Carry Water Joshua Medcalf")
+  },
+  {
+    t: "Grit",
+    a: "Angela Duckworth",
+    y: "2016",
+    why: "Why sticking at one thing beats being naturally good at several. The research has been argued with since; read it with The Sports Gene.",
+    how: "borrow",
+    u: BORROW("Grit Angela Duckworth")
+  },
+  {
+    t: "Legacy",
+    a: "James Kerr",
+    y: "2013",
+    why: "Fifteen lessons from inside the All Blacks. The one about sweeping the sheds \u2014 the best players clean the dressing room themselves \u2014 is the whole book.",
+    how: "borrow",
+    u: BORROW("Legacy James Kerr")
+  },
+  {
+    t: "The Score Takes Care of Itself",
+    a: "Bill Walsh",
+    y: "2009",
+    why: "A coach on building a standard of behaviour and letting results follow. Written for organisations and reads straight across to a team.",
+    how: "borrow",
+    u: BORROW("The Score Takes Care of Itself Bill Walsh")
+  }
+  ]
 }, {
   id: "practice",
   label: "Practice",
   hue: 150,
   title: "How practice actually works",
   blurb: "Why some repetition makes you better and some just makes you tired.",
-  books: [{
-    t: "Peak: Secrets from the New Science of Expertise",
-    a: "Anders Ericsson and Robert Pool",
-    y: "2016",
-    why: "By the researcher whose work got turned into the ten thousand hours line, correcting what that line got wrong. Deliberate practice needs a specific target and immediate feedback \u2014 hours alone do nothing.",
-    how: "borrow",
-    u: BORROW("Peak Ericsson Pool expertise")
-  }, {
-    t: "The Talent Code",
-    a: "Daniel Coyle",
-    y: "2009",
-    why: "Reporting from academies that produce far more players than they should. Light on science, strong on what those gyms and pitches are actually doing differently.",
-    how: "borrow",
-    u: BORROW("Talent Code Daniel Coyle")
-  }, {
-    t: "Bounce",
-    a: "Matthew Syed",
-    y: "2010",
-    why: "A former England table tennis number one arguing against natural talent, partly using his own career as evidence against himself. The chapter on choking is the best short thing written on it.",
-    how: "borrow",
-    u: BORROW("Bounce Matthew Syed")
-  }, {
-    t: "Talks to Teachers on Psychology",
-    a: "William James",
-    y: "1899",
-    why: "Lectures on attention, habit and effort, given to teachers and written to be understood. The habit lecture is four pages and worth more than most modern chapters on discipline.",
-    how: "free",
-    u: FREE(16287)  }, {
+  books: [
+  {
     t: "How to Live on 24 Hours a Day",
     a: "Arnold Bennett",
     y: "1908",
     why: "On the hours around the thing rather than the thing. Short, funny, and merciless about what people actually do with the evening they say they have no time in.",
     how: "free",
-    u: FREE(2274)  }, {
-    t: "Atomic Habits",
-    a: "James Clear",
-    y: "2018",
-    why: "The mechanics of getting yourself to do the boring part, repeatedly, for years. Nothing in it is about sport and almost all of it applies.",
+    u: FREE(2274)
+  },
+  {
+    t: "A Guide to the History of Physical Education",
+    a: "Fred Eugene Leonard",
+    y: "1923",
+    why: "How we arrived at gyms, drills and school sport at all. Most of what feels permanent about a training week turns out to be about a century old.",
+    how: "free",
+    u: FREE(78009)
+  },
+  {
+    t: "How to Add Ten Years to Your Life",
+    a: "S. S. Curry",
+    y: "1915",
+    why: "Breathing, posture and the idea that how you carry yourself changes what you can do. The breathing chapters have aged better than the rest.",
+    how: "free",
+    u: FREE(22005)
+  },
+  {
+    t: "Peak: Secrets from the New Science of Expertise",
+    a: "Anders Ericsson and Robert Pool",
+    y: "2016",
+    why: "By the researcher whose work became the ten thousand hours line, correcting what that line got wrong. Deliberate practice needs a target and immediate feedback; hours alone do nothing.",
     how: "borrow",
-    u: BORROW("Atomic Habits James Clear")  }, {
+    u: BORROW("Peak: Secrets from the New Science of Expertise Anders Ericsson and Robert Pool")
+  },
+  {
+    t: "The Talent Code",
+    a: "Daniel Coyle",
+    y: "2009",
+    why: "Reporting from academies that produce far more players than they should. Light on science, strong on what those gyms are doing differently.",
+    how: "borrow",
+    u: BORROW("The Talent Code Daniel Coyle")
+  },
+  {
+    t: "Bounce",
+    a: "Matthew Syed",
+    y: "2010",
+    why: "A former England table tennis number one arguing against natural talent, using his own career as evidence against himself. The chapter on choking is the best short thing on it.",
+    how: "borrow",
+    u: BORROW("Bounce Matthew Syed")
+  },
+  {
     t: "The Sports Gene",
     a: "David Epstein",
     y: "2013",
-    why: "The honest version of the talent argument, against Bounce and The Talent Code. Reading it alongside them is better than reading any of the three alone.",
+    why: "The honest other side, against Bounce and The Talent Code. Reading it alongside them beats reading any of the three alone.",
     how: "borrow",
-    u: BORROW("Sports Gene David Epstein")  }, {
+    u: BORROW("The Sports Gene David Epstein")
+  },
+  {
     t: "Range",
     a: "David Epstein",
     y: "2019",
     why: "Why early specialisation often loses to playing several sports badly for a while. The Federer opening is the case, and it is a strong one.",
     how: "borrow",
     u: BORROW("Range David Epstein")
-  }]
+  },
+  {
+    t: "Atomic Habits",
+    a: "James Clear",
+    y: "2018",
+    why: "The mechanics of getting yourself to do the boring part, repeatedly, for years. Nothing in it is about sport and almost all of it applies.",
+    how: "borrow",
+    u: BORROW("Atomic Habits James Clear")
+  },
+  {
+    t: "The Practice of Practice",
+    a: "Jonathan Harnum",
+    y: "2014",
+    why: "Written for musicians, and the most detailed thing anywhere on what to actually do in the hour. Steal all of it.",
+    how: "borrow",
+    u: BORROW("The Practice of Practice Jonathan Harnum")
+  },
+  {
+    t: "Make It Stick",
+    a: "Peter Brown, Henry Roediger and Mark McDaniel",
+    y: "2014",
+    why: "Why the practice that feels productive usually is not. Spacing and interleaving feel worse and work better, which is hard to accept and true.",
+    how: "borrow",
+    u: BORROW("Make It Stick Peter Brown, Henry Roediger and Mark McDaniel")
+  },
+  {
+    t: "The Talent Lab",
+    a: "Owen Slot",
+    y: "2017",
+    why: "How Britain went from one gold medal to winning the medal table. Reporting on the systems behind it rather than the athletes.",
+    how: "borrow",
+    u: BORROW("The Talent Lab Owen Slot")
+  }
+  ]
 }, {
   id: "body",
   label: "Older",
   hue: 268,
-  title: "The body and the head together",
-  blurb: "Older books, free in full, from when training and temperament were treated as one subject.",
-  books: [{
+  title: "The body, sleep and recovery",
+  blurb: "What the training does to you, and the older books from when body and temperament were one subject.",
+  books: [
+  {
     t: "Keeping Fit All the Way",
     a: "Walter Camp",
     y: "1919",
-    why: "By the man who largely invented American football as a code. Dated on physiology and worth reading anyway for how seriously it takes daily habit over heroic effort.",
+    why: "By the man who largely invented American football as a code. Dated on physiology, and serious about daily habit over heroic effort.",
     how: "free",
     u: FREE(13574)
-  }, {
+  },
+  {
     t: "Daily Training",
     a: "E. F. Benson and Eustace Miles",
     y: "1902",
-    why: "Two athletes on the ordinary business of getting into condition and staying there. Notably calm about rest, at a time when most training writing was not.",
+    why: "Two athletes on the ordinary business of getting into condition and staying there. Notably calm about rest, at a time when training writing was not.",
     how: "free",
     u: FREE(56584)
-  }, {
+  },
+  {
     t: "How to Get Strong and How to Stay So",
     a: "William Blaikie",
     y: "1879",
     why: "A Victorian argument that almost anyone can be made strong, aimed at people who had been told they could not. The tone is the reason to read it.",
     how: "free",
     u: FREE(36557)
-  }, {
-    t: "Self Mastery Through Conscious Autosuggestion",
-    a: "\u00C9mile Cou\u00E9",
-    y: "1922",
-    why: "The origin of talking to yourself on purpose. Overclaims wildly \u2014 he thought it cured organic disease \u2014 but the mechanism he describes is what a modern book means by self-talk and cue words.",
-    how: "free",
-    u: FREE(27203)
-  }, {
-    t: "As a Man Thinketh",
-    a: "James Allen",
-    y: "1903",
-    why: "Twenty minutes end to end. Closer to a long poem than a manual, and quoted by so many athletes that it is worth knowing where the lines come from.",
-    how: "free",
-    u: FREE(4507)  }, {
+  },
+  {
     t: "Vitality Supreme",
     a: "Bernarr Macfadden",
     y: "1915",
-    why: "A physical culture evangelist at full volume. Wrong about plenty and right that most people are undertrained rather than overtrained, which was not the common view then.",
+    why: "A physical culture evangelist at full volume. Wrong about plenty, right that most people are undertrained rather than overtrained.",
     how: "free",
-    u: FREE(19208)  }, {
+    u: FREE(19208)
+  },
+  {
     t: "Practical Training for Running, Walking, Rowing and Boxing",
     a: "Ed James",
     y: "1877",
-    why: "What training actually looked like before sports science. Useful as history, and a reminder how much of the modern week is inherited rather than designed.",
+    why: "What training looked like before sports science. Useful as history, and a reminder how much of the modern week is inherited rather than designed.",
     how: "free",
     u: FREE(56398)
-  }]
+  },
+  {
+    t: "Personal Hygiene and Physical Training for Women",
+    a: "Anna M. Galbraith",
+    y: "1911",
+    why: "A doctor writing for women at a time when they were widely told exercise would harm them. Worth reading for the argument being had, not the advice.",
+    how: "free",
+    u: FREE(70797)
+  },
+  {
+    t: "The Physical Training of Children",
+    a: "Pye Henry Chavasse",
+    y: "1872",
+    why: "On growing bodies and how much load they should carry. The caution about early specialisation is a century ahead of the argument we are still having.",
+    how: "free",
+    u: FREE(65260)
+  },
+  {
+    t: "Automatic Finger Control",
+    a: "U.S. School of Music",
+    y: "1922",
+    why: "Motor skill drilled to the point of not thinking, written for pianists. Everything in it about fingers applies to hands, feet and a first touch.",
+    how: "free",
+    u: FREE(66816)
+  },
+  {
+    t: "Dancing, Beauty and Games",
+    a: "Constance Stewart-Richardson",
+    y: "1913",
+    why: "Movement as something to be good at rather than to endure. Odd, opinionated, and the best writing here on athleticism as a way of carrying yourself.",
+    how: "free",
+    u: FREE(78268)
+  },
+  {
+    t: "A Lecture on Physical Development",
+    a: "S. R. Calthrop",
+    y: "1858",
+    why: "Forty minutes, delivered to teachers, arguing that the body and the mind are the same project. The oldest thing on this shelf and the most quotable.",
+    how: "free",
+    u: FREE(12430)
+  },
+  {
+    t: "Endure",
+    a: "Alex Hutchinson",
+    y: "2018",
+    why: "On where the limit actually is. The evidence that fatigue is decided in the head before the body runs out is the best-reported part.",
+    how: "borrow",
+    u: BORROW("Endure Alex Hutchinson")
+  },
+  {
+    t: "Why We Sleep",
+    a: "Matthew Walker",
+    y: "2017",
+    why: "Contested in places and still the book that will change your week. The chapter on sleep and motor learning is the one for an athlete.",
+    how: "borrow",
+    u: BORROW("Why We Sleep Matthew Walker")
+  },
+  {
+    t: "Good to Go",
+    a: "Christie Aschwanden",
+    y: "2019",
+    why: "A sceptic walks through recovery: ice baths, compression, supplements, cryotherapy. Most of it does less than claimed, which is worth knowing before you spend money.",
+    how: "borrow",
+    u: BORROW("Good to Go Christie Aschwanden")
+  },
+  {
+    t: "Anatomy for Runners",
+    a: "Jay Dicharry",
+    y: "2012",
+    why: "Why things hurt, in plain language, with tests you can do on a floor. Written for runners and useful to anyone who lands on one leg.",
+    how: "borrow",
+    u: BORROW("Anatomy for Runners Jay Dicharry")
+  },
+  {
+    t: "Becoming a Supple Leopard",
+    a: "Kelly Starrett",
+    y: "2013",
+    why: "A reference rather than a read. Look up the joint that hurts and do what it says.",
+    how: "borrow",
+    u: BORROW("Becoming a Supple Leopard Kelly Starrett")
+  }
+  ]
 }];
-
 /* Watching rather than reading. These go through the same search the rest of the
    app uses, so what comes back is embeddable and can be played here. */
 const MIND_WATCH = [{
+  g: "Flow",
   n: "Flow, the secret to happiness",
   t: "Mihaly Csikszentmihalyi",
-  q: "Csikszentmihalyi flow the secret to happiness TED talk",
-  dur: "medium"
+  q: "Csikszentmihalyi flow the secret to happiness TED talk"
 }, {
-  n: "Grit and perseverance",
-  t: "Angela Duckworth",
-  q: "Angela Duckworth grit power of passion and perseverance TED",
-  dur: "medium"
+  g: "Flow",
+  n: "What flow feels like",
+  t: "In the zone",
+  q: "athletes describe being in the zone flow state documentary"
 }, {
+  g: "Flow",
+  n: "Getting into flow on purpose",
+  t: "Steven Kotler",
+  q: "Steven Kotler flow state triggers how to enter flow"
+}, {
+  g: "Flow",
+  n: "Attention and deep work",
+  t: "Cal Newport",
+  q: "Cal Newport deep work focus talk"
+}, {
+  g: "Mindset",
   n: "Believing you can improve",
   t: "Carol Dweck",
-  q: "Carol Dweck the power of believing that you can improve TED",
-  dur: "medium"
+  q: "Carol Dweck the power of believing that you can improve TED"
 }, {
-  n: "Inside an athlete's head",
-  t: "Sports psychology",
-  q: "sports psychology mental toughness athletes documentary",
-  dur: "medium"
+  g: "Mindset",
+  n: "Grit and perseverance",
+  t: "Angela Duckworth",
+  q: "Angela Duckworth grit power of passion and perseverance TED"
 }, {
-  n: "Dealing with choking",
+  g: "Mindset",
+  n: "The desire to change",
+  t: "Motivation",
+  q: "the desire to change motivational speech sports"
+}, {
+  g: "Mindset",
+  n: "Nobody is coming to save you",
+  t: "Motivation",
+  q: "best motivational speech for athletes discipline"
+}, {
+  g: "Mindset",
+  n: "Losing, and what comes after",
+  t: "Motivation",
+  q: "athletes on failure comeback motivational speech"
+}, {
+  g: "Mindset",
+  n: "Doing it when you do not want to",
+  t: "Discipline",
+  q: "discipline over motivation speech athletes"
+}, {
+  g: "Pressure",
+  n: "Why athletes choke",
   t: "Under pressure",
-  q: "why athletes choke under pressure explained",
-  dur: "medium"
+  q: "why athletes choke under pressure explained sports psychology"
 }, {
+  g: "Pressure",
   n: "Breathing and nerves",
   t: "Before you play",
-  q: "breathing techniques for athletes before competition",
-  dur: "short"
+  q: "breathing techniques for athletes before competition"
+}, {
+  g: "Pressure",
+  n: "The last two minutes",
+  t: "Clutch",
+  q: "clutch performance sports psychology explained"
+}, {
+  g: "Pressure",
+  n: "Self-talk that works",
+  t: "In your head",
+  q: "self talk sports psychology athletes technique"
+}, {
+  g: "Pressure",
+  n: "Nerves before a big game",
+  t: "Anxiety",
+  q: "how to deal with pre game anxiety sports psychologist"
+}, {
+  g: "Practice",
+  n: "Deliberate practice",
+  t: "Anders Ericsson",
+  q: "Anders Ericsson deliberate practice expertise explained"
+}, {
+  g: "Practice",
+  n: "How skills get wired",
+  t: "Daniel Coyle",
+  q: "Daniel Coyle talent code myelin deep practice"
+}, {
+  g: "Practice",
+  n: "Practising the hard way",
+  t: "Make It Stick",
+  q: "spacing interleaving retrieval practice learning science"
+}, {
+  g: "Practice",
+  n: "Ten thousand hours, corrected",
+  t: "The real number",
+  q: "ten thousand hour rule debunked deliberate practice"
+}, {
+  g: "Practice",
+  n: "Building a routine",
+  t: "Habits",
+  q: "James Clear atomic habits building a routine talk"
+}, {
+  g: "Body",
+  n: "Sleep and performance",
+  t: "Matthew Walker",
+  q: "Matthew Walker sleep and athletic performance"
+}, {
+  g: "Body",
+  n: "Where the limit is",
+  t: "Endurance",
+  q: "Alex Hutchinson endure limits of human performance"
+}, {
+  g: "Body",
+  n: "Does recovery work",
+  t: "Recovery",
+  q: "ice baths recovery science does it work athletes"
+}, {
+  g: "Body",
+  n: "Eating around training",
+  t: "Fuel",
+  q: "sports nutrition basics for young athletes explained"
 }];
-
-/* A real cover if one exists, drawn lettering if not. Gutenberg publishes a
-   cover at a predictable address for every book it holds, so those need no
-   lookup. For the rest, Open Library is asked once and the answer is kept, and
-   a book whose cover never arrives still looks like a book rather than a hole. */
-const coverCache = {};
-
-function gutenCover(u) {
-  const m = /gutenberg\.org\/ebooks\/(\d+)/.exec(u || "");
-  return m ? "https://www.gutenberg.org/cache/epub/" + m[1] + "/pg" + m[1] + ".cover.medium.jpg" : null;
-}
-
-async function findCover(b) {
-  const key = b.t + "|" + b.a;
-  if (key in coverCache) return coverCache[key];
-  const guten = gutenCover(b.u);
-  if (guten) {
-    coverCache[key] = guten;
-    return guten;
-  }
-  try {
-    const url = "https://openlibrary.org/search.json?limit=3&fields=cover_i&title=" + encodeURIComponent(b.t) + "&author=" + encodeURIComponent(b.a);
-    const res = await fetch(url);
-    if (!res.ok) throw 0;
-    const docs = (await res.json()).docs || [];
-    const hit = docs.filter(function (d) {
-      return d && d.cover_i;
-    })[0];
-    const out = hit ? "https://covers.openlibrary.org/b/id/" + hit.cover_i + "-L.jpg" : null;
-    coverCache[key] = out;
-    return out;
-  } catch (e) {
-    /* Left unset so a flaky moment does not blank the cover for the session. */
-    return null;
-  }
-}
 
 /* Reading the book here rather than sending you away. Only the Project
    Gutenberg ones: those are out of copyright, and Gutenberg publishes the plain
@@ -8852,6 +9189,27 @@ function Reader({
   });
   const box = useRef(null);
   const [pct, setPct] = useState(0);
+  const [page, setPage] = useState(1);
+  /* A page is a fixed helping of paragraphs rather than a measured sheet. Real
+     pagination would have to remeasure on every resize and font change; this
+     gives a stable number you can say out loud and come back to, which is what
+     a page number is actually for. */
+  const pages = useMemo(function () {
+    if (!paras) return [];
+    const out = [];
+    let cur = [], len = 0;
+    paras.forEach(function (p) {
+      cur.push(p);
+      len += p.length;
+      if (len > 1500 && cur.length > 1) {
+        out.push(cur);
+        cur = [];
+        len = 0;
+      }
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }, [paras]);
   useEffect(function () {
     let gone = false;
     fetchBook(id).then(function (p) {
@@ -8871,28 +9229,28 @@ function Reader({
   useEffect(function () {
     if (state !== "text") return;
     const saved = parseFloat(window.localStorage.getItem(readKey(id)) || "0");
+    let restore = null;
     function room() {
       return Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     }
-    if (saved > 0) {
-      const t = setTimeout(function () {
-        window.scrollTo({
-          top: saved * room(),
-          behavior: "auto"
-        });
-      }, 60);
-      var restore = t;
-    }
+    if (saved > 0) restore = setTimeout(function () {
+      window.scrollTo({ top: saved * room(), behavior: "auto" });
+    }, 60);
     function track() {
       const p = Math.min(1, Math.max(0, window.scrollY / room()));
       setPct(Math.round(p * 100));
+      /* Whichever page has crossed the top of the screen is the one you are on. */
+      const marks = document.querySelectorAll(".fr-page");
+      let n = 1;
+      for (let i = 0; i < marks.length; i++) {
+        if (marks[i].getBoundingClientRect().top <= 90) n = i + 1;
+      }
+      setPage(n);
       try {
         window.localStorage.setItem(readKey(id), String(p));
       } catch (e) {}
     }
-    window.addEventListener("scroll", track, {
-      passive: true
-    });
+    window.addEventListener("scroll", track, { passive: true });
     return function () {
       if (restore) clearTimeout(restore);
       window.removeEventListener("scroll", track);
@@ -8925,7 +9283,9 @@ function Reader({
       resize(Math.min(26, size + 1));
     },
     "aria-label": "Larger text"
-  }, "A+"), /*#__PURE__*/React.createElement("i", null, pct, "%")) : null)), state === "loading" ? /*#__PURE__*/React.createElement("p", {
+  }, "A+"), /*#__PURE__*/React.createElement("i", null, "p.", page, " / ", pages.length || 1), /*#__PURE__*/React.createElement("i", {
+    className: "fr-readpct"
+  }, pct, "%")) : null)), state === "loading" ? /*#__PURE__*/React.createElement("p", {
     className: "fr-readnote"
   }, "Opening the book\u2026") : null, state === "frame" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("iframe", {
     className: "fr-readframe",
@@ -8945,21 +9305,59 @@ function Reader({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-readinner"
-  }, /*#__PURE__*/React.createElement("h1", null, book.t), /*#__PURE__*/React.createElement("h2", null, book.a), paras.map(function (p, i) {
-    /* A short line in capitals is a heading in almost every Gutenberg text. */
-    const head = p.length < 70 && p === p.toUpperCase() && /[A-Z]/.test(p);
-    return head ? /*#__PURE__*/React.createElement("h3", {
-      key: i
-    }, p) : /*#__PURE__*/React.createElement("p", {
-      key: i
-    }, p);
+  }, /*#__PURE__*/React.createElement("h1", null, book.t), /*#__PURE__*/React.createElement("h2", null, book.a), pages.map(function (pg, n) {
+    return /*#__PURE__*/React.createElement("section", {
+      className: "fr-page",
+      key: n,
+      id: "pg" + (n + 1)
+    }, pg.map(function (p, i) {
+      /* A short line in capitals is a heading in almost every Gutenberg text. */
+      const head = p.length < 70 && p === p.toUpperCase() && /[A-Z]/.test(p);
+      return head ? /*#__PURE__*/React.createElement("h3", { key: i }, p) : /*#__PURE__*/React.createElement("p", { key: i }, p);
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "fr-pageno"
+    }, n + 1));
   }), /*#__PURE__*/React.createElement("p", {
     className: "fr-readend"
-  }, "End. This text is from Project Gutenberg and is in the public domain."))) : null);
+  }, pages.length, " pages. This text is from Project Gutenberg and is in the public domain."))) : null);
 }
 
-/* The book itself: five faces in real space, spun by dragging it. Left alone it
-   turns slowly on its own, so the shelf reads as objects rather than pictures. */
+/* A real cover if one exists, drawn lettering if not. Gutenberg publishes a
+   cover at a predictable address for every book it holds, so those need no
+   lookup. For the rest, Open Library is asked once and the answer is kept, and
+   a book whose cover never arrives still looks like a book rather than a hole. */
+const coverCache = {};
+
+function gutenCover(u) {
+  const m = /gutenberg\.org\/ebooks\/(\d+)/.exec(u || "");
+  return m ? "https://www.gutenberg.org/cache/epub/" + m[1] + "/pg" + m[1] + ".cover.medium.jpg" : null;
+}
+
+async function findCover(b) {
+  const key = b.t + "|" + b.a;
+  if (key in coverCache) return coverCache[key];
+  const guten = gutenCover(b.u);
+  if (guten) {
+    coverCache[key] = guten;
+    return guten;
+  }
+  try {
+    const url = "https://openlibrary.org/search.json?limit=3&fields=cover_i&title=" + encodeURIComponent(b.t) + "&author=" + encodeURIComponent(b.a);
+    const res = await fetch(url);
+    if (!res.ok) throw 0;
+    const docs = (await res.json()).docs || [];
+    const hit = docs.filter(function (d) {
+      return d && d.cover_i;
+    })[0];
+    const out = hit ? "https://covers.openlibrary.org/b/id/" + hit.cover_i + "-L.jpg" : null;
+    coverCache[key] = out;
+    return out;
+  } catch (e) {
+    /* Left unset so a flaky moment does not blank the cover for the session. */
+    return null;
+  }
+}
+
 /* Pull the two colours that make a book look like itself: the dominant one for
    the spine, a darker relative for the board. Reading pixels needs the image
    served cross-origin, which Open Library does and Gutenberg may not, so a
@@ -8992,8 +9390,8 @@ function coverColours(url) {
           return "rgb(" + Math.round(r * k) + "," + Math.round(g * k) + "," + Math.round(b * k) + ")";
         };
         done({
-          spine: "linear-gradient(180deg," + dim(1.05) + "," + dim(0.62) + ")",
-          board: "linear-gradient(160deg," + dim(0.72) + "," + dim(0.4) + ")",
+          spine: "linear-gradient(180deg," + dim(1.08) + "," + dim(0.6) + ")",
+          board: "linear-gradient(150deg," + dim(0.66) + "," + dim(0.36) + ")",
           ink: r * 0.299 + g * 0.587 + b * 0.114 > 150 ? "#16181c" : "#ffffff"
         });
       } catch (e) {
@@ -9007,6 +9405,9 @@ function coverColours(url) {
     img.src = url;
   });
 }
+
+/* The book itself: six faces in real space, turning on its own, draggable, and
+   opening when tapped. */
 function Book3D({
   book,
   hue,
@@ -9019,6 +9420,7 @@ function Book3D({
   const [tilt, setTilt] = useState(-8);
   const held = useRef(false);
   const from = useRef(null);
+  const moved = useRef(0);
   useEffect(function () {
     let gone = false;
     findCover(book).then(function (u) {
@@ -9032,21 +9434,18 @@ function Book3D({
       gone = true;
     };
   }, [book.t]);
-  /* It turns, always. The old version crept round at nine degrees a second and
-     stopped for good the first time you touched it, so it read as a picture that
-     had been nudged. Now it keeps going once you let go, and goes right round,
-     which is the only way the back of a book is ever seen. */
+  /* It turns, always, and goes right round, which is the only way the back of a
+     book is ever seen. */
   useEffect(function () {
     const t = setInterval(function () {
       if (!held.current) setSpin(function (s) {
-        return (s + 1.6) % 360;
+        return (s + 0.75) % 360;
       });
     }, 40);
     return function () {
       clearInterval(t);
     };
   }, []);
-  const moved = useRef(0);
   function down(e) {
     held.current = true;
     moved.current = 0;
@@ -9073,8 +9472,7 @@ function Book3D({
     from.current = null;
     if (!wasDrag && onOpen) onOpen();
   }
-  /* Straighten up but keep turning, so a book left at a wild angle drifts back
-     to level rather than staying tipped over. */
+  /* Left tipped over, it drifts back to level on its own. */
   useEffect(function () {
     if (held.current || Math.abs(tilt + 8) < 0.5) return;
     const t = setTimeout(function () {
@@ -9087,12 +9485,19 @@ function Book3D({
     };
   }, [tilt]);
   const art = cover && !dead;
+  /* Past a quarter turn either way we are looking at the back board. Computed
+     here rather than left to the browser, because Safari was drawing the front
+     cover straight through the book, mirrored. */
+  const facing = Math.cos((spin % 360) * Math.PI / 180) >= 0;
   return /*#__PURE__*/React.createElement("div", {
     className: "fr3d-stage",
     onMouseDown: down,
     onMouseMove: move,
     onMouseUp: up,
-    onMouseLeave: up,
+    onMouseLeave: function () {
+      held.current = false;
+      from.current = null;
+    },
     onTouchStart: down,
     onTouchMove: move,
     onTouchEnd: up
@@ -9104,6 +9509,7 @@ function Book3D({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr3d-face fr3d-front",
+    "data-hide": facing ? "0" : "1",
     style: art ? {
       backgroundImage: "url(" + cover + ")"
     } : {
@@ -9122,17 +9528,17 @@ function Book3D({
     }
   }) : null, /*#__PURE__*/React.createElement("div", {
     className: "fr3d-face fr3d-back",
+    "data-hide": facing ? "1" : "0",
     style: skin ? {
       background: skin.board
     } : {
-      background: "linear-gradient(160deg,hsl(" + hue + ",30%,19%),hsl(" + (hue + 24) + ",28%,11%))"
+      background: "linear-gradient(150deg,hsl(" + hue + ",30%,19%),hsl(" + (hue + 24) + ",28%,11%))"
     }
-  }, art ? /*#__PURE__*/React.createElement("span", {
-    className: "fr3d-backart",
-    style: {
-      backgroundImage: "url(" + cover + ")"
-    }
-  }) : null), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr3d-blurb"
+  }, /*#__PURE__*/React.createElement("em", null), /*#__PURE__*/React.createElement("em", null), /*#__PURE__*/React.createElement("em", null), /*#__PURE__*/React.createElement("em", null), /*#__PURE__*/React.createElement("em", null)), /*#__PURE__*/React.createElement("span", {
+    className: "fr3d-barcode"
+  })), /*#__PURE__*/React.createElement("div", {
     className: "fr3d-face fr3d-spine",
     style: skin ? {
       background: skin.spine,
@@ -9152,17 +9558,41 @@ function Book3D({
 function MindPage({
   onSearch
 }) {
-  const [filter, setFilter] = useState("All");
+  /* Two things you can do here, so two tabs rather than one long page. */
+  const [tab, setTab] = useState("read");
+  const [topic, setTopic] = useState("All");
+  const [where, setWhere] = useState("All");
   const [open, setOpen] = useState(null);
   const [reading, setReading] = useState(null);
-  const shelves = MIND_SHELVES;
-  const chips = ["All"].concat(shelves.map(function (s) {
-    return s.label;
+  const [vidTopic, setVidTopic] = useState("All");
+  const [panel, setPanel] = useState(false);
+  /* Tapping anywhere else puts it away, which is what every other little panel
+     on a phone does. */
+  useEffect(function () {
+    if (!panel) return;
+    function shut(e) {
+      if (!e.target.closest || !e.target.closest(".fr-filterbox")) setPanel(false);
+    }
+    document.addEventListener("click", shut, true);
+    return function () {
+      document.removeEventListener("click", shut, true);
+    };
+  }, [panel]);
+  if (reading) return /*#__PURE__*/React.createElement(Reader, {
+    book: reading,
+    onClose: function () {
+      setReading(null);
+    }
+  });
+  const topics = ["All"].concat(MIND_SHELVES.map(function (sh) {
+    return sh.label;
   }));
   const list = [];
-  shelves.forEach(function (sh, si) {
-    if (filter !== "All" && sh.label !== filter) return;
+  MIND_SHELVES.forEach(function (sh) {
+    if (topic !== "All" && sh.label !== topic) return;
     sh.books.forEach(function (b, bi) {
+      if (where === "Read here" && b.how !== "free") return;
+      if (where === "Library loan" && b.how !== "borrow") return;
       list.push(Object.assign({}, b, {
         id: sh.id + bi,
         shelf: sh.label,
@@ -9173,30 +9603,107 @@ function MindPage({
   const shown = open ? list.filter(function (b) {
     return b.id === open;
   })[0] : null;
-  if (reading) return /*#__PURE__*/React.createElement(Reader, {
-    book: reading,
-    onClose: function () {
-      setReading(null);
-    }
+  const vidTopics = ["All"].concat(MIND_WATCH.reduce(function (a, w) {
+    if (a.indexOf(w.g) < 0) a.push(w.g);
+    return a;
+  }, []));
+  const vids = MIND_WATCH.filter(function (w) {
+    return vidTopic === "All" || w.g === vidTopic;
   });
+  const freeCount = list.filter(function (b) {
+    return b.how === "free";
+  }).length;
   return /*#__PURE__*/React.createElement("div", {
     className: "fr-wrap"
   }, /*#__PURE__*/React.createElement("h1", {
     className: "fr-h1"
   }, "Mind"), /*#__PURE__*/React.createElement("p", {
     className: "fr-blurb"
-  }, "Film teaches you what to do. This is the other half \u2014 attention, nerves, slumps, and why practice sometimes does nothing. Drag a book to turn it. Tap it to find out why it is here."), /*#__PURE__*/React.createElement("div", {
+  }, "Film teaches you what to do. This is the other half \u2014 attention, nerves, slumps, and why practice sometimes does nothing."), /*#__PURE__*/React.createElement("div", {
+    className: "fr-chips fr-mindtabs"
+  }, [["read", "Library"], ["watch", "Watch"]].map(function (t) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: t[0],
+      className: "fr-chip",
+      "data-on": tab === t[0] ? "1" : "0",
+      onClick: function () {
+        setTab(t[0]);
+      }
+    }, t[1]);
+  })), tab === "read" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "fr-filterbox"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-filterbtn",
+    "data-on": panel ? "1" : "0",
+    onClick: function () {
+      setPanel(!panel);
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    width: "14",
+    height: "14",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 4h12M2 8h12M2 12h12",
+    stroke: "currentColor",
+    strokeWidth: "1.6",
+    strokeLinecap: "round"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "6", cy: "4", r: "2", fill: "currentColor"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "11", cy: "8", r: "2", fill: "currentColor"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "5", cy: "12", r: "2", fill: "currentColor"
+  })), /*#__PURE__*/React.createElement("span", null, "Filters"), where === "All" && topic === "All" ? null : /*#__PURE__*/React.createElement("i", {
+    className: "fr-filterdot"
+  }, [where === "All" ? null : where, topic === "All" ? null : topic].filter(Boolean).join(" \u00B7 "))), panel ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-filterpanel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-filtergroup"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-filterlab"
+  }, "Where"), /*#__PURE__*/React.createElement("div", {
     className: "fr-chips"
-  }, chips.map(function (c) {
+  }, ["All", "Read here", "Library loan"].map(function (c) {
     return /*#__PURE__*/React.createElement("button", {
       key: c,
       className: "fr-chip",
-      "data-on": filter === c ? "1" : "0",
+      "data-on": where === c ? "1" : "0",
       onClick: function () {
-        setFilter(c);
+        setWhere(c);
       }
     }, c);
-  })), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-filtergroup"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-filterlab"
+  }, "About"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-chips"
+  }, topics.map(function (c) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: c,
+      className: "fr-chip",
+      "data-on": topic === c ? "1" : "0",
+      onClick: function () {
+        setTopic(c);
+      }
+    }, c);
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-filterfoot"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-filterclear",
+    onClick: function () {
+      setWhere("All");
+      setTopic("All");
+    }
+  }, "Clear"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-readnow fr-filterdone",
+    onClick: function () {
+      setPanel(false);
+    }
+  }, "Done"))) : null), /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, list.length, " book", list.length === 1 ? "" : "s", freeCount ? " \u00B7 " + freeCount + " you can read right here" : "", " \u00B7 tap a book to open it, drag to turn it"), /*#__PURE__*/React.createElement("div", {
     className: "fr-books"
   }, list.map(function (b) {
     return /*#__PURE__*/React.createElement("div", {
@@ -9206,9 +9713,6 @@ function MindPage({
       book: b,
       hue: b.hue,
       onOpen: function () {
-        /* Tapping the book opens the book. For the ones that can be read here
-           that means straight into the text; for a loan there is nothing to
-           open, so it shows what it is and where to get it. */
         if (b.how === "free") setReading(b);else setOpen(b.id);
       }
     }), /*#__PURE__*/React.createElement("button", {
@@ -9219,19 +9723,76 @@ function MindPage({
     }, /*#__PURE__*/React.createElement("b", null, b.t), /*#__PURE__*/React.createElement("span", null, b.a, " \u00B7 ", b.y), /*#__PURE__*/React.createElement("i", {
       "data-free": b.how === "free" ? "1" : "0"
     }, b.how === "free" ? "Read here" : "Library loan")));
-  })), /*#__PURE__*/React.createElement("h2", {
-    className: "fr-watchhead"
-  }, "Watch instead"), /*#__PURE__*/React.createElement("div", {
+  })), list.length ? null : /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, "Nothing on that shelf. Try a different filter.")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "fr-filterbox"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-filterbtn",
+    "data-on": panel ? "1" : "0",
+    onClick: function () {
+      setPanel(!panel);
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 16 16",
+    width: "14",
+    height: "14",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M2 4h12M2 8h12M2 12h12",
+    stroke: "currentColor",
+    strokeWidth: "1.6",
+    strokeLinecap: "round"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "6", cy: "4", r: "2", fill: "currentColor"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "11", cy: "8", r: "2", fill: "currentColor"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "5", cy: "12", r: "2", fill: "currentColor"
+  })), /*#__PURE__*/React.createElement("span", null, "Filters"), vidTopic === "All" ? null : /*#__PURE__*/React.createElement("i", {
+    className: "fr-filterdot"
+  }, vidTopic)), panel ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-filterpanel"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "fr-filtergroup"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-filterlab"
+  }, "About"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-chips"
+  }, vidTopics.map(function (c) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: c,
+      className: "fr-chip",
+      "data-on": vidTopic === c ? "1" : "0",
+      onClick: function () {
+        setVidTopic(c);
+      }
+    }, c);
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "fr-filterfoot"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-filterclear",
+    onClick: function () {
+      setVidTopic("All");
+    }
+  }, "Clear"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-readnow fr-filterdone",
+    onClick: function () {
+      setPanel(false);
+    }
+  }, "Done"))) : null), /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, vids.length, " to watch \u00B7 all free, and they open in the player"), /*#__PURE__*/React.createElement("div", {
     className: "fr-watchrow"
-  }, MIND_WATCH.map(function (w) {
+  }, vids.map(function (w) {
     return /*#__PURE__*/React.createElement("button", {
       className: "fr-watch",
       key: w.n,
       onClick: function () {
-        onSearch(w.q, w.dur);
+        onSearch(w.q, "any");
       }
     }, /*#__PURE__*/React.createElement("b", null, w.n), /*#__PURE__*/React.createElement("span", null, w.t));
-  })), /*#__PURE__*/React.createElement("p", {
+  }))), /*#__PURE__*/React.createElement("p", {
     className: "fr-fineprint"
   }, "Project Gutenberg books are out of copyright and free to keep. Open Library lends scanned copies one at a time, like a library \u2014 you may need to wait or join a list. Film Room hosts none of them."), shown ? /*#__PURE__*/React.createElement("div", {
     className: "fr-sheet",
