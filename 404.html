@@ -83,6 +83,9 @@ body { background: #EDF0F2; }
   --edge:rgba(255,255,255,.12); --edge-2:rgba(255,255,255,.20);
   --amber:#FFB627; --cyan:#4ED9E8; --onAmber:#0A1013;
   --blobA:#0E5F70; --blobB:#8A5406; --blobC:#1B2E63; --blobO:.55;
+  --bubble-bg:linear-gradient(150deg, rgba(26,33,42,.97), rgba(12,16,21,.97));
+  --bubble-edge:rgba(255,255,255,.16);
+  --bubble-shadow:0 10px 30px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.35);
 }
 .fr[data-theme="light"] {
   --bg:#EDF0F2; --text:#0B1215; --dim:rgba(11,18,21,.60); --faint:rgba(11,18,21,.32);
@@ -90,6 +93,9 @@ body { background: #EDF0F2; }
   --edge:rgba(11,18,21,.10); --edge-2:rgba(11,18,21,.18);
   --amber:#B06E00; --cyan:#0A6C7A; --onAmber:#FFFFFF;
   --blobA:#8FD3DE; --blobB:#F3CE8E; --blobC:#AFC0E8; --blobO:.70;
+  --bubble-bg:linear-gradient(150deg, #FFFFFF, #F2F5F7);
+  --bubble-edge:rgba(11,18,21,.12);
+  --bubble-shadow:0 10px 28px rgba(11,18,21,.18), 0 2px 6px rgba(11,18,21,.10);
 }
 
 .fr { position:relative; min-height:100%; background:var(--bg); color:var(--text);
@@ -564,10 +570,11 @@ body { background: #EDF0F2; }
 .fr-bubble { position:fixed; z-index:75; right:16px;
   bottom:calc(18px + env(safe-area-inset-bottom, 0px)); }
 .fr-bubble .fr-orbwrap { position:relative; }
+/* It was painted dark whatever the page was doing. It now follows the theme
+   like everything else: white on the light one, dark on the dark one. */
 .fr-bubble .fr-orb { width:60px; height:60px; padding:0; margin:0;
-  background:linear-gradient(150deg, rgba(24,30,38,.96), rgba(12,16,21,.96));
-  border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 10px 30px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+  background:var(--bubble-bg); border:1px solid var(--bubble-edge);
+  box-shadow:var(--bubble-shadow);
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
 .fr-bubble .fr-orb svg { width:26px; height:26px; }
 .fr-bubble .fr-orb:active { transform:scale(.94); }
@@ -1336,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b183</div>
+<div class="fr-build">b185</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6130,8 +6137,31 @@ function directKey() {
 /* Why the last attempt made no sound. Read by the bubble. */
 let lastVoiceFail = "";
 
+/* Generated audio, kept for the session. The same line is very often asked for
+   twice — the greeting on every reload, an answer repeated — and the speech
+   model has a small free allowance that was being spent on repeats. */
+const voiceCache = {};
+/* Speech is rate limited per minute, not just per day. Asking again inside a
+   couple of seconds is how a working voice turns into a wall of errors. */
+let lastAsk = 0;
+let restingUntil = 0;
+/* The last thing complained about, so it is not complained about twice. */
+let toldAbout = "";
+
 function readAudioPart(data) {
-  if (data && data.error) throw new Error(data.error.message || "voice request refused");
+  if (data && data.error) {
+    const msg = String(data.error.message || "");
+    const code = data.error.code;
+    if (code === 429 || /quota|rate limit|RESOURCE_EXHAUSTED|exhausted/i.test(msg + data.error.status)) {
+      /* Back off for a minute rather than hammering it. The free allowance on
+         the speech model is small and recovers quickly. */
+      restingUntil = Date.now() + 60000;
+      const e = new Error("rate");
+      e.resting = true;
+      throw e;
+    }
+    throw new Error(msg || "voice request refused");
+  }
   const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
   for (let i = 0; i < parts.length; i++) {
     const inline = parts[i].inlineData || parts[i].inline_data;
@@ -6167,6 +6197,17 @@ const TTS_BODY = function (line) {
 };
 
 async function ttsAudio(line) {
+  if (voiceCache[line]) return voiceCache[line];
+  /* Still being told off by Google, so do not ask again yet. */
+  if (Date.now() < restingUntil) {
+    lastVoiceFail = "";
+    return null;
+  }
+  const gap = Date.now() - lastAsk;
+  if (gap < 1200) await new Promise(function (r) {
+    setTimeout(r, 1200 - gap);
+  });
+  lastAsk = Date.now();
   const tried = [];
 
   /* A real key means Google can be asked directly, which is the only route
@@ -6186,6 +6227,7 @@ async function ttsAudio(line) {
       if (got) return got;
       tried.push("your key returned no audio");
     } catch (e) {
+      if (e && e.resting) throw e;
       tried.push("your key: " + (e && e.message || "failed"));
     }
   }
@@ -6201,9 +6243,13 @@ async function ttsAudio(line) {
         body: JSON.stringify(TTS_BODY(line))
       });
       const got = readAudioPart(await res.json());
-      if (got) return got;
+      if (got) {
+        voiceCache[line] = got;
+        return got;
+      }
       tried.push("the voice worker answered without audio");
     } catch (e) {
+      if (e && e.resting) throw e;
       tried.push("the voice worker is not reachable \u2014 deploy it, or check the name matches");
     }
   }
@@ -6223,6 +6269,7 @@ async function ttsAudio(line) {
       if (got) return got;
       tried.push("the worker answered without audio \u2014 it is almost certainly forwarding to the text model and ignoring the speech one");
     } catch (e) {
+      if (e && e.resting) throw e;
       tried.push("the worker: " + (e && e.message || "failed"));
     }
   }
@@ -6250,7 +6297,14 @@ function playAudio(src) {
       };
       /* No amplitude without Web Audio, and Web Audio on an element costs the
          silent-switch immunity, so the ring is driven off the clock instead. */
+      /* This fires several times a second, and each one was re-rendering the
+         whole app through setLevel. Throttled to something the eye reads as
+         movement and the page does not notice. */
+      let lastTick = 0;
       player.ontimeupdate = function () {
+        const now = Date.now();
+        if (now - lastTick < 120) return;
+        lastTick = now;
         if (onWord) onWord(0.55 + Math.abs(Math.sin(player.currentTime * 9)) * 0.45);
       };
       player.src = src;
@@ -6369,13 +6423,18 @@ async function speak(text) {
       return;
     }
   } catch (e) {
-    lastVoiceFail = e && e.message || "the voice request failed";
+    /* A rest is not a fault. It falls back quietly instead of putting a warning
+       on screen every few seconds. */
+    lastVoiceFail = e && e.resting ? "" : e && e.message || "the voice request failed";
   }
   /* Nothing real came back, so the browser's own voice is the last resort. It
      is the one that goes through the ringer channel and is often mute, which is
      why the reason is surfaced rather than swallowed. */
-  if (voiceTrouble && lastVoiceFail) {
-    voiceTrouble("No generated voice: " + lastVoiceFail + ". Falling back to the browser voice, which iOS often keeps silent. Paste a Gemini API key in Settings to fix this properly.");
+  /* Said once. Repeating it every few seconds is what turned one problem into
+     a screen full of warnings. */
+  if (voiceTrouble && lastVoiceFail && lastVoiceFail !== toldAbout) {
+    toldAbout = lastVoiceFail;
+    voiceTrouble("Voice: " + lastVoiceFail + ". Using the browser voice meanwhile.");
   }
   speakLocal(clean);
 }
@@ -6760,6 +6819,16 @@ function VoiceOrb({
     let armed = true;
     function greet(why) {
       if (greeted.current) return;
+      /* Once an hour is a greeting. Once per page load is a machine repeating
+         itself, and on a metered voice it is also the bill. */
+      try {
+        const last = parseInt(window.sessionStorage.getItem("fr-greeted") || "0", 10);
+        if (Date.now() - last < 3600000) {
+          greeted.current = true;
+          return;
+        }
+        window.sessionStorage.setItem("fr-greeted", String(Date.now()));
+      } catch (e) {}
       greeted.current = true;
       armed = false;
       unlockVoice();
