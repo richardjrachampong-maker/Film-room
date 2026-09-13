@@ -681,6 +681,33 @@ body { background: #EDF0F2; }
 .fr-watch:hover { border-color:var(--amber); }
 .fr-watch b { font-size:14px; font-weight:600; line-height:1.3; }
 .fr-watch span { font-size:11.5px; color:var(--faint); }
+/* ---------- Watch ---------- */
+.fr-vidgrid { display:grid; gap:20px 14px; grid-template-columns:1fr; margin:4px 0 30px; }
+@media (min-width:560px){ .fr-vidgrid { grid-template-columns:repeat(2,1fr);} }
+@media (min-width:900px){ .fr-vidgrid { grid-template-columns:repeat(3,1fr);} }
+.fr-vid { display:flex; flex-direction:column; gap:9px; }
+.fr-vid[data-on="1"] { grid-column:1 / -1; }
+@media (min-width:560px){ .fr-vid[data-on="1"] { grid-column:span 2; } }
+.fr-vidthumb { position:relative; width:100%; aspect-ratio:16/9; border-radius:14px;
+  border:1px solid var(--edge); background:var(--glass-2) center/cover no-repeat;
+  cursor:pointer; padding:0; overflow:hidden; touch-action:manipulation;
+  display:flex; align-items:center; justify-content:center; }
+.fr-vidthumb::after { content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.35)); }
+.fr-vidthumb:hover { border-color:var(--amber); }
+.fr-vidplay { position:relative; z-index:1; width:48px; height:48px; border-radius:50%;
+  background:rgba(10,14,18,.66); backdrop-filter:blur(6px); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+  padding-left:3px; border:1px solid rgba(255,255,255,.25); }
+.fr-vidthumb:hover .fr-vidplay { background:var(--amber); color:#0B1215; border-color:transparent; }
+.fr-vidframe { width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden;
+  background:#000; border:1px solid var(--edge); }
+.fr-vidframe iframe { width:100%; height:100%; display:block; }
+.fr-vidmeta { display:flex; flex-direction:column; gap:3px; }
+.fr-vidmeta b { font-size:14px; font-weight:600; line-height:1.32;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.fr-vidmeta span { font-size:11.5px; color:var(--faint); }
+.fr-chanpanel { min-width:270px; max-width:min(380px,88vw); }
 .fr-fineprint { margin:22px 0 40px; font-size:12px; line-height:1.6; color:var(--faint); }
 .fr-booksheet { position:relative; max-width:460px; margin:auto; padding:22px 20px 20px;
   display:flex; flex-direction:column; gap:7px; }
@@ -1213,7 +1240,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b167</div>
+<div class="fr-build">b169</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -8759,6 +8786,126 @@ const MIND_SHELVES = [{
   }
   ]
 }, {
+  id: "soul",
+  label: "Soul",
+  hue: 44,
+  title: "The soul before the rest",
+  blurb: "Older than any of the sports writing, and underneath it. Most of this shelf is free in full.",
+  books: [
+  {
+    t: "The King James Bible",
+    a: "Translated 1604\u20131611",
+    y: "1611",
+    why: "All of it, searchable, free, and readable here. If you want a place to start rather than Genesis: Psalms for when it is heavy, Proverbs for how to carry yourself, Ecclesiastes for when none of it seems to mean anything, and the Gospels for the person at the centre of it.",
+    how: "free",
+    u: FREE(10)
+  },
+  {
+    t: "The Confessions of St. Augustine",
+    a: "Augustine of Hippo",
+    y: "c. 400",
+    why: "A man looking back at who he was and being honest about it, which is harder than it sounds and the whole point. The line everyone knows \u2014 our heart is restless until it rests in Thee \u2014 is on the first page.",
+    how: "free",
+    u: FREE(3296)
+  },
+  {
+    t: "The Imitation of Christ",
+    a: "Thomas \u00E0 Kempis",
+    y: "c. 1420",
+    why: "Short chapters on humility, on not needing to be seen, on doing the unglamorous thing. Written for monks and read for six hundred years by everyone else.",
+    how: "free",
+    u: FREE(1653)
+  },
+  {
+    t: "The Practice of the Presence of God",
+    a: "Brother Lawrence",
+    y: "1692",
+    why: "A kitchen monk on doing ordinary work with your attention somewhere higher. Forty pages, and the closest thing here to a practical method.",
+    how: "free",
+    u: FREE(13871)
+  },
+  {
+    t: "The Pilgrim's Progress",
+    a: "John Bunyan",
+    y: "1678",
+    why: "The journey as a journey, with the swamps and the shortcuts drawn as places. Written in prison, which shows.",
+    how: "free",
+    u: FREE(131)
+  },
+  {
+    t: "The Varieties of Religious Experience",
+    a: "William James",
+    y: "1902",
+    why: "The psychologist from the other shelves turning the same attention on the inner life. His chapters on the sick soul and the divided self are the best description anywhere of what it feels like to be at odds with yourself.",
+    how: "free",
+    u: FREE(621)
+  },
+  {
+    t: "The Story of a Soul",
+    a: "St. Th\u00E9r\u00E8se of Lisieux",
+    y: "1898",
+    why: "A young woman writing plainly about doing small things with great love, finished shortly before she died at twenty-four. Unsentimental in a way the title does not suggest.",
+    how: "free",
+    u: FREE(16772)
+  },
+  {
+    t: "Grace Abounding to the Chief of Sinners",
+    a: "John Bunyan",
+    y: "1666",
+    why: "His own account of years of doubt before the allegory. Useful precisely because it is the messy version.",
+    how: "free",
+    u: FREE(654)
+  },
+  {
+    t: "Orthodoxy",
+    a: "G. K. Chesterton",
+    y: "1908",
+    why: "An argument made cheerfully, by a man who enjoys thinking. Worth reading even if you disagree with every conclusion, for how he gets there.",
+    how: "free",
+    u: FREE(130)
+  },
+  {
+    t: "True Christianity",
+    a: "Johann Arndt",
+    y: "1606",
+    why: "On the inward life rather than the outward performance of it. Direct, and hard on anyone who has learned to look the part.",
+    how: "free",
+    u: FREE(34736)
+  },
+  {
+    t: "Man's Search for Meaning",
+    a: "Viktor Frankl",
+    y: "1946",
+    why: "A psychiatrist on what kept people alive in the camps, and it was not strength. The argument that you cannot always choose what happens but can always choose your response is the root of most of the mentality shelf.",
+    how: "borrow",
+    u: BORROW("Man's Search for Meaning Viktor Frankl")
+  },
+  {
+    t: "Mere Christianity",
+    a: "C. S. Lewis",
+    y: "1952",
+    why: "Radio talks turned into a book, so it is written to be heard. The chapters on pride and on morality are the ones people come back to.",
+    how: "borrow",
+    u: BORROW("Mere Christianity C S Lewis")
+  },
+  {
+    t: "Tattoos on the Heart",
+    a: "Gregory Boyle",
+    y: "2010",
+    why: "A priest who spent thirty years with gang members in Los Angeles. Stories rather than argument, and the most humane book on this page.",
+    how: "borrow",
+    u: BORROW("Tattoos on the Heart Gregory Boyle")
+  },
+  {
+    t: "Let Your Life Speak",
+    a: "Parker Palmer",
+    y: "2000",
+    why: "On listening to what you are actually built for instead of what you decided to be. Short, and honest about depression.",
+    how: "borrow",
+    u: BORROW("Let Your Life Speak Parker Palmer")
+  }
+  ]
+}, {
   id: "practice",
   label: "Practice",
   hue: 150,
@@ -8993,128 +9140,6 @@ const MIND_SHELVES = [{
 }];
 /* Watching rather than reading. These go through the same search the rest of the
    app uses, so what comes back is embeddable and can be played here. */
-const MIND_WATCH = [{
-  g: "Flow",
-  n: "Flow, the secret to happiness",
-  t: "Mihaly Csikszentmihalyi",
-  q: "Csikszentmihalyi flow the secret to happiness TED talk"
-}, {
-  g: "Flow",
-  n: "What flow feels like",
-  t: "In the zone",
-  q: "athletes describe being in the zone flow state documentary"
-}, {
-  g: "Flow",
-  n: "Getting into flow on purpose",
-  t: "Steven Kotler",
-  q: "Steven Kotler flow state triggers how to enter flow"
-}, {
-  g: "Flow",
-  n: "Attention and deep work",
-  t: "Cal Newport",
-  q: "Cal Newport deep work focus talk"
-}, {
-  g: "Mindset",
-  n: "Believing you can improve",
-  t: "Carol Dweck",
-  q: "Carol Dweck the power of believing that you can improve TED"
-}, {
-  g: "Mindset",
-  n: "Grit and perseverance",
-  t: "Angela Duckworth",
-  q: "Angela Duckworth grit power of passion and perseverance TED"
-}, {
-  g: "Mindset",
-  n: "The desire to change",
-  t: "Motivation",
-  q: "the desire to change motivational speech sports"
-}, {
-  g: "Mindset",
-  n: "Nobody is coming to save you",
-  t: "Motivation",
-  q: "best motivational speech for athletes discipline"
-}, {
-  g: "Mindset",
-  n: "Losing, and what comes after",
-  t: "Motivation",
-  q: "athletes on failure comeback motivational speech"
-}, {
-  g: "Mindset",
-  n: "Doing it when you do not want to",
-  t: "Discipline",
-  q: "discipline over motivation speech athletes"
-}, {
-  g: "Pressure",
-  n: "Why athletes choke",
-  t: "Under pressure",
-  q: "why athletes choke under pressure explained sports psychology"
-}, {
-  g: "Pressure",
-  n: "Breathing and nerves",
-  t: "Before you play",
-  q: "breathing techniques for athletes before competition"
-}, {
-  g: "Pressure",
-  n: "The last two minutes",
-  t: "Clutch",
-  q: "clutch performance sports psychology explained"
-}, {
-  g: "Pressure",
-  n: "Self-talk that works",
-  t: "In your head",
-  q: "self talk sports psychology athletes technique"
-}, {
-  g: "Pressure",
-  n: "Nerves before a big game",
-  t: "Anxiety",
-  q: "how to deal with pre game anxiety sports psychologist"
-}, {
-  g: "Practice",
-  n: "Deliberate practice",
-  t: "Anders Ericsson",
-  q: "Anders Ericsson deliberate practice expertise explained"
-}, {
-  g: "Practice",
-  n: "How skills get wired",
-  t: "Daniel Coyle",
-  q: "Daniel Coyle talent code myelin deep practice"
-}, {
-  g: "Practice",
-  n: "Practising the hard way",
-  t: "Make It Stick",
-  q: "spacing interleaving retrieval practice learning science"
-}, {
-  g: "Practice",
-  n: "Ten thousand hours, corrected",
-  t: "The real number",
-  q: "ten thousand hour rule debunked deliberate practice"
-}, {
-  g: "Practice",
-  n: "Building a routine",
-  t: "Habits",
-  q: "James Clear atomic habits building a routine talk"
-}, {
-  g: "Body",
-  n: "Sleep and performance",
-  t: "Matthew Walker",
-  q: "Matthew Walker sleep and athletic performance"
-}, {
-  g: "Body",
-  n: "Where the limit is",
-  t: "Endurance",
-  q: "Alex Hutchinson endure limits of human performance"
-}, {
-  g: "Body",
-  n: "Does recovery work",
-  t: "Recovery",
-  q: "ice baths recovery science does it work athletes"
-}, {
-  g: "Body",
-  n: "Eating around training",
-  t: "Fuel",
-  q: "sports nutrition basics for young athletes explained"
-}];
-
 /* Reading the book here rather than sending you away. Only the Project
    Gutenberg ones: those are out of copyright, and Gutenberg publishes the plain
    text at a fixed address. The borrowed ones cannot work this way and should
@@ -9190,10 +9215,13 @@ function Reader({
   const box = useRef(null);
   const [pct, setPct] = useState(0);
   const [page, setPage] = useState(1);
+  /* The Bible is four megabytes and about three thousand pages. Putting all of
+     them in the document at once locks an iPad for half a minute, so only a
+     stretch is built and more is added as you reach the end of it. */
+  const [built, setBuilt] = useState(40);
   /* A page is a fixed helping of paragraphs rather than a measured sheet. Real
      pagination would have to remeasure on every resize and font change; this
-     gives a stable number you can say out loud and come back to, which is what
-     a page number is actually for. */
+     gives a stable number you can say out loud and come back to. */
   const pages = useMemo(function () {
     if (!paras) return [];
     const out = [];
@@ -9201,11 +9229,7 @@ function Reader({
     paras.forEach(function (p) {
       cur.push(p);
       len += p.length;
-      if (len > 1500 && cur.length > 1) {
-        out.push(cur);
-        cur = [];
-        len = 0;
-      }
+      if (len > 1500 && cur.length > 1) { out.push(cur); cur = []; len = 0; }
     });
     if (cur.length) out.push(cur);
     return out;
@@ -9224,8 +9248,8 @@ function Reader({
     };
   }, [id]);
 
-  /* The page scrolls now rather than a box inside it, so the place they stopped
-     is a fraction of the window's own scroll. */
+  /* The page scrolls rather than a box inside it, so the place they stopped is
+     a fraction of the window's own scroll. */
   useEffect(function () {
     if (state !== "text") return;
     const saved = parseFloat(window.localStorage.getItem(readKey(id)) || "0");
@@ -9233,29 +9257,43 @@ function Reader({
     function room() {
       return Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     }
-    if (saved > 0) restore = setTimeout(function () {
-      window.scrollTo({ top: saved * room(), behavior: "auto" });
-    }, 60);
+    if (saved > 0) {
+      /* Saved as a fraction of the whole book, so the pages up to it have to
+         exist before we can scroll there. */
+      const wantPage = Math.max(1, Math.round(saved * pages.length));
+      if (wantPage > built - 4) setBuilt(wantPage + 8);
+      restore = setTimeout(function () {
+        const el = document.getElementById("pg" + wantPage);
+        if (el) window.scrollTo({
+          top: window.scrollY + el.getBoundingClientRect().top - 80,
+          behavior: "auto"
+        });else window.scrollTo({ top: saved * room(), behavior: "auto" });
+      }, 80);
+    }
     function track() {
       const p = Math.min(1, Math.max(0, window.scrollY / room()));
-      setPct(Math.round(p * 100));
-      /* Whichever page has crossed the top of the screen is the one you are on. */
       const marks = document.querySelectorAll(".fr-page");
       let n = 1;
       for (let i = 0; i < marks.length; i++) {
         if (marks[i].getBoundingClientRect().top <= 90) n = i + 1;
       }
       setPage(n);
-      try {
-        window.localStorage.setItem(readKey(id), String(p));
-      } catch (e) {}
+      /* Near the bottom of what has been built, build some more. */
+      if (p > 0.86) setBuilt(function (b) {
+        return b + 40;
+      });
+      /* Measured in pages of the whole book, so a quarter of the way through the
+         Bible reads as 25% and not as most of what happens to be loaded. */
+      const whole = pages.length ? n / pages.length : p;
+      setPct(Math.round(whole * 100));
+      try { window.localStorage.setItem(readKey(id), String(whole)); } catch (e) {}
     }
     window.addEventListener("scroll", track, { passive: true });
     return function () {
       if (restore) clearTimeout(restore);
       window.removeEventListener("scroll", track);
     };
-  }, [state, paras]);
+  }, [state, paras, built]);
   function resize(n) {
     setSize(n);
     try {
@@ -9305,21 +9343,246 @@ function Reader({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-readinner"
-  }, /*#__PURE__*/React.createElement("h1", null, book.t), /*#__PURE__*/React.createElement("h2", null, book.a), pages.map(function (pg, n) {
+  }, /*#__PURE__*/React.createElement("h1", null, book.t), /*#__PURE__*/React.createElement("h2", null, book.a), pages.slice(0, built).map(function (pg, n) {
     return /*#__PURE__*/React.createElement("section", {
-      className: "fr-page",
-      key: n,
-      id: "pg" + (n + 1)
+      className: "fr-page", key: n, id: "pg" + (n + 1)
     }, pg.map(function (p, i) {
       /* A short line in capitals is a heading in almost every Gutenberg text. */
       const head = p.length < 70 && p === p.toUpperCase() && /[A-Z]/.test(p);
       return head ? /*#__PURE__*/React.createElement("h3", { key: i }, p) : /*#__PURE__*/React.createElement("p", { key: i }, p);
-    }), /*#__PURE__*/React.createElement("span", {
-      className: "fr-pageno"
-    }, n + 1));
+    }), /*#__PURE__*/React.createElement("span", { className: "fr-pageno" }, n + 1));
   }), /*#__PURE__*/React.createElement("p", {
     className: "fr-readend"
   }, pages.length, " pages. This text is from Project Gutenberg and is in the public domain."))) : null);
+}
+
+/* ---------------------- WATCH ---------------------- */
+
+/* Real channels, not a search box. These are the people who actually make this
+   stuff — the motivational edit channels where The Desire to Be Great lives, the
+   training channels, and the talk channels for the psychology end. Their videos
+   are listed here with thumbnails and played here, so nothing hands you off to a
+   search and hopes. */
+const WATCH_CHANNELS = [{
+  n: "Motiversity",
+  g: "Motivation",
+  d: "The big motivational edit channel. The Desire to Be Great is theirs."
+}, {
+  n: "Ben Lionel Scott",
+  g: "Motivation",
+  d: "Speeches cut over film, usually one voice and one idea."
+}, {
+  n: "MotivationHub",
+  g: "Motivation",
+  d: "Compilations built around a theme rather than a speaker."
+}, {
+  n: "Mulligan Brothers",
+  g: "Motivation",
+  d: "Longer interviews with people who came back from something."
+}, {
+  n: "Team Fearless",
+  g: "Motivation",
+  d: "Short and heavy. Good before training, less good at midnight."
+}, {
+  n: "Absolute Motivation",
+  g: "Motivation",
+  d: "Leans on the discipline-over-feelings argument."
+}, {
+  n: "Mateusz M",
+  g: "Motivation",
+  d: "The channel that more or less invented this format. Dream and Unbroken are his."
+}, {
+  n: "Your World Within",
+  g: "Motivation",
+  d: "Eddie Pinero. Calmer than most of this list, and writes his own."
+}, {
+  n: "Dre Baldwin",
+  g: "Training",
+  d: "Ex-pro on the working habits behind a career, not just the drills."
+}, {
+  n: "TEDx Talks",
+  g: "Psychology",
+  d: "Where the researchers themselves explain it. Slower, and it sticks."
+}, {
+  n: "Big Think",
+  g: "Psychology",
+  d: "Short pieces from psychologists and coaches on one question each."
+}, {
+  n: "Brian Cain",
+  g: "Psychology",
+  d: "A mental performance coach who works with teams. Practical."
+}];
+
+/* A channel's id never changes, so it is looked up once and kept for good.
+   Their recent uploads are kept for the day, which is why the page is
+   different tomorrow without costing a search every time you open it. */
+const CHAN_KEY = "fr-chan-ids";
+const FEED_KEY = "fr-chan-feed";
+
+function loadJSON(k) {
+  try {
+    return JSON.parse(window.localStorage.getItem(k) || "{}") || {};
+  } catch (e) {
+    return {};
+  }
+}
+function saveJSON(k, v) {
+  try {
+    window.localStorage.setItem(k, JSON.stringify(v));
+  } catch (e) {}
+}
+const chanIds = loadJSON(CHAN_KEY);
+let chanFeeds = loadJSON(FEED_KEY);
+
+function today() {
+  const d = new Date();
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+
+async function ytJSON(url) {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) {
+    const m = data.error.message || "";
+    if (/quota/i.test(m)) throw new Error("Out of YouTube requests for today. It resets at midnight Pacific.");
+    throw new Error(m || "YouTube request failed");
+  }
+  return data;
+}
+
+async function channelIdFor(name) {
+  if (chanIds[name]) return chanIds[name];
+  const data = await ytJSON("https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=channel&maxResults=1&q=" + encodeURIComponent(name) + "&key=" + YT_KEY);
+  const hit = (data.items || [])[0];
+  const id = hit && (hit.id.channelId || hit.snippet.channelId);
+  if (!id) throw new Error("Could not find that channel");
+  chanIds[name] = id;
+  saveJSON(CHAN_KEY, chanIds);
+  return id;
+}
+
+async function channelVideos(name, max) {
+  const stamp = today();
+  const cached = chanFeeds[name];
+  if (cached && cached.day === stamp && cached.vids && cached.vids.length) return cached.vids;
+  const id = await channelIdFor(name);
+  const data = await ytJSON("https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&order=date&maxResults=" + (max || 12) + "&channelId=" + id + "&key=" + YT_KEY);
+  const vids = (data.items || []).map(function (it) {
+    return {
+      id: it.id && it.id.videoId,
+      title: unescapeHTML(it.snippet.title),
+      channel: unescapeHTML(it.snippet.channelTitle),
+      when: (it.snippet.publishedAt || "").slice(0, 10),
+      thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
+    };
+  }).filter(function (v) {
+    return v.id && !/#shorts/i.test(v.title);
+  });
+  chanFeeds[name] = {
+    day: stamp,
+    vids: vids
+  };
+  saveJSON(FEED_KEY, chanFeeds);
+  return vids;
+}
+
+/* Which channels lead today. Rotating by the date means the front of the page
+   moves on its own without anyone fetching all twelve every morning. */
+function todaysChannels(n) {
+  const d = new Date();
+  const seed = Math.floor(d.getTime() / 86400000);
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(WATCH_CHANNELS[(seed + i * 5) % WATCH_CHANNELS.length]);
+  return out;
+}
+
+function WatchShelf({
+  pick
+}) {
+  const [vids, setVids] = useState([]);
+  const [busy, setBusy] = useState(true);
+  const [err, setErr] = useState("");
+  const [playing, setPlaying] = useState(null);
+  useEffect(function () {
+    let gone = false;
+    setBusy(true);
+    setErr("");
+    setVids([]);
+    setPlaying(null);
+    const names = pick === "All" ? todaysChannels(4).map(function (c) {
+      return c.n;
+    }) : [pick];
+    const per = pick === "All" ? 8 : 24;
+    Promise.all(names.map(function (n) {
+      return channelVideos(n, per).catch(function (e) {
+        /* One channel failing should not empty the page. */
+        setErr(function (had) {
+          return had || e.message || "";
+        });
+        return [];
+      });
+    })).then(function (lists) {
+      if (gone) return;
+      /* Interleaved rather than stacked, so the top of the page is a mix
+         instead of eight from whoever came back first. */
+      const mixed = [];
+      let i = 0,
+        more = true;
+      while (more) {
+        more = false;
+        lists.forEach(function (l) {
+          if (l[i]) {
+            mixed.push(l[i]);
+            more = true;
+          }
+        });
+        i++;
+      }
+      setVids(mixed);
+      setBusy(false);
+    });
+    return function () {
+      gone = true;
+    };
+  }, [pick]);
+  if (busy) return /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, "Loading today\u2019s videos\u2026");
+  if (!vids.length) return /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, err || "Nothing came back. Try another channel.");
+  return /*#__PURE__*/React.createElement(React.Fragment, null, err ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-count"
+  }, err) : null, /*#__PURE__*/React.createElement("div", {
+    className: "fr-vidgrid"
+  }, vids.map(function (v) {
+    const on = playing === v.id;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-vid",
+      key: v.id,
+      "data-on": on ? "1" : "0"
+    }, on ? /*#__PURE__*/React.createElement("div", {
+      className: "fr-vidframe"
+    }, /*#__PURE__*/React.createElement("iframe", {
+      src: "https://www.youtube.com/embed/" + v.id + "?autoplay=1&rel=0&playsinline=1",
+      title: v.title,
+      allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture",
+      allowFullScreen: true,
+      frameBorder: "0"
+    })) : /*#__PURE__*/React.createElement("button", {
+      className: "fr-vidthumb",
+      onClick: function () {
+        setPlaying(v.id);
+      },
+      style: v.thumb ? {
+        backgroundImage: "url(" + v.thumb + ")"
+      } : null
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "fr-vidplay"
+    }, "\u25B6")), /*#__PURE__*/React.createElement("div", {
+      className: "fr-vidmeta"
+    }, /*#__PURE__*/React.createElement("b", null, v.title), /*#__PURE__*/React.createElement("span", null, v.channel, v.when ? " \u00B7 " + v.when : "")));
+  })));
 }
 
 /* A real cover if one exists, drawn lettering if not. Gutenberg publishes a
@@ -9564,7 +9827,7 @@ function MindPage({
   const [where, setWhere] = useState("All");
   const [open, setOpen] = useState(null);
   const [reading, setReading] = useState(null);
-  const [vidTopic, setVidTopic] = useState("All");
+  const [vidChan, setVidChan] = useState("All");
   const [panel, setPanel] = useState(false);
   /* Tapping anywhere else puts it away, which is what every other little panel
      on a phone does. */
@@ -9603,13 +9866,6 @@ function MindPage({
   const shown = open ? list.filter(function (b) {
     return b.id === open;
   })[0] : null;
-  const vidTopics = ["All"].concat(MIND_WATCH.reduce(function (a, w) {
-    if (a.indexOf(w.g) < 0) a.push(w.g);
-    return a;
-  }, []));
-  const vids = MIND_WATCH.filter(function (w) {
-    return vidTopic === "All" || w.g === vidTopic;
-  });
   const freeCount = list.filter(function (b) {
     return b.how === "free";
   }).length;
@@ -9749,31 +10005,48 @@ function MindPage({
     cx: "11", cy: "8", r: "2", fill: "currentColor"
   }), /*#__PURE__*/React.createElement("circle", {
     cx: "5", cy: "12", r: "2", fill: "currentColor"
-  })), /*#__PURE__*/React.createElement("span", null, "Filters"), vidTopic === "All" ? null : /*#__PURE__*/React.createElement("i", {
+  })), /*#__PURE__*/React.createElement("span", null, "Channels"), vidChan === "All" ? null : /*#__PURE__*/React.createElement("i", {
     className: "fr-filterdot"
-  }, vidTopic)), panel ? /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-filterpanel"
+  }, vidChan)), panel ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-filterpanel fr-chanpanel"
   }, /*#__PURE__*/React.createElement("div", {
     className: "fr-filtergroup"
   }, /*#__PURE__*/React.createElement("span", {
     className: "fr-filterlab"
-  }, "About"), /*#__PURE__*/React.createElement("div", {
+  }, "From"), /*#__PURE__*/React.createElement("div", {
     className: "fr-chips"
-  }, vidTopics.map(function (c) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: c,
-      className: "fr-chip",
-      "data-on": vidTopic === c ? "1" : "0",
-      onClick: function () {
-        setVidTopic(c);
-      }
-    }, c);
-  }))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-chip",
+    "data-on": vidChan === "All" ? "1" : "0",
+    onClick: function () {
+      setVidChan("All");
+    }
+  }, "Today\u2019s mix"))), ["Motivation", "Training", "Psychology"].map(function (g) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fr-filtergroup",
+      key: g
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "fr-filterlab"
+    }, g), /*#__PURE__*/React.createElement("div", {
+      className: "fr-chips"
+    }, WATCH_CHANNELS.filter(function (c) {
+      return c.g === g;
+    }).map(function (c) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: c.n,
+        className: "fr-chip",
+        "data-on": vidChan === c.n ? "1" : "0",
+        onClick: function () {
+          setVidChan(c.n);
+        }
+      }, c.n);
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
     className: "fr-filterfoot"
   }, /*#__PURE__*/React.createElement("button", {
     className: "fr-filterclear",
     onClick: function () {
-      setVidTopic("All");
+      setVidChan("All");
     }
   }, "Clear"), /*#__PURE__*/React.createElement("button", {
     className: "fr-readnow fr-filterdone",
@@ -9782,17 +10055,11 @@ function MindPage({
     }
   }, "Done"))) : null), /*#__PURE__*/React.createElement("p", {
     className: "fr-count"
-  }, vids.length, " to watch \u00B7 all free, and they open in the player"), /*#__PURE__*/React.createElement("div", {
-    className: "fr-watchrow"
-  }, vids.map(function (w) {
-    return /*#__PURE__*/React.createElement("button", {
-      className: "fr-watch",
-      key: w.n,
-      onClick: function () {
-        onSearch(w.q, "any");
-      }
-    }, /*#__PURE__*/React.createElement("b", null, w.n), /*#__PURE__*/React.createElement("span", null, w.t));
-  }))), /*#__PURE__*/React.createElement("p", {
+  }, vidChan === "All" ? "Newest from four channels, and it changes every day." : (WATCH_CHANNELS.filter(function (c) {
+    return c.n === vidChan;
+  })[0] || {}).d || ""), /*#__PURE__*/React.createElement(WatchShelf, {
+    pick: vidChan
+  })), /*#__PURE__*/React.createElement("p", {
     className: "fr-fineprint"
   }, "Project Gutenberg books are out of copyright and free to keep. Open Library lends scanned copies one at a time, like a library \u2014 you may need to wait or join a list. Film Room hosts none of them."), shown ? /*#__PURE__*/React.createElement("div", {
     className: "fr-sheet",
