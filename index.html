@@ -583,6 +583,10 @@ body { background: #EDF0F2; }
   .fr-bubble { right:26px; bottom:26px; }
   .fr-bubble .fr-orb { width:64px; height:64px; }
 }
+.fr-orbtrouble p { margin:0 0 9px; }
+.fr-keyrow { display:flex; gap:9px; align-items:center; justify-content:space-between;
+  padding-top:8px; border-top:1px solid var(--edge); }
+.fr-keyrow .fr-addinput { flex:1 1 auto; min-width:0; }
 /* ---------- Mind ---------- */
 /* The reader. A column of text at a sane measure, the chrome kept out of the way. */
 /* An ordinary page, not a takeover. The site header stays where it is and the
@@ -1332,7 +1336,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b180</div>
+<div class="fr-build">b183</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1675,6 +1679,12 @@ const AI_PROXY = "https://filmroomai6.richardachampong075.workers.dev";
 /* Cancelling runs through the same worker. It was referenced by name before it
    existed, so every cancel fell through to the mailto fallback in the catch. */
 const BILLING_WORKER = AI_PROXY;
+/* Voice has its own worker, separate from the one that answers questions. Two
+   reasons: the existing worker only knows how to reach a text model, and
+   replacing it on an iPad means selecting a screenful of code in a cramped
+   editor. A second worker is additive — if it is not deployed yet, or it
+   breaks, everything else carries on exactly as before. */
+const VOICE_PROXY = "https://filmroomvoice.richardachampong075.workers.dev";
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -6054,7 +6064,10 @@ let playerReady = false;
 /* iOS will only let an audio element play if it has been started inside a real
    tap at least once. This is that once: a moment of silence, played on the
    first touch, after which the element can be used whenever. */
-const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+/* A real fiftieth of a second of silence. The zero-length WAV that was here
+   before is rejected by Safari, and a rejected unlock leaves the element barred
+   for the rest of the session. */
+const SILENCE = "data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
 function unlockAudio() {
   if (playerReady) return;
@@ -6106,41 +6119,115 @@ function pcmToWav(b64, rate) {
   return "data:audio/wav;base64," + window.btoa(out);
 }
 
-async function ttsAudio(line) {
-  const key = aiKey();
-  if (!key) return null;
-  const url = (AI_PROXY ? AI_PROXY.replace(/\/$/, "") + "/v1beta/models/" : "https://generativelanguage.googleapis.com/v1beta/models/") + TTS_MODEL + ":generateContent?key=" + key;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: line
-        }]
-      }],
-      generationConfig: {
-        responseModalities: ["AUDIO"],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: TTS_VOICE
-            }
+/* aiKey() returns the proxy URL when there is no key, because everywhere else
+   only needs to know whether *something* can answer. Voice needs a real key, so
+   it asks a different question. */
+function directKey() {
+  const k = GEMINI_KEY || storedKey;
+  return k && k.indexOf("http") !== 0 ? k : "";
+}
+
+/* Why the last attempt made no sound. Read by the bubble. */
+let lastVoiceFail = "";
+
+function readAudioPart(data) {
+  if (data && data.error) throw new Error(data.error.message || "voice request refused");
+  const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  for (let i = 0; i < parts.length; i++) {
+    const inline = parts[i].inlineData || parts[i].inline_data;
+    if (inline && inline.data) {
+      const mime = inline.mimeType || inline.mime_type || "";
+      const rate = parseInt((/rate=(\d+)/.exec(mime) || [])[1] || "24000", 10);
+      return pcmToWav(inline.data, rate);
+    }
+  }
+  return null;
+}
+
+const TTS_BODY = function (line) {
+  return {
+    model: TTS_MODEL,
+    contents: [{
+      role: "user",
+      parts: [{
+        text: line
+      }]
+    }],
+    generationConfig: {
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: TTS_VOICE
           }
         }
       }
-    })
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "voice failed");
-  const part = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-  const inline = (part[0] || {}).inlineData || (part[0] || {}).inline_data;
-  if (!inline || !inline.data) throw new Error("no audio came back");
-  const mime = inline.mimeType || inline.mime_type || "";
-  const rate = parseInt((/rate=(\d+)/.exec(mime) || [])[1] || "24000", 10);
-  return pcmToWav(inline.data, rate);
+    }
+  };
+};
+
+async function ttsAudio(line) {
+  const tried = [];
+
+  /* A real key means Google can be asked directly, which is the only route
+     guaranteed to run the speech model. */
+  const key = directKey();
+  if (key) {
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + TTS_MODEL + ":generateContent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key
+        },
+        body: JSON.stringify(TTS_BODY(line))
+      });
+      const got = readAudioPart(await res.json());
+      if (got) return got;
+      tried.push("your key returned no audio");
+    } catch (e) {
+      tried.push("your key: " + (e && e.message || "failed"));
+    }
+  }
+
+  /* The voice worker, which exists only to reach the speech model. */
+  if (VOICE_PROXY) {
+    try {
+      const res = await fetch(VOICE_PROXY, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(TTS_BODY(line))
+      });
+      const got = readAudioPart(await res.json());
+      if (got) return got;
+      tried.push("the voice worker answered without audio");
+    } catch (e) {
+      tried.push("the voice worker is not reachable \u2014 deploy it, or check the name matches");
+    }
+  }
+
+  /* Last, the ordinary worker, in case it has been taught to pass the model
+     through. Harmless if it has not. */
+  if (AI_PROXY) {
+    try {
+      const res = await fetch(AI_PROXY, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(TTS_BODY(line))
+      });
+      const got = readAudioPart(await res.json());
+      if (got) return got;
+      tried.push("the worker answered without audio \u2014 it is almost certainly forwarding to the text model and ignoring the speech one");
+    } catch (e) {
+      tried.push("the worker: " + (e && e.message || "failed"));
+    }
+  }
+  lastVoiceFail = tried.join("; ");
+  return null;
 }
 
 /* Plays it, and reports each moment so the bubble can move with the words. */
@@ -6274,18 +6361,21 @@ async function speak(text) {
   const clean = tidy(text);
   if (!clean) return;
   stopSpeaking();
-  if (aiKey()) {
-    try {
-      const src = await ttsAudio(clean.slice(0, 700));
-      if (src) {
-        await playAudio(src);
-        return;
-      }
-    } catch (e) {
-      /* Falls through to the browser voice, which at least works with the
-         silent switch off. */
-      if (voiceTrouble) voiceTrouble("");
+  lastVoiceFail = "";
+  try {
+    const src = await ttsAudio(clean.slice(0, 700));
+    if (src) {
+      await playAudio(src);
+      return;
     }
+  } catch (e) {
+    lastVoiceFail = e && e.message || "the voice request failed";
+  }
+  /* Nothing real came back, so the browser's own voice is the last resort. It
+     is the one that goes through the ringer channel and is often mute, which is
+     why the reason is surfaced rather than swallowed. */
+  if (voiceTrouble && lastVoiceFail) {
+    voiceTrouble("No generated voice: " + lastVoiceFail + ". Falling back to the browser voice, which iOS often keeps silent. Paste a Gemini API key in Settings to fix this properly.");
   }
   speakLocal(clean);
 }
@@ -6578,6 +6668,11 @@ function VoiceOrb({
   const [level, setLevel] = useState(0);
   /* Only ever holds a problem. A working answer is spoken, never written. */
   const [trouble, setTrouble] = useState("");
+  /* The key screen is gated on aiKey(), which is true because the proxy exists,
+     so it never appears and there was no way to give voice a key at all. This
+     is that way. */
+  const [keying, setKeying] = useState(false);
+  const [keyText, setKeyText] = useState("");
   useEffect(function () {
     if (!trouble) return;
     const t = setTimeout(function () { setTrouble(""); }, 7000);
@@ -6849,7 +6944,11 @@ function VoiceOrb({
       held2.current = "fired";
       unlockVoice();
       setTrouble("");
-      speak("Voice is working. Good to go.");
+      /* Says which engine produced it, so a silent device and a working one are
+         told apart in one press rather than by guessing. */
+      speak("Voice is working. Good to go.").then(function () {
+        setTrouble(lastVoiceFail ? "Browser voice used. " + lastVoiceFail : "");
+      });
     }, 550);
   }
   function holdEnd() {
@@ -6903,7 +7002,46 @@ function VoiceOrb({
     className: "fr-orbwrap"
   }, orb, /*#__PURE__*/React.createElement("div", {
     className: "fr-glass fr-orbtrouble"
-  }, trouble));
+  }, /*#__PURE__*/React.createElement("p", null, trouble), keying ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-keyrow"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "fr-addinput",
+    type: "password",
+    value: keyText,
+    placeholder: "Paste your Gemini key",
+    onChange: function (e) {
+      setKeyText(e.target.value);
+    },
+    onKeyDown: function (e) {
+      if (e.key === "Enter" && keyText.trim()) {
+        saveKey(keyText.trim());
+        setKeying(false);
+        setTrouble("");
+        speak("Voice key saved. Say something.");
+      }
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-readnow fr-addgo",
+    onClick: function () {
+      if (!keyText.trim()) return;
+      saveKey(keyText.trim());
+      setKeying(false);
+      setTrouble("");
+      speak("Voice key saved. Say something.");
+    }
+  }, "Save")) : /*#__PURE__*/React.createElement("div", {
+    className: "fr-keyrow"
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "fr-bookgo",
+    href: "https://aistudio.google.com/apikey",
+    target: "_blank",
+    rel: "noopener noreferrer"
+  }, "Get a free key"), /*#__PURE__*/React.createElement("button", {
+    className: "fr-filterclear",
+    onClick: function () {
+      setKeying(true);
+    }
+  }, "Paste it here"))));
 }
 
 function Landing({
