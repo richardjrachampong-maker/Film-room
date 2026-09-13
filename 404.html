@@ -400,6 +400,8 @@ body { background: #EDF0F2; }
 .fr-greet { font-family:'Outfit',sans-serif; font-weight:700;
   text-transform:uppercase; font-size:clamp(30px,7.5vw,52px); line-height:1;
   text-align:center; margin:0 0 26px; letter-spacing:-.01em; }
+.fr-lastseen { margin:-6px 0 16px; font-size:13.5px; line-height:1.5;
+  color:var(--faint); max-width:34em; }
 .fr-hint { text-align:center; color:var(--faint); font-size:13.5px; margin:14px 0 0; }
 
 /* --- the bar --- */
@@ -508,6 +510,45 @@ body { background: #EDF0F2; }
    real horizontal scroller that snaps, and the drift is done by scrolling it
    rather than sliding it, which means dragging and drifting are the same motion. */
 
+/* ---------- Voice ---------- */
+.fr-orbwrap { position:relative; flex:0 0 auto; display:flex; align-items:center; }
+.fr-orb { position:relative; appearance:none; border:0; background:none; cursor:pointer;
+  padding:5px; display:flex; align-items:center; justify-content:center;
+  touch-action:manipulation; border-radius:50%; color:inherit; }
+.fr-orb svg, .fr-orb > :not(.fr-orbring) { position:relative; z-index:1; }
+/* The ring is the state. Still when idle, breathing when it is listening for
+   you, quicker when it is talking back. */
+.fr-orbring { position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  border:2px solid transparent; }
+.fr-orb[data-state="off"] { opacity:.45; }
+.fr-orb[data-state="listening"] .fr-orbring { border-color:var(--amber);
+  animation:orbpulse 1.3s ease-in-out infinite; }
+.fr-orb[data-state="thinking"] .fr-orbring { border-color:var(--amber);
+  border-right-color:transparent; border-bottom-color:transparent;
+  animation:orbspin .9s linear infinite; }
+.fr-orb[data-state="talking"] .fr-orbring { border-color:var(--amber);
+  animation:orbpulse .55s ease-in-out infinite; }
+@keyframes orbpulse {
+  0%,100% { transform:scale(1); opacity:.9; }
+  50% { transform:scale(1.28); opacity:.35; }
+}
+@keyframes orbspin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce){
+  .fr-orbring { animation:none !important; }
+}
+.fr-orbsay { position:absolute; z-index:70; top:calc(100% + 10px); left:0;
+  width:max-content; max-width:min(340px,82vw); padding:13px 15px 10px;
+  border-radius:16px; animation:pop .2s cubic-bezier(.2,.7,.3,1) both; }
+.fr-orbyou { margin:0 0 7px; font-size:12.5px; color:var(--faint); line-height:1.45; }
+.fr-orbyou::before { content:"You: "; opacity:.7; }
+.fr-orbreply { margin:0; font-size:14px; line-height:1.55; color:var(--text); }
+.fr-orbfoot { display:flex; gap:14px; margin-top:11px; padding-top:9px;
+  border-top:1px solid var(--edge); }
+.fr-orbfoot button { appearance:none; background:none; border:0; cursor:pointer;
+  font:inherit; font-size:12px; color:var(--faint); padding:2px 0;
+  touch-action:manipulation; }
+.fr-orbfoot button:hover { color:var(--amber); }
+.fr-brandword { gap:0; }
 /* ---------- Mind ---------- */
 /* The reader. A column of text at a sane measure, the chrome kept out of the way. */
 /* An ordinary page, not a takeover. The site header stays where it is and the
@@ -538,8 +579,8 @@ body { background: #EDF0F2; }
   letter-spacing:.06em; margin:32px 0 10px; color:var(--amber); }
 .fr-readinner p { margin:0 0 1.05em; }
 .fr-readinner p + p { text-indent:1.3em; }
-.fr-page { position:relative; padding-bottom:34px; }
-.fr-page + .fr-page { border-top:1px solid var(--edge); padding-top:30px; }
+.fr-bookpage { position:relative; padding-bottom:34px; }
+.fr-bookpage + .fr-bookpage { border-top:1px solid var(--edge); padding-top:30px; }
 .fr-pageno { position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
   font-family:'Outfit',sans-serif; font-size:11px; letter-spacing:.12em;
   color:var(--faint); }
@@ -643,20 +684,25 @@ body { background: #EDF0F2; }
   letter-spacing:.03em; white-space:nowrap; overflow:hidden; max-height:162px;
   writing-mode:vertical-rl; text-orientation:mixed; opacity:.95;
   text-shadow:0 1px 1px rgba(0,0,0,.35); }
-/* The page block: warm paper, darker where it meets the boards, with a couple
-   of soft gathers rather than a hard stripe that moires into spirals. */
-.fr3d-edge { width:42px; height:188px; left:41px; transform:rotateY(90deg) translateZ(62px);
+/* Real boards are bigger than the pages they hold, which is why a closed book
+   has that lip all the way round. The page block is inset 4px at the fore edge
+   and 5px top and bottom, and 3px narrower than the full thickness, so the
+   covers overhang it exactly as they do on a shelf. That single detail is most
+   of the difference between a box with a picture on it and a book. */
+.fr3d-edge { width:36px; height:178px; left:44px; top:5px;
+  transform:rotateY(90deg) translateZ(58px);
   background:
-    linear-gradient(90deg,rgba(0,0,0,.34) 0%,transparent 12%,transparent 88%,rgba(0,0,0,.34) 100%),
-    repeating-linear-gradient(90deg,rgba(0,0,0,.055) 0 2px,transparent 2px 5px),
-    linear-gradient(90deg,#ddd5c2,#f7f3ea 30%,#ece5d7 62%,#f4efe4 84%,#d5cdba); }
-.fr3d-top, .fr3d-bottom { width:124px; height:42px; left:0;
-  background:
-    linear-gradient(90deg,rgba(0,0,0,.3) 0%,transparent 10%,transparent 90%,rgba(0,0,0,.18) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.36) 0%,transparent 11%,transparent 89%,rgba(0,0,0,.36) 100%),
     repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 2px,transparent 2px 5px),
-    linear-gradient(180deg,#f7f3ea,#e6dfd0 60%,#cfc7b4); }
-.fr3d-top { top:73px; transform:rotateX(90deg) translateZ(94px); }
-.fr3d-bottom { top:73px; transform:rotateX(-90deg) translateZ(94px); }
+    linear-gradient(90deg,#ddd5c2,#f7f3ea 28%,#ece5d7 60%,#f4efe4 83%,#d5cdba);
+  border-radius:0 2px 2px 0; }
+.fr3d-top, .fr3d-bottom { width:116px; height:36px; left:4px;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.32) 0%,transparent 9%,transparent 91%,rgba(0,0,0,.2) 100%),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.045) 0 2px,transparent 2px 5px),
+    linear-gradient(180deg,#f9f5ed,#e6dfd0 58%,#cfc7b4); }
+.fr3d-top { top:76px; transform:rotateX(90deg) translateZ(89px); }
+.fr3d-bottom { top:76px; transform:rotateX(-90deg) translateZ(89px); }
 .fr3d-drawn { position:absolute; inset:0; padding:16px 13px; display:flex;
   flex-direction:column; justify-content:space-between; text-align:left;
   border:1px solid rgba(255,255,255,.14); border-radius:2px 6px 6px 2px; }
@@ -708,6 +754,18 @@ body { background: #EDF0F2; }
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .fr-vidmeta span { font-size:11.5px; color:var(--faint); }
 .fr-chanpanel { min-width:270px; max-width:min(380px,88vw); }
+.fr-mychip { display:inline-flex; align-items:center; gap:2px; }
+.fr-mydrop { appearance:none; background:none; border:0; cursor:pointer;
+  color:var(--faint); font-size:15px; line-height:1; padding:2px 4px;
+  touch-action:manipulation; }
+.fr-mydrop:hover { color:var(--amber); }
+.fr-addrow { display:flex; gap:7px; align-items:center; }
+.fr-addinput { flex:1 1 auto; min-width:0; appearance:none; font:inherit; font-size:12.5px;
+  padding:7px 11px; border-radius:999px; background:var(--glass-2);
+  border:1px solid var(--edge); color:var(--text); }
+.fr-addinput::placeholder { color:var(--faint); }
+.fr-addinput:focus { outline:none; border-color:var(--amber); }
+.fr-addgo { padding:7px 14px; font-size:12.5px; flex:0 0 auto; }
 .fr-fineprint { margin:22px 0 40px; font-size:12px; line-height:1.6; color:var(--faint); }
 .fr-booksheet { position:relative; max-width:460px; margin:auto; padding:22px 20px 20px;
   display:flex; flex-direction:column; gap:7px; }
@@ -1240,7 +1298,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b169</div>
+<div class="fr-build">b172</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3647,9 +3705,12 @@ function readTitle(text) {
 function compareRule() {
   return "\n\nWHEN YOU NAME A PLAYER TO STUDY:\n" + "Start from the well-known ones. Ask yourself first whether a great or an established pro " + "already does this thing better than anyone, and if one does, that is the name. There is a " + "reason the legends are legends, and there is far more film of them.\n" + "Lead with one name, not a list of five. Say what specifically to watch them for, and where " + "to find it \u2014 a competition, a season, a type of clip \u2014 so it can actually be looked up.\n" + "You may name someone less famous, but only when they are a genuinely closer match, and then " + "say plainly why them rather than the obvious choice.\n" + "Match the name to this player's size, position and level, not just to the skill. A small " + "guard is not helped by being told to study a seven footer.\n" + "Never invent a player, a clip, or a game that you are not sure exists.";
 }
+/* Held at module level so every prompt builder can see it without threading it
+   through eight components. Set once when the account is read. */
+let TRAIN_LOG = [];
 function coachExtra() {
   const c = adminFlags().coach;
-  return (c ? "\n\nAlso follow this standing instruction: " + c : "") + profileLine() + posLine() + planLine() + compareRule();
+  return (c ? "\n\nAlso follow this standing instruction: " + c : "") + profileLine() + posLine() + planLine() + compareRule() + logLine(TRAIN_LOG, SPORT);
 }
 async function ai(turns, wantJSON, opts) {
   // An empty payload is what makes Google answer "request has empty input",
@@ -5860,6 +5921,315 @@ function SportFlow({
   }, "Everything follows this \u2014 players, games and the coach. Change it any time in Settings."));
 }
 
+/* ---------------------- VOICE ---------------------- */
+
+/* Speaking and listening, on the badge in the header so it follows you onto
+   every page. Both halves are built into the browser, so this costs nothing to
+   run and works offline for the speaking half.
+
+   The rule it follows: it speaks when you spoke to it, and once when you arrive.
+   It does not read the screen at you. A thing that talks when you did not ask
+   is not an assistant, it is a nuisance. */
+
+const VOICE_KEY = "fr-voice";
+
+function voiceOn() {
+  try {
+    return window.localStorage.getItem(VOICE_KEY) !== "off";
+  } catch (e) {
+    return true;
+  }
+}
+function setVoiceOn(on) {
+  try {
+    window.localStorage.setItem(VOICE_KEY, on ? "on" : "off");
+  } catch (e) {}
+}
+function canSpeak() {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+function canHear() {
+  return typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+/* Voices load asynchronously in every browser, and on iOS the list is empty
+   until something has spoken once, so this is asked for each time rather than
+   cached at startup. */
+function pickVoice() {
+  if (!canSpeak()) return null;
+  const all = window.speechSynthesis.getVoices() || [];
+  if (!all.length) return null;
+  const want = ["Daniel", "Google UK English Male", "Arthur", "Alex", "Samantha", "Google US English"];
+  for (let i = 0; i < want.length; i++) {
+    const hit = all.filter(function (v) {
+      return v.name === want[i];
+    })[0];
+    if (hit) return hit;
+  }
+  return all.filter(function (v) {
+    return /^en/i.test(v.lang);
+  })[0] || all[0];
+}
+
+let speaking = false;
+let onSpeakChange = null;
+
+function stopSpeaking() {
+  if (!canSpeak()) return;
+  try {
+    window.speechSynthesis.cancel();
+  } catch (e) {}
+  speaking = false;
+  if (onSpeakChange) onSpeakChange(false);
+}
+
+function speak(text) {
+  if (!canSpeak() || !voiceOn()) return;
+  const clean = String(text || "")
+    /* Markdown read aloud sounds like someone reciting punctuation. */
+    .replace(/```[\s\S]*?```/g, " ").replace(/[*_#>`]/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1").replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  stopSpeaking();
+  const u = new window.SpeechSynthesisUtterance(clean.slice(0, 1200));
+  const v = pickVoice();
+  if (v) u.voice = v;
+  u.rate = 1.03;
+  u.pitch = 0.96;
+  u.onstart = function () {
+    speaking = true;
+    if (onSpeakChange) onSpeakChange(true);
+  };
+  u.onend = u.onerror = function () {
+    speaking = false;
+    if (onSpeakChange) onSpeakChange(false);
+  };
+  try {
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* What it says when you arrive. Built from the clock, your name and the log, so
+   it is a real sentence about you rather than a recording. */
+function partOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function greetLine(log, sport) {
+  const me = loadMe(sport) || {};
+  const name = String(me.name || "").trim().split(/\s+/)[0];
+  const hello = partOfDay() + (name ? ", " + name : "") + ".";
+  const mine = (log || []).filter(function (e) {
+    return e && e.sport === sport;
+  });
+  if (!mine.length) {
+    return hello + " Send me a clip whenever you are ready and I will break it down.";
+  }
+  const last = mine[mine.length - 1];
+  const gap = daysSince(last.on);
+  if (gap !== null && gap >= 7) {
+    return hello + " It has been " + gap + " days since your last clip. Last one was " + last.skill + (last.grade ? ", graded " + last.grade : "") + ".";
+  }
+  const counts = {};
+  mine.forEach(function (e) {
+    const k = (e.broke || "").toLowerCase();
+    if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  const repeat = Object.keys(counts).filter(function (k) {
+    return counts[k] > 2;
+  })[0];
+  if (repeat) {
+    return hello + " " + counts[repeat] + " of your clips have broken at the " + repeat + ". Worth working on that today.";
+  }
+  return hello + " Last time was " + last.skill + (last.grade ? ", graded " + last.grade : "") + ". What are we doing today?";
+}
+
+/* Asking out loud, from any page. Kept deliberately short: an answer that is
+   read aloud has to be sayable, and nobody wants six hundred words spoken at
+   them while they are standing on a court. */
+async function askAloud(question) {
+  const turns = [{
+    role: "user",
+    parts: [T("You are an elite " + D.term + " coach, answering out loud. The player is probably " + "holding a phone in a gym, so this will be spoken, not read.\n\n" + "Answer in at most three sentences. No headings, no bullets, no markdown, no lists. " + "Plain spoken English. If they need a full breakdown, say so and tell them to send the " + "clip in Train rather than trying to give it here.\n\n" + "THEY SAID: \"" + String(question || "").slice(0, 500) + "\"" + coachExtra())]
+  }];
+  return ai(turns, false, {
+    fast: true
+  });
+}
+
+function VoiceOrb({
+  sport,
+  onOpenTrain
+}) {
+  const [on, setOn] = useState(voiceOn);
+  const [state, setState] = useState("idle");
+  const [said, setSaid] = useState("");
+  const [reply, setReply] = useState("");
+  const rec = useRef(null);
+  const greeted = useRef(false);
+
+  useEffect(function () {
+    onSpeakChange = function (yes) {
+      setState(function (s) {
+        return yes ? "talking" : s === "talking" ? "idle" : s;
+      });
+    };
+    return function () {
+      onSpeakChange = null;
+    };
+  }, []);
+
+  /* Browsers will not let a page make noise before the person has touched it,
+     which is the right rule. So the greeting waits for the first tap anywhere
+     and then happens once. */
+  useEffect(function () {
+    if (!on || !canSpeak()) return;
+    function first() {
+      if (greeted.current) return;
+      greeted.current = true;
+      const line = greetLine(loadLog((loadSession() || {}).uid), sport);
+      setReply(line);
+      speak(line);
+      setTimeout(function () {
+        setReply(function (r) {
+          return r === line ? "" : r;
+        });
+      }, 9000);
+    }
+    document.addEventListener("pointerdown", first, {
+      once: true
+    });
+    return function () {
+      document.removeEventListener("pointerdown", first);
+    };
+  }, [on, sport]);
+
+  function stopListening() {
+    if (rec.current) {
+      try {
+        rec.current.stop();
+      } catch (e) {}
+      rec.current = null;
+    }
+    setState("idle");
+  }
+
+  async function answer(q) {
+    setState("thinking");
+    setSaid(q);
+    try {
+      const out = await askAloud(q);
+      setReply(out);
+      speak(out);
+    } catch (e) {
+      const msg = e && e.message || "That did not go through.";
+      setReply(msg);
+      speak(msg);
+      setState("idle");
+    }
+  }
+
+  function tap() {
+    /* One control, and what it does depends on what it is doing. Talking, and a
+       tap shuts it up \u2014 which is what you want when it is mid-sentence and
+       someone walks over. */
+    if (state === "talking") {
+      stopSpeaking();
+      setState("idle");
+      return;
+    }
+    if (state === "listening") {
+      stopListening();
+      return;
+    }
+    if (!on) {
+      setOn(true);
+      setVoiceOn(true);
+      return;
+    }
+    if (!canHear()) {
+      /* No microphone in this browser, so it falls back to the typed coach. */
+      if (onOpenTrain) onOpenTrain();
+      return;
+    }
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new R();
+    r.lang = "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    let heard = "";
+    r.onresult = function (e) {
+      heard = "";
+      for (let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript;
+      setSaid(heard);
+    };
+    r.onerror = function () {
+      stopListening();
+    };
+    r.onend = function () {
+      rec.current = null;
+      setState(function (s) {
+        return s === "listening" ? "idle" : s;
+      });
+      if (heard.trim()) answer(heard.trim());
+    };
+    rec.current = r;
+    setSaid("");
+    setReply("");
+    setState("listening");
+    try {
+      r.start();
+    } catch (e) {
+      stopListening();
+    }
+  }
+
+  function mute() {
+    stopSpeaking();
+    stopListening();
+    setOn(false);
+    setVoiceOn(false);
+    setReply("");
+    setSaid("");
+  }
+
+  const label = state === "listening" ? "Listening \u2014 tap to stop" : state === "talking" ? "Tap to stop talking" : state === "thinking" ? "Thinking" : on ? "Tap to speak" : "Voice is off \u2014 tap to turn on";
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fr-orbwrap"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "fr-orb",
+    "data-state": on ? state : "off",
+    onClick: tap,
+    onDoubleClick: mute,
+    title: label,
+    "aria-label": label
+  }, /*#__PURE__*/React.createElement(Mark2, {
+    size: 22
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "fr-orbring"
+  })), said || reply ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-glass fr-orbsay"
+  }, said ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-orbyou"
+  }, said) : null, reply ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-orbreply"
+  }, reply) : state === "thinking" ? /*#__PURE__*/React.createElement("p", {
+    className: "fr-orbreply"
+  }, "\u2026") : null, /*#__PURE__*/React.createElement("div", {
+    className: "fr-orbfoot"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function () {
+      setSaid("");
+      setReply("");
+      stopSpeaking();
+    }
+  }, "Close"), /*#__PURE__*/React.createElement("button", {
+    onClick: mute
+  }, "Mute voice"))) : null);
+}
+
 function Landing({
   go,
   sport,
@@ -6693,7 +7063,178 @@ function mergeChats(a, b) {
 /* What the coach does with a piece of film. Shared so every path \u2014 one clip
    sent whole, several broken into stills \u2014 behaves the same way. */
 function filmRules(said) {
-  return (said ? "THE PLAYER ASKED: \"" + said + "\"\n\n" + "Answer that question first and directly, using what you see in the film as your evidence. " + "Everything else you cover should serve their question rather than sit alongside it.\n\n" : "They sent this without a question, so give them the full read.\n\n") + "HOW TO ANSWER:\n" + "Say what the film actually shows before judging it.\n" + "Be specific about what you can see, and say so when the angle or the blur hides something " + "instead of guessing.\n" + "End with drills \u2014 real sets, real reps, a coaching cue for each \u2014 unless they asked you not to. " + "If they asked only for what is wrong, or only for a grade, or said no drills, then give them " + "exactly that and stop.\n" + "If the film is not someone playing \u2014 a written plan, a whiteboard, a screen recording \u2014 read " + "what it says and answer about that, rather than pretending to watch a player.\n";
+  return (said ? "THE PLAYER ASKED: \"" + said + "\"\n\n" + "Answer that question first and directly, using what you see in the film as your evidence. " + "Everything else you cover should serve their question rather than sit alongside it.\n\n" : "They sent this without a question, so give them the full read.\n\n") + "HOW TO ANSWER:\n" + "Say what the film actually shows before judging it.\n" + "Be specific about what you can see, and say so when the angle or the blur hides something " + "instead of guessing.\n" + "End with drills \u2014 real sets, real reps, a coaching cue for each \u2014 unless they asked you not to. " + "If they asked only for what is wrong, or only for a grade, or said no drills, then give them " + "exactly that and stop.\n" + "If the film is not someone playing \u2014 a written plan, a whiteboard, a screen recording \u2014 read " + "what it says and answer about that, rather than pretending to watch a player.\n" + logRule();
+}
+
+/* ---------------------- THE LOG ---------------------- */
+
+/* The coach already keeps a written file on you. This is the other half of a
+   memory: the dated, structured record of every clip it graded — what the skill
+   was, what grade it gave, where the rep broke, what it told you to go and do.
+   A note can say "struggles finishing left"; only a log can say "that is the
+   fourth left-hand rep in nine days and the grade has gone B-, B, B+".
+
+   It costs nothing extra to collect. The coach is asked to end a film answer
+   with one machine-readable line, which is stripped before you ever see it. */
+
+const LOG_MAX = 120;
+
+function logKeyFor(uid) {
+  return "fr-log:" + (uid || "guest");
+}
+
+function loadLog(uid) {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(logKeyFor(uid)) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveLog(uid, log) {
+  try {
+    window.localStorage.setItem(logKeyFor(uid), JSON.stringify((log || []).slice(-LOG_MAX)));
+  } catch (e) {}
+}
+
+async function pullLog(user) {
+  if (!user || !accountsOn()) return null;
+  try {
+    const res = await fetch(docPath(user.uid), {
+      headers: {
+        Authorization: "Bearer " + user.token
+      }
+    });
+    if (!res.ok) return null;
+    const f = (await res.json()).fields || {};
+    const raw = (f.trainingLog || {}).stringValue || "";
+    const v = raw ? JSON.parse(raw) : [];
+    return Array.isArray(v) ? v : [];
+  } catch (e) {
+    /* Null means could not read, which is different from "you have no log". */
+    return null;
+  }
+}
+
+async function pushLog(user, log) {
+  if (!user || !accountsOn()) return false;
+  try {
+    const res = await fetch(docPath(user.uid) + "?updateMask.fieldPaths=trainingLog", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + user.token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fields: {
+          trainingLog: {
+            stringValue: JSON.stringify((log || []).slice(-LOG_MAX))
+          }
+        }
+      })
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* The coach writes this at the very end of a film answer. It never reaches the
+   screen — it is cut out here and turned into a row in the log. */
+const LOG_LINE = /<<LOG([\s\S]*?)>>/;
+
+function stripLog(text) {
+  return String(text || "").replace(LOG_LINE, "").replace(/\n{3,}\s*$/, "\n").trimEnd();
+}
+
+function readLogLine(text, sport) {
+  const m = LOG_LINE.exec(String(text || ""));
+  if (!m) return null;
+  const bits = {};
+  m[1].split("|").forEach(function (part) {
+    const i = part.indexOf("=");
+    if (i < 0) return;
+    const k = part.slice(0, i).trim().toLowerCase();
+    const v = part.slice(i + 1).trim();
+    if (k && v && v !== "-" && !/^(unknown|n\/a|none)$/i.test(v)) bits[k] = v;
+  });
+  if (!bits.skill && !bits.grade) return null;
+  return {
+    on: new Date().toISOString().slice(0, 10),
+    sport: sport,
+    skill: (bits.skill || "").slice(0, 80),
+    grade: (bits.grade || "").slice(0, 6),
+    broke: (bits.broke || "").slice(0, 120),
+    drills: (bits.drills || "").split(";").map(function (d) {
+      return d.trim().slice(0, 70);
+    }).filter(Boolean).slice(0, 4)
+  };
+}
+
+function daysSince(iso) {
+  const then = Date.parse(iso + "T00:00:00");
+  if (isNaN(then)) return null;
+  return Math.floor((Date.now() - then) / 86400000);
+}
+
+function agoWords(iso) {
+  const d = daysSince(iso);
+  if (d === null) return iso;
+  if (d <= 0) return "today";
+  if (d === 1) return "yesterday";
+  if (d < 7) return d + " days ago";
+  if (d < 14) return "last week";
+  if (d < 60) return Math.round(d / 7) + " weeks ago";
+  return Math.round(d / 30) + " months ago";
+}
+
+/* What the coach is told before it answers. Kept tight on purpose: a wall of
+   history makes the model recite instead of coach. */
+function logLine(log, sport) {
+  const mine = (log || []).filter(function (e) {
+    return e && (!sport || e.sport === sport);
+  });
+  if (!mine.length) return "";
+  const recent = mine.slice(-8);
+  const rows = recent.map(function (e) {
+    return "- " + agoWords(e.on) + ": " + (e.skill || "a clip") + (e.grade ? ", graded " + e.grade : "") + (e.broke ? ", broke at " + e.broke : "") + (e.drills && e.drills.length ? ", told to do " + e.drills.join(" / ") : "");
+  }).join("\n");
+  const last = mine[mine.length - 1];
+  const gap = daysSince(last.on);
+
+  /* The repeated fault is the thing a real coach would open with. */
+  const counts = {};
+  mine.forEach(function (e) {
+    const k = (e.broke || e.skill || "").toLowerCase().slice(0, 40);
+    if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  let worst = "",
+    n = 0;
+  Object.keys(counts).forEach(function (k) {
+    if (counts[k] > n) {
+      n = counts[k];
+      worst = k;
+    }
+  });
+  return "\n\nTHEIR RECORD WITH YOU (" + mine.length + " graded clips):\n" + rows + (n > 2 ? "\nThe same thing has come up " + n + " times: " + worst + "." : "") + (gap !== null && gap > 6 ? "\nIt has been " + gap + " days since the last one." : "") + "\nUse this. Refer to it the way a coach who has watched them before would \u2014 " + "name the pattern, say whether it has moved, hold them to a drill you already " + "gave them. Do not recite the list back at them.";
+}
+
+function addToLog(entry) {
+  if (!entry) return;
+  const u = loadSession();
+  const uid = u && u.uid;
+  const next = loadLog(uid).concat([entry]).slice(-LOG_MAX);
+  TRAIN_LOG = next;
+  saveLog(uid, next);
+  /* Written up straight away, so a phone closed right after a grade still has
+     it on the account. */
+  if (u) pushLog(u, next);
+}
+
+/* And the instruction that makes the next row exist. */
+function logRule() {
+  return "\n\nAFTER A FILM ANSWER, ON THE VERY LAST LINE, WRITE THIS AND NOTHING AFTER IT:\n" + "<<LOG skill=... | grade=... | broke=... | drills=first; second>>\n" + "skill is the one thing the clip was of, in three or four words. grade is the " + "letter you gave. broke is the single moment it goes wrong, in a few words. " + "drills is what you told them to go and do, separated by semicolons.\n" + "It is read by the app and never shown to the player, so do not mention it, " + "do not explain it, and do not write it for a question that had no film in it.";
 }
 
 /* A coach keeps a file on a player: what they are, what keeps going wrong,
@@ -7297,6 +7838,11 @@ const SURVEY = [{
   q: "What do you most want to fix?",
   sub: "One thing. Say it the way you would say it to a coach.",
   ph: "my shot keeps coming up short"
+}, {
+  k: "name",
+  q: "What should I call you?",
+  sub: "Used when it greets you out loud.",
+  ph: "Richard"
 }, {
   k: "model",
   q: "Whose game do you already watch?",
@@ -8098,9 +8644,14 @@ function Train({
             fast: false
           });
           if (stop.current) return;
+          /* Cut the machine line out before anyone sees it, and turn it into a
+             row in the log. */
+          const entry = readLogLine(whole, sport);
+          const clean = stripLog(whole);
+          if (entry) addToLog(entry);
           setMsgs(m => m.concat([{
             who: "coach",
-            text: whole
+            text: clean
           }]));
           setHistory(h => h.concat([{
             role: "user",
@@ -8216,6 +8767,41 @@ function Train({
   }, [msgs.length, busy]);
 
   const empty = !msgs.length && !busy;
+  /* The screen should know you have been here before. Not a summary of the log
+     — one line, the thing a coach would actually say as you walk in. */
+  /* Read from the device rather than the module copy, which is filled by an
+     effect that has not necessarily run by the first render. Re-read after every
+     answer, since that is when a new row appears. */
+  const [logRows, setLogRows] = useState(function () {
+    return loadLog(user && user.uid);
+  });
+  useEffect(function () {
+    setLogRows(loadLog(user && user.uid));
+  }, [user && user.uid, msgs.length, busy]);
+  const mine = logRows.filter(function (e) {
+    return e && e.sport === sport;
+  });
+  const last = mine[mine.length - 1];
+  const gap = last ? daysSince(last.on) : null;
+  const greeting = !last ? "What are we working on?" : gap >= 10 ? "Been a while. What are we working on?" : "What are we working on?";
+  let lastSeen = "";
+  if (last) {
+    /* If the same fault keeps showing up, that is the more useful line. */
+    const counts = {};
+    mine.forEach(function (e) {
+      const k = (e.broke || "").toLowerCase();
+      if (k) counts[k] = (counts[k] || 0) + 1;
+    });
+    const repeat = Object.keys(counts).filter(function (k) {
+      return counts[k] > 2;
+    })[0];
+    if (repeat && (last.broke || "").toLowerCase() === repeat) {
+      lastSeen = "Last time — " + last.skill + (last.grade ? ", " + last.grade : "") + ". " + "That is " + counts[repeat] + " clips breaking at the " + repeat + ".";
+    } else {
+      lastSeen = "Last time, " + agoWords(last.on) + " — " + last.skill + (last.grade ? ", graded " + last.grade : "") + (last.broke ? ". It broke at the " + last.broke : "") + ".";
+    }
+    if (last.drills && last.drills.length) lastSeen += " You were given " + last.drills[0] + ".";
+  }
   function grow(el) {
     if (!el) return;
     el.style.height = "auto";
@@ -8425,7 +9011,9 @@ function Train({
       }
     }, /*#__PURE__*/React.createElement("h2", {
       className: "fr-greet"
-    }, "What are we working on?"), bar, /*#__PURE__*/React.createElement("p", {
+    }, greeting), lastSeen ? /*#__PURE__*/React.createElement("p", {
+      className: "fr-lastseen"
+    }, lastSeen) : null, bar, /*#__PURE__*/React.createElement("p", {
       className: "fr-hint"
     }, "Tap + to send a clip. Send two of the same drill weeks apart and it will tell you what changed."), /*#__PURE__*/React.createElement("p", {
       className: "fr-disclaim"
@@ -9272,7 +9860,7 @@ function Reader({
     }
     function track() {
       const p = Math.min(1, Math.max(0, window.scrollY / room()));
-      const marks = document.querySelectorAll(".fr-page");
+      const marks = document.querySelectorAll(".fr-bookpage");
       let n = 1;
       for (let i = 0; i < marks.length; i++) {
         if (marks[i].getBoundingClientRect().top <= 90) n = i + 1;
@@ -9345,7 +9933,7 @@ function Reader({
     className: "fr-readinner"
   }, /*#__PURE__*/React.createElement("h1", null, book.t), /*#__PURE__*/React.createElement("h2", null, book.a), pages.slice(0, built).map(function (pg, n) {
     return /*#__PURE__*/React.createElement("section", {
-      className: "fr-page", key: n, id: "pg" + (n + 1)
+      className: "fr-bookpage", key: n, id: "pg" + (n + 1)
     }, pg.map(function (p, i) {
       /* A short line in capitals is a heading in almost every Gutenberg text. */
       const head = p.length < 70 && p === p.toUpperCase() && /[A-Z]/.test(p);
@@ -9431,6 +10019,40 @@ function saveJSON(k, v) {
     window.localStorage.setItem(k, JSON.stringify(v));
   } catch (e) {}
 }
+/* Channels you add yourself, kept on this device. I could not work out which
+   channel you meant from the name, and guessing would have put the wrong one on
+   the shelf, so this is the honest version: type it and it is yours. */
+const MINE_KEY = "fr-my-channels";
+function myChannels() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(MINE_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch (e) {
+    return [];
+  }
+}
+function addMyChannel(name) {
+  const n = String(name || "").trim();
+  if (!n) return myChannels();
+  const all = myChannels();
+  if (all.some(function (x) {
+    return x.toLowerCase() === n.toLowerCase();
+  })) return all;
+  all.push(n);
+  try {
+    window.localStorage.setItem(MINE_KEY, JSON.stringify(all));
+  } catch (e) {}
+  return all;
+}
+function dropMyChannel(name) {
+  const all = myChannels().filter(function (x) {
+    return x !== name;
+  });
+  try {
+    window.localStorage.setItem(MINE_KEY, JSON.stringify(all));
+  } catch (e) {}
+  return all;
+}
 const chanIds = loadJSON(CHAN_KEY);
 let chanFeeds = loadJSON(FEED_KEY);
 
@@ -9467,6 +10089,12 @@ async function channelVideos(name, max) {
   if (cached && cached.day === stamp && cached.vids && cached.vids.length) return cached.vids;
   const id = await channelIdFor(name);
   const data = await ytJSON("https://www.googleapis.com/youtube/v3/search" + "?part=snippet&type=video&videoEmbeddable=true&safeSearch=moderate" + "&order=date&maxResults=" + (max || 12) + "&channelId=" + id + "&key=" + YT_KEY);
+  /* The channels post two kinds of thing. One is a speech or an interview with
+     something in it. The other is affirmation tracks, healing frequencies, sleep
+     loops and AI-voiced wallpaper — an hour of "I AM SUCCESSFUL" over a stock
+     jet. That second kind is what makes a page look like slop, so it does not
+     get on the shelf. */
+  const SLOP = /(\b\d{3,4}\s?hz\b|affirmation|subliminal|frequenc(y|ies)|manifest|law of attraction|binaural|solfeggio|meditation music|sleep (music|hypnosis)|study music|lofi|abundance|wealth dna|chakra|reprogram (your|the) (mind|subconscious)|listen while you sleep|\bai voice\b|#shorts)/i;
   const vids = (data.items || []).map(function (it) {
     return {
       id: it.id && it.id.videoId,
@@ -9476,7 +10104,7 @@ async function channelVideos(name, max) {
       thumb: ((it.snippet.thumbnails || {}).medium || (it.snippet.thumbnails || {}).default || {}).url
     };
   }).filter(function (v) {
-    return v.id && !/#shorts/i.test(v.title);
+    return v.id && !SLOP.test(v.title);
   });
   chanFeeds[name] = {
     day: stamp,
@@ -9491,9 +10119,25 @@ async function channelVideos(name, max) {
 function todaysChannels(n) {
   const d = new Date();
   const seed = Math.floor(d.getTime() / 86400000);
+  /* Yours go in the pool alongside the built-in ones, and lead the mix, since
+     you chose them on purpose. */
+  const mine = myChannels().map(function (x) {
+    return {
+      n: x,
+      g: "Yours",
+      d: "Added by you."
+    };
+  });
+  const pool = mine.concat(WATCH_CHANNELS);
   const out = [];
-  for (let i = 0; i < n; i++) out.push(WATCH_CHANNELS[(seed + i * 5) % WATCH_CHANNELS.length]);
-  return out;
+  for (let i = 0; i < Math.min(n, pool.length); i++) out.push(pool[(seed + i * 5) % pool.length]);
+  /* Anything you added that the rotation missed still gets a place. */
+  mine.forEach(function (m) {
+    if (out.length < n + mine.length && !out.some(function (o) {
+      return o.n === m.n;
+    })) out.unshift(m);
+  });
+  return out.slice(0, Math.max(n, mine.length));
 }
 
 function WatchShelf({
@@ -9593,6 +10237,8 @@ const coverCache = {};
 
 function gutenCover(u) {
   const m = /gutenberg\.org\/ebooks\/(\d+)/.exec(u || "");
+  /* Gutenberg publishes small and medium. Medium is 256px, which on a retina
+     screen is exactly the width the cover is drawn at, so it holds up. */
   return m ? "https://www.gutenberg.org/cache/epub/" + m[1] + "/pg" + m[1] + ".cover.medium.jpg" : null;
 }
 
@@ -9828,6 +10474,8 @@ function MindPage({
   const [open, setOpen] = useState(null);
   const [reading, setReading] = useState(null);
   const [vidChan, setVidChan] = useState("All");
+  const [mine, setMine] = useState(myChannels);
+  const [adding, setAdding] = useState("");
   const [panel, setPanel] = useState(false);
   /* Tapping anywhere else puts it away, which is what every other little panel
      on a phone does. */
@@ -10021,7 +10669,59 @@ function MindPage({
     onClick: function () {
       setVidChan("All");
     }
-  }, "Today\u2019s mix"))), ["Motivation", "Training", "Psychology"].map(function (g) {
+  }, "Today\u2019s mix"))), mine.length ? /*#__PURE__*/React.createElement("div", {
+    className: "fr-filtergroup"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-filterlab"
+  }, "Yours"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-chips"
+  }, mine.map(function (c) {
+    return /*#__PURE__*/React.createElement("span", {
+      className: "fr-mychip",
+      key: c
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "fr-chip",
+      "data-on": vidChan === c ? "1" : "0",
+      onClick: function () {
+        setVidChan(c);
+      }
+    }, c), /*#__PURE__*/React.createElement("button", {
+      className: "fr-mydrop",
+      title: "Remove",
+      onClick: function () {
+        setMine(dropMyChannel(c));
+        if (vidChan === c) setVidChan("All");
+      }
+    }, "\u00D7"));
+  }))) : null, /*#__PURE__*/React.createElement("div", {
+    className: "fr-filtergroup"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fr-filterlab"
+  }, "Add a channel"), /*#__PURE__*/React.createElement("div", {
+    className: "fr-addrow"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "fr-addinput",
+    value: adding,
+    placeholder: "Channel name, as it appears on YouTube",
+    onChange: function (e) {
+      setAdding(e.target.value);
+    },
+    onKeyDown: function (e) {
+      if (e.key === "Enter" && adding.trim()) {
+        setMine(addMyChannel(adding));
+        setVidChan(adding.trim());
+        setAdding("");
+      }
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-readnow fr-addgo",
+    onClick: function () {
+      if (!adding.trim()) return;
+      setMine(addMyChannel(adding));
+      setVidChan(adding.trim());
+      setAdding("");
+    }
+  }, "Add"))), ["Motivation", "Training", "Psychology"].map(function (g) {
     return /*#__PURE__*/React.createElement("div", {
       className: "fr-filtergroup",
       key: g
@@ -10198,6 +10898,27 @@ function App() {
       return;
     }
     if (ME_UID !== user.uid) clearMe();
+    /* The log belongs to the account, so it is read here rather than inside
+       Train — the coach needs it whichever screen you start on. */
+    TRAIN_LOG = loadLog(user.uid);
+    pullLog(user).then(function (remote) {
+      if (dead || !remote) return;
+      const local = loadLog(user.uid);
+      /* Merged on date, skill and grade, so two devices that both graded
+         something keep both rows instead of one overwriting the other. */
+      const seen = {};
+      const all = remote.concat(local).filter(function (e) {
+        const k = e.on + "|" + (e.skill || "") + "|" + (e.grade || "");
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      }).sort(function (a, b) {
+        return a.on < b.on ? -1 : 1;
+      }).slice(-LOG_MAX);
+      TRAIN_LOG = all;
+      saveLog(user.uid, all);
+      if (all.length > remote.length) pushLog(user, all);
+    });
     pullMe(user).then(function (all) {
       if (dead) return;
       ME = all || {};
@@ -10551,12 +11272,15 @@ function App() {
     "aria-label": "Go back"
   }, /*#__PURE__*/React.createElement("span", {
     "aria-hidden": "true"
-  }, "\u2190")), /*#__PURE__*/React.createElement("button", {
-    className: "fr-brand",
+  }, "\u2190")), /*#__PURE__*/React.createElement(VoiceOrb, {
+    sport: sport,
+    onOpenTrain: function () {
+      go("train");
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "fr-brand fr-brandword",
     onClick: () => go("home")
-  }, /*#__PURE__*/React.createElement(Mark2, {
-    size: 22
-  }), "Film Room"), /*#__PURE__*/React.createElement("div", {
+  }, "Film Room"), /*#__PURE__*/React.createElement("div", {
     className: "fr-links"
   }, NAV.concat(myTeamCode() ? [{
     id: "team",
