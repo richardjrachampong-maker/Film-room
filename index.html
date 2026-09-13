@@ -511,43 +511,47 @@ body { background: #EDF0F2; }
    rather than sliding it, which means dragging and drifting are the same motion. */
 
 /* ---------- Voice ---------- */
-.fr-orbwrap { position:relative; flex:0 0 auto; display:flex; align-items:center; }
 .fr-orb { position:relative; appearance:none; border:0; background:none; cursor:pointer;
-  padding:5px; display:flex; align-items:center; justify-content:center;
-  touch-action:manipulation; border-radius:50%; color:inherit; }
-.fr-orb svg, .fr-orb > :not(.fr-orbring) { position:relative; z-index:1; }
-/* The ring is the state. Still when idle, breathing when it is listening for
-   you, quicker when it is talking back. */
-.fr-orbring { position:absolute; inset:0; border-radius:50%; pointer-events:none;
-  border:2px solid transparent; }
-.fr-orb[data-state="off"] { opacity:.45; }
-.fr-orb[data-state="listening"] .fr-orbring { border-color:var(--amber);
-  animation:orbpulse 1.3s ease-in-out infinite; }
+  padding:7px; margin:-7px 2px -7px -2px; display:flex; align-items:center;
+  justify-content:center; touch-action:manipulation; border-radius:50%;
+  color:inherit; flex:0 0 auto; --lvl:0; }
+/* The mark itself leans into the sound a little, which is what makes it feel
+   like the thing is speaking rather than a light next to it. */
+.fr-orb svg { position:relative; z-index:2; display:block;
+  transform:scale(calc(1 + var(--lvl) * 0.14));
+  transition:transform .07s linear; }
+.fr-orb[data-state="off"] { opacity:.4; }
+/* Two rings, the outer one lagging, so a loud word throws a ripple rather than
+   a single hard step. */
+.fr-orbring { position:absolute; inset:3px; border-radius:50%; pointer-events:none;
+  border:2px solid transparent; z-index:1; }
+.fr-orb[data-state="listening"] .fr-orbring,
+.fr-orb[data-state="talking"] .fr-orbring {
+  border-color:var(--amber);
+  opacity:calc(.28 + var(--lvl) * .72);
+  transform:scale(calc(1 + var(--lvl) * 0.75));
+  transition:transform .08s ease-out, opacity .08s linear; }
+.fr-orbring2 { inset:1px; }
+.fr-orb[data-state="listening"] .fr-orbring2,
+.fr-orb[data-state="talking"] .fr-orbring2 {
+  opacity:calc(.14 + var(--lvl) * .4);
+  transform:scale(calc(1 + var(--lvl) * 1.25));
+  transition:transform .22s cubic-bezier(.2,.7,.3,1), opacity .22s linear; }
+/* If no sound is reaching it — Safari not reporting word boundaries, or a
+   refused microphone — it breathes on its own so it never looks frozen. */
+.fr-orb[data-state="listening"] .fr-orbring,
+.fr-orb[data-state="talking"] .fr-orbring { animation:orbidle 1.6s ease-in-out infinite; }
+@keyframes orbidle {
+  0%,100% { box-shadow:0 0 0 0 rgba(201,146,42,.28); }
+  50% { box-shadow:0 0 0 5px rgba(201,146,42,0); }
+}
 .fr-orb[data-state="thinking"] .fr-orbring { border-color:var(--amber);
   border-right-color:transparent; border-bottom-color:transparent;
-  animation:orbspin .9s linear infinite; }
-.fr-orb[data-state="talking"] .fr-orbring { border-color:var(--amber);
-  animation:orbpulse .55s ease-in-out infinite; }
-@keyframes orbpulse {
-  0%,100% { transform:scale(1); opacity:.9; }
-  50% { transform:scale(1.28); opacity:.35; }
-}
+  animation:orbspin .85s linear infinite; opacity:.85; }
 @keyframes orbspin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce){
-  .fr-orbring { animation:none !important; }
+  .fr-orb svg, .fr-orbring { transition:none; animation:none !important; transform:none !important; }
 }
-.fr-orbsay { position:absolute; z-index:70; top:calc(100% + 10px); left:0;
-  width:max-content; max-width:min(340px,82vw); padding:13px 15px 10px;
-  border-radius:16px; animation:pop .2s cubic-bezier(.2,.7,.3,1) both; }
-.fr-orbyou { margin:0 0 7px; font-size:12.5px; color:var(--faint); line-height:1.45; }
-.fr-orbyou::before { content:"You: "; opacity:.7; }
-.fr-orbreply { margin:0; font-size:14px; line-height:1.55; color:var(--text); }
-.fr-orbfoot { display:flex; gap:14px; margin-top:11px; padding-top:9px;
-  border-top:1px solid var(--edge); }
-.fr-orbfoot button { appearance:none; background:none; border:0; cursor:pointer;
-  font:inherit; font-size:12px; color:var(--faint); padding:2px 0;
-  touch-action:manipulation; }
-.fr-orbfoot button:hover { color:var(--amber); }
 .fr-brandword { gap:0; }
 /* ---------- Mind ---------- */
 /* The reader. A column of text at a sane measure, the chrome kept out of the way. */
@@ -1298,7 +1302,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b172</div>
+<div class="fr-build">b173</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -5973,6 +5977,7 @@ function pickVoice() {
 
 let speaking = false;
 let onSpeakChange = null;
+let onWord = null;
 
 function stopSpeaking() {
   if (!canSpeak()) return;
@@ -5998,6 +6003,11 @@ function speak(text) {
   u.onstart = function () {
     speaking = true;
     if (onSpeakChange) onSpeakChange(true);
+  };
+  /* Fired as it reaches each word. Safari is patchy about this, so the ring has
+     its own gentle fallback animation when nothing arrives. */
+  u.onboundary = function (ev) {
+    if (onWord) onWord(ev && ev.charLength > 6 ? 1 : 0.72);
   };
   u.onend = u.onerror = function () {
     speaking = false;
@@ -6065,19 +6075,105 @@ function VoiceOrb({
 }) {
   const [on, setOn] = useState(voiceOn);
   const [state, setState] = useState("idle");
-  const [said, setSaid] = useState("");
-  const [reply, setReply] = useState("");
+  /* How hard the ring is pushing, 0 to 1. Fed by the microphone while it
+     listens and by the words while it speaks. */
+  const [level, setLevel] = useState(0);
   const rec = useRef(null);
   const greeted = useRef(false);
+  const mic = useRef(null);
+  const raf = useRef(null);
+  const decay = useRef(null);
+
+  /* Listening to the microphone purely to watch the needle. Nothing is recorded
+     or sent \u2014 the speech itself is handled by the browser's own recogniser;
+     this is only so the badge moves when you talk. */
+  async function watchMic() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const an = ctx.createAnalyser();
+      an.fftSize = 512;
+      an.smoothingTimeConstant = 0.75;
+      src.connect(an);
+      const buf = new Uint8Array(an.frequencyBinCount);
+      mic.current = {
+        stream: stream,
+        ctx: ctx
+      };
+      const tick = function () {
+        an.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i] - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        /* Quiet rooms still have a floor, so the bottom is trimmed off and the
+           rest stretched, or the ring twitches at nothing. */
+        setLevel(Math.min(1, Math.max(0, (peak - 0.04) * 4.5)));
+        raf.current = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) {
+      /* Microphone refused, or no permission. The recogniser may still work,
+         so this fails quietly and the ring just breathes instead. */
+      mic.current = null;
+    }
+  }
+  function dropMic() {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    raf.current = null;
+    if (mic.current) {
+      try {
+        mic.current.stream.getTracks().forEach(function (t) {
+          t.stop();
+        });
+      } catch (e) {}
+      try {
+        mic.current.ctx.close();
+      } catch (e) {}
+      mic.current = null;
+    }
+    setLevel(0);
+  }
+  /* Speech synthesis will not tell you how loud it is, but it does say when it
+     reaches each word. A kick per word, falling away between them, reads as
+     speech far better than a steady pulse does. */
+  function kick(n) {
+    setLevel(n);
+    if (decay.current) clearInterval(decay.current);
+    decay.current = setInterval(function () {
+      setLevel(function (v) {
+        const next = v * 0.72;
+        if (next < 0.04) {
+          clearInterval(decay.current);
+          decay.current = null;
+          return 0;
+        }
+        return next;
+      });
+    }, 55);
+  }
+  useEffect(function () {
+    return function () {
+      dropMic();
+      if (decay.current) clearInterval(decay.current);
+    };
+  }, []);
 
   useEffect(function () {
     onSpeakChange = function (yes) {
       setState(function (s) {
         return yes ? "talking" : s === "talking" ? "idle" : s;
       });
+      if (!yes) setLevel(0);
     };
+    onWord = kick;
     return function () {
       onSpeakChange = null;
+      onWord = null;
     };
   }, []);
 
@@ -6089,14 +6185,7 @@ function VoiceOrb({
     function first() {
       if (greeted.current) return;
       greeted.current = true;
-      const line = greetLine(loadLog((loadSession() || {}).uid), sport);
-      setReply(line);
-      speak(line);
-      setTimeout(function () {
-        setReply(function (r) {
-          return r === line ? "" : r;
-        });
-      }, 9000);
+      speak(greetLine(loadLog((loadSession() || {}).uid), sport));
     }
     document.addEventListener("pointerdown", first, {
       once: true
@@ -6107,6 +6196,7 @@ function VoiceOrb({
   }, [on, sport]);
 
   function stopListening() {
+    dropMic();
     if (rec.current) {
       try {
         rec.current.stop();
@@ -6118,15 +6208,10 @@ function VoiceOrb({
 
   async function answer(q) {
     setState("thinking");
-    setSaid(q);
     try {
-      const out = await askAloud(q);
-      setReply(out);
-      speak(out);
+      speak(await askAloud(q));
     } catch (e) {
-      const msg = e && e.message || "That did not go through.";
-      setReply(msg);
-      speak(msg);
+      speak(e && e.message || "That did not go through.");
       setState("idle");
     }
   }
@@ -6163,7 +6248,6 @@ function VoiceOrb({
     r.onresult = function (e) {
       heard = "";
       for (let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript;
-      setSaid(heard);
     };
     r.onerror = function () {
       stopListening();
@@ -6176,9 +6260,8 @@ function VoiceOrb({
       if (heard.trim()) answer(heard.trim());
     };
     rec.current = r;
-    setSaid("");
-    setReply("");
     setState("listening");
+    watchMic();
     try {
       r.start();
     } catch (e) {
@@ -6191,16 +6274,18 @@ function VoiceOrb({
     stopListening();
     setOn(false);
     setVoiceOn(false);
-    setReply("");
-    setSaid("");
   }
 
   const label = state === "listening" ? "Listening \u2014 tap to stop" : state === "talking" ? "Tap to stop talking" : state === "thinking" ? "Thinking" : on ? "Tap to speak" : "Voice is off \u2014 tap to turn on";
-  return /*#__PURE__*/React.createElement("div", {
-    className: "fr-orbwrap"
-  }, /*#__PURE__*/React.createElement("button", {
+  return /*#__PURE__*/React.createElement("button", {
     className: "fr-orb",
     "data-state": on ? state : "off",
+    /* The ring is driven by sound, not by a fixed animation: how loud you are
+       while it listens, and each word as it speaks. That is the whole point \u2014
+       it should look like it is hearing you, not like a spinner. */
+    style: {
+      "--lvl": level.toFixed(3)
+    },
     onClick: tap,
     onDoubleClick: mute,
     title: label,
@@ -6209,25 +6294,9 @@ function VoiceOrb({
     size: 22
   }), /*#__PURE__*/React.createElement("span", {
     className: "fr-orbring"
-  })), said || reply ? /*#__PURE__*/React.createElement("div", {
-    className: "fr-glass fr-orbsay"
-  }, said ? /*#__PURE__*/React.createElement("p", {
-    className: "fr-orbyou"
-  }, said) : null, reply ? /*#__PURE__*/React.createElement("p", {
-    className: "fr-orbreply"
-  }, reply) : state === "thinking" ? /*#__PURE__*/React.createElement("p", {
-    className: "fr-orbreply"
-  }, "\u2026") : null, /*#__PURE__*/React.createElement("div", {
-    className: "fr-orbfoot"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: function () {
-      setSaid("");
-      setReply("");
-      stopSpeaking();
-    }
-  }, "Close"), /*#__PURE__*/React.createElement("button", {
-    onClick: mute
-  }, "Mute voice"))) : null);
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "fr-orbring fr-orbring2"
+  }));
 }
 
 function Landing({
