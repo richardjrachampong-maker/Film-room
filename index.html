@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b187</div>
+<div class="fr-build">b188</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3529,6 +3529,12 @@ async function aiGemini(turns, wantJSON, opts) {
     /* A refusal is exactly what the next rung down is for: it drops the
        optional parts one at a time. Only a genuine dead end should reach the
        player as an error. */
+  }
+  /* The loop above can, on a bad combination of options, run zero times and
+     leave this null. Reading .error off null then threw a type error that the
+     player saw as a Google refusal. */
+  if (!data) {
+    throw new Error("Nothing was sent. Try that again.");
   }
   if (busy(data)) {
     throw new Error("Google's servers are busy right now. Nothing is wrong with your clip \u2014 give it a minute and send it again.");
@@ -6967,9 +6973,14 @@ function VoiceOrb({
         });
       }, 900);
     } catch (e) {
-      const msg = e && e.message || "That did not go through.";
-      speak(msg);
-      setTrouble(msg);
+      /* Said, not written. Google's error text over the page helps nobody
+         standing on a court. */
+      try {
+        console.warn("ask failed:", e && e.message);
+      } catch (e2) {}
+      speak("That did not go through. Ask me again.").then(function () {
+        if (live.current) listen();
+      });
       setState("idle");
     }
   }
