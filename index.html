@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b192</div>
+<div class="fr-build">b193</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -3525,7 +3525,11 @@ async function aiGemini(turns, wantJSON, opts) {
   }
   let data = null;
   const start = opts.fast ? 2 : 0;
-  const floor = opts.hurry ? 1 : 0;
+  /* Never above the starting rung. A non-fast request starts at 0, so a floor
+     of 1 counted down from 0 to 1 — zero iterations, nothing ever sent, and
+     the caller got "that did not go through". This is the line that has been
+     breaking every real question. */
+  const floor = opts.hurry ? Math.min(start, 1) : 0;
   for (let level = start; level >= floor; level--) {
     data = await postRetrying(build(level));
     if (!data.error) break; // worked
@@ -6963,10 +6967,19 @@ function VoiceOrb({
 
   async function answer(q) {
     answering.current = true;
+    /* Stamped, so the watchdog can tell "still working" from "stuck". */
+    answerAt.current = Date.now();
+    let resumed = false;
     const resume = function () {
+      if (resumed) return;
+      resumed = true;
       answering.current = false;
       if (live.current) setTimeout(listen, 200);
     };
+    /* Whatever happens in here — including a promise rejecting somewhere I did
+       not expect — listening comes back. Leaving this to the happy path is why
+       it went deaf after an error. */
+    setTimeout(resume, 12000);
     if (!voiceOn()) {
       /* It heard you, it just cannot answer out loud. Saying nothing here is
          how you end up talking to a phone that has quietly stopped listening. */
@@ -7050,12 +7063,18 @@ function VoiceOrb({
      first was still running, which throws. All four now just mean "go round
      again". */
   const answering = useRef(false);
+  const answerAt = useRef(0);
   /* Whatever else happens, a conversation that is open should be listening.
      Rather than chase every path that might drop it, this checks twice a second
      and starts it again. Cheap, and it cannot be got around. */
   useEffect(function () {
     const t = setInterval(function () {
       if (!live.current) return;
+      /* A flag that has been up for more than fifteen seconds is not an answer
+         in progress, it is a flag nobody put down. */
+      if (answering.current && Date.now() - answerAt.current > 15000) {
+        answering.current = false;
+      }
       if (rec.current || speaking || answering.current) return;
       listen();
     }, 500);
