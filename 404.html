@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b199</div>
+<div class="fr-build">b200</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7442,11 +7442,9 @@ function VoiceOrb({
     r.continuous = false;
     let heard = "";
     let done = false;
-    let alive = false;
+    /* These three are in the spec and Safari fires none of them. Kept because
+       other browsers do, but nothing depends on them. */
     r.onaudiostart = function () {
-      /* Audio reaching us is proof the microphone really is ours. */
-      alive = true;
-      deaf.current = 0;
       rememberMic();
       setTrouble("");
       pulse(0.35);
@@ -7458,7 +7456,11 @@ function VoiceOrb({
       pulse(0.6);
     };
     r.onresult = function (e) {
-      pulse(0.7);
+      /* Words arriving is the only proof Safari gives that it can hear you, so
+         this is what moves the ring and what confirms the permission. */
+      rememberMic();
+      setTrouble("");
+      pulse(0.8);
       heard = "";
       for (let i = 0; i < e.results.length; i++) {
         heard += e.results[i][0].transcript;
@@ -7504,23 +7506,13 @@ function VoiceOrb({
       if (live.current) setTimeout(listen, 400);
       return;
     }
-    /* Started, but is it actually hearing? After the phone has just played
-       audio, iOS will happily start a recogniser that receives nothing at all —
-       no error, no result, no end. This is the only way to catch that: if no
-       sound has reached us shortly after starting, tear it down and build a new
-       one. Backing off a little each time, so a genuinely quiet room does not
-       turn into a loop. */
-    setTimeout(function () {
-      if (alive || rec.current !== r || !live.current) return;
-      deaf.current = Math.min(4, deaf.current + 1);
-      try {
-        r.onend = null;
-        r.abort ? r.abort() : r.stop();
-      } catch (e2) {}
-      rec.current = null;
-      releaseAudio();
-      setTimeout(listen, 200 * deaf.current);
-    }, 1400);
+    /* There is deliberately no watchdog here any more. Safari does not fire
+       onaudiostart, onsoundstart or onspeechstart at all, so "no audio has
+       arrived yet" is its normal state even when the microphone is working
+       perfectly. The version that tore the recogniser down on that basis was
+       killing it 1.4 seconds after every start \u2014 mid-sentence, every time.
+       The only honest signs of life in Safari are onresult and onend, and both
+       are handled above. */
   }
   function tap() {
     if (holdEnd()) return;
