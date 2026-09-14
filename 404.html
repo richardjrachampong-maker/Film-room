@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b195</div>
+<div class="fr-build">b197</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6168,10 +6168,44 @@ function directKey() {
 /* Why the last attempt made no sound. Read by the bubble. */
 let lastVoiceFail = "";
 
-/* Generated audio, kept for the session. The same line is very often asked for
-   twice — the greeting on every reload, an answer repeated — and the speech
-   model has a small free allowance that was being spent on repeats. */
+/* Generated audio, kept on the device rather than only in memory. Most of what
+   this says is the same handful of short lines forever — the greeting, "On it",
+   "Any time", "Back." — and every reload was paying for all of them again
+   against a free allowance of a few requests a minute. Bought once, kept.
+
+   Only short lines are stored, because a spoken sentence is a few hundred
+   kilobytes and browser storage is not large. Real answers stay in memory for
+   the session, which is enough. */
+const VOICE_CACHE_KEY = "fr-voice-clips";
+const CACHE_MAX_CHARS = 110;
+const CACHE_MAX_CLIPS = 14;
 const voiceCache = {};
+let clipStore = {};
+try {
+  clipStore = JSON.parse(window.localStorage.getItem(VOICE_CACHE_KEY) || "{}") || {};
+} catch (e) {
+  clipStore = {};
+}
+function cachedClip(line) {
+  return voiceCache[line] || clipStore[line] || null;
+}
+function keepClip(line, src) {
+  voiceCache[line] = src;
+  if (line.length > CACHE_MAX_CHARS) return;
+  try {
+    clipStore[line] = src;
+    const keys = Object.keys(clipStore);
+    /* Oldest out first, so it settles on whatever is actually said often. */
+    while (keys.length > CACHE_MAX_CLIPS) delete clipStore[keys.shift()];
+    window.localStorage.setItem(VOICE_CACHE_KEY, JSON.stringify(clipStore));
+  } catch (e) {
+    /* Storage full. The in-memory copy still does its job for this session. */
+    clipStore = {};
+    try {
+      window.localStorage.removeItem(VOICE_CACHE_KEY);
+    } catch (e2) {}
+  }
+}
 /* Speech is rate limited per minute, not just per day. Asking again inside a
    couple of seconds is how a working voice turns into a wall of errors. */
 let lastAsk = 0;
@@ -6184,9 +6218,9 @@ function readAudioPart(data) {
     const msg = String(data.error.message || "");
     const code = data.error.code;
     if (code === 429 || /quota|rate limit|RESOURCE_EXHAUSTED|exhausted/i.test(msg + data.error.status)) {
-      /* Back off for a minute rather than hammering it. The free allowance on
-         the speech model is small and recovers quickly. */
-      restingUntil = Date.now() + 60000;
+      /* The per-minute allowance refills continuously, so a short wait very
+         often clears it. A full minute of resting meant one busy moment made
+         everything robotic for the next ten answers. */
       const e = new Error("rate");
       e.resting = true;
       throw e;
@@ -6227,18 +6261,10 @@ const TTS_BODY = function (line) {
   };
 };
 
-async function ttsAudio(line) {
-  if (voiceCache[line]) return voiceCache[line];
-  /* Still being told off by Google, so do not ask again yet. */
-  if (Date.now() < restingUntil) {
-    lastVoiceFail = "";
-    return null;
-  }
-  const gap = Date.now() - lastAsk;
-  if (gap < 1200) await new Promise(function (r) {
-    setTimeout(r, 1200 - gap);
-  });
-  lastAsk = Date.now();
+/* One attempt, with the routes tried in order. Pulled out so a rate limit can
+   simply be waited out and tried once more, rather than giving up on the good
+   voice for the next minute. */
+async function ttsOnce(line) {
   const tried = [];
 
   /* A real key means Google can be asked directly, which is the only route
@@ -6277,7 +6303,7 @@ async function ttsAudio(line) {
       const data = await res.json();
       const got = readAudioPart(data);
       if (got) {
-        voiceCache[line] = got;
+        keepClip(line, got);
         /* Which worker and which model, so a silent voice is a fact rather than
            a mystery. */
         try {
@@ -6315,6 +6341,40 @@ async function ttsAudio(line) {
   }
   lastVoiceFail = tried.join("; ");
   return null;
+}
+
+async function ttsAudio(line) {
+  const kept = cachedClip(line);
+  if (kept) return kept;
+  if (Date.now() < restingUntil) {
+    lastVoiceFail = "";
+    return null;
+  }
+  const gap = Date.now() - lastAsk;
+  if (gap < 900) await new Promise(function (r) {
+    setTimeout(r, 900 - gap);
+  });
+  lastAsk = Date.now();
+  try {
+    return await ttsOnce(line);
+  } catch (e) {
+    if (!e || !e.resting) throw e;
+    /* Told to slow down. Wait a beat and ask once more \u2014 the allowance
+       refills continuously and this usually clears it. */
+    await new Promise(function (r) {
+      setTimeout(r, 1600);
+    });
+    lastAsk = Date.now();
+    try {
+      return await ttsOnce(line);
+    } catch (e2) {
+      /* Still busy. Rest briefly rather than for a minute, so the next answer
+         has a fair chance of being the real voice again. */
+      restingUntil = Date.now() + 20000;
+      if (e2 && e2.resting) return null;
+      throw e2;
+    }
+  }
 }
 
 /* Hands the microphone back. Pausing is not enough on iOS: while an element
@@ -6622,7 +6682,7 @@ async function askAloud(question) {
   const think = thinkBudget(question);
   const turns = [{
     role: "user",
-    parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Some things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, go to a page, start a session. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "IF THEY ARE IN TROUBLE:\n" + "If anything they say suggests they might hurt themselves, stop being a coach. Say " + "plainly that you are not the right help, tell them to talk to a parent, a coach, or " + "call or text 988 in the US or their local emergency number, and say you will be here " + "after. No drills. No silver lining. Do not change the subject.\n\n" + "IF THEY ARE RUDE:\n" + "Take it. Do not retaliate, do not grovel, do not lecture them about tone, and do not " + "stop helping. A coach who took that personally would be a bad coach.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
+    parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, move between pages, open a book, switch between the library and the videos, " + "set or clear the filters on the library, open their past chats, start a session, and " + "stop whatever you are doing if they say cancel. You can do several of those in one go. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "IF THEY SAY YOU ALREADY KNOW SOMETHING:\n" + "Believe them. Speech recognition drops words constantly and you hear a transcript, not " + "their voice \u2014 so if they say they told you something, the likeliest thing by far is " + "that you missed it. Say sorry, you did not catch it, and ask them to say it again. " + "Never tell them they did not say it. Never say there is no point arguing about it. " + "Being told you are wrong about your own memory is infuriating, and you will usually be " + "the one who is wrong.\n\n" + "IF THEY ARE IN TROUBLE:\n" + "If anything they say suggests they might hurt themselves, stop being a coach. Say " + "plainly that you are not the right help, tell them to talk to a parent, a coach, or " + "call or text 988 in the US or their local emergency number, and say you will be here " + "after. No drills. No silver lining. Do not change the subject.\n\n" + "IF THEY ARE RUDE:\n" + "Take it. Do not retaliate, do not grovel, do not lecture them about tone, and do not " + "stop helping. A coach who took that personally would be a bad coach.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
   }];
   return ai(turns, false, {
     /* No model alias and no explicit thinking budget \u2014 the worker in front of
@@ -6748,6 +6808,36 @@ function words(t) {
   return String(t || "").trim().split(/\s+/).length;
 }
 
+/* "Take me to Mind then switch to Watch" is two orders in one breath, and it
+   used to obey the first and drop the second. People speak in chains, so the
+   sentence is split on the joins and each piece is parsed on its own. */
+const JOINS = /\s*(?:,\s*)?(?:\band then\b|\bthen\b|\bafter that\b|\bnext\b|\balso\b|\band\b)\s+/i;
+
+function parseChain(raw) {
+  const whole = String(raw || "").trim();
+  if (!whole) return [];
+  /* A question is not a chain. "why do I fade and lose balance" is one thought,
+     and cutting it at "and" would ruin it. Only split when the first piece is
+     actually an order. */
+  const first = parseCommand(whole);
+  if (first && first.kind !== "say") {
+    const parts = whole.split(JOINS).map(function (x) {
+      return x.trim();
+    }).filter(Boolean);
+    if (parts.length > 1) {
+      const out = [];
+      parts.forEach(function (bit) {
+        const c = parseCommand(bit);
+        /* A fragment that is not an order gets dropped rather than sent off as
+           a question halfway through carrying out the others. */
+        if (c) out.push(c);
+      });
+      if (out.length) return out;
+    }
+  }
+  return first ? [first] : [];
+}
+
 function parseCommand(raw) {
   let t = String(raw || "").trim().replace(WAKE, "").trim();
   if (!t) return null;
@@ -6755,6 +6845,12 @@ function parseCommand(raw) {
   /* Before commands, before anything. */
   const safe = safetyCheck(t);
   if (safe) return safe;
+  /* Drop everything, now. */
+  if (/^(cancel|stop that|never ?mind that|forget that|abort|wait wait|hold on)\b/i.test(low) || /^stop$/i.test(low.trim())) {
+    return {
+      kind: "cancel"
+    };
+  }
 
   if (/\b(unmute|un mute|speak again|voice on|turn (your )?voice on|you can talk)\b/i.test(low)) {
     return {
@@ -6775,50 +6871,53 @@ function parseCommand(raw) {
     };
   }
 
-  /* Pull film. Spoken requests are sentences, so the useful part has to be
-     found rather than assumed to be everything after the preposition. */
-  const film = /\b(pull (up )?(the )?film|pull (up )?tape|show me|watch|find film|film)\b\s*(on|from|of|about|for)?\s*(.+)$/i.exec(t);
-  if (film && film[6]) {
-    /* A name anywhere in the whole sentence wins. "that because I really wanna
-       see what makes Steph Curry so great" is a sentence about Steph Curry. */
-    const who = findPlayer(film[6]) || findPlayerLoose(t);
-    if (who) return {
-      kind: "player",
-      item: who
+  /* Filters, spoken the way people say them. */
+  if (/\b(free|read here|readable)\b/i.test(low) && /\b(filter|only|show|just)\b/i.test(low)) {
+    return {
+      kind: "filter",
+      where: "Read here"
     };
-    const q = tidySubject(film[6]);
-    if (q.length > 2) return {
-      kind: "film",
-      q: q + " " + D.term + " film study"
+  }
+  if (/\b(library loan|loans?|borrow)\b/i.test(low) && /\b(filter|only|show|just)\b/i.test(low)) {
+    return {
+      kind: "filter",
+      where: "Library loan"
+    };
+  }
+  if (/\b(clear|reset|remove) (the )?filters?\b/i.test(low) || /\bshow (me )?(all|everything)\b/i.test(low)) {
+    return {
+      kind: "filter",
+      where: "All",
+      topic: "All"
+    };
+  }
+  const about = /\b(filter|show|only|just)\b[^.]*\b(flow|pressure|practice|soul|older)\b/i.exec(low);
+  if (about) {
+    return {
+      kind: "filter",
+      topic: about[2][0].toUpperCase() + about[2].slice(1).toLowerCase()
     };
   }
 
-  /* A bare name, when it is clearly a name and nothing else. */
-  if (low.split(/\s+/).length <= 4 && !/\?$/.test(t) && !/^(what|why|how|when|who|should|can|is|are|do)\b/i.test(low)) {
-    const who = findPlayer(t);
-    if (who) return {
-      kind: "player",
-      item: who
+  /* The two halves of Mind. */
+  if (/\b(watch|videos?|clips?|channels?)\b/i.test(low) && /\b(switch|go|show|open|take me|change|flip)\b/i.test(low)) {
+    return {
+      kind: "mindtab",
+      to: "watch"
+    };
+  }
+  if (/\b(library|books?|reading|shelf)\b/i.test(low) && /\b(switch|go|show|open|take me|change|flip)\b/i.test(low)) {
+    return {
+      kind: "mindtab",
+      to: "read"
     };
   }
 
-  for (let i = 0; i < SPORT_WORDS.length; i++) {
-    if (/\b(switch|change|go|set|put me)\b/i.test(low) && SPORT_WORDS[i][0].test(low)) {
-      return {
-        kind: "sport",
-        to: SPORT_WORDS[i][1]
-      };
-    }
-  }
-
-  /* "Open X", "go to X", "take me to X". */
-  if (/\b(open|go to|take me to|show|bring up|pull up)\b/i.test(low)) {
-    for (let i = 0; i < PAGE_WORDS.length; i++) {
-      if (PAGE_WORDS[i][0].test(low)) return {
-        kind: "nav",
-        to: PAGE_WORDS[i][1]
-      };
-    }
+  /* Past chats. */
+  if (/\b(past|old|previous|earlier|my) (chats?|conversations?|sessions?|history)\b/i.test(low) || /\b(show|open|bring up|pull up) (my )?history\b/i.test(low)) {
+    return {
+      kind: "history"
+    };
   }
 
   /* A book on the shelf, by name. "Open the Inner Game of Tennis" is an order,
@@ -6889,6 +6988,52 @@ function parseCommand(raw) {
     };
   }
 
+  /* Pull film. Spoken requests are sentences, so the useful part has to be
+     found rather than assumed to be everything after the preposition. */
+  const film = /\b(pull (up )?(the )?film|pull (up )?tape|show me|watch|find film|film)\b\s*(on|from|of|about|for)?\s*(.+)$/i.exec(t);
+  if (film && film[6]) {
+    /* A name anywhere in the whole sentence wins. "that because I really wanna
+       see what makes Steph Curry so great" is a sentence about Steph Curry. */
+    const who = findPlayer(film[6]) || findPlayerLoose(t);
+    if (who) return {
+      kind: "player",
+      item: who
+    };
+    const q = tidySubject(film[6]);
+    if (q.length > 2) return {
+      kind: "film",
+      q: q + " " + D.term + " film study"
+    };
+  }
+
+  /* A bare name, when it is clearly a name and nothing else. */
+  if (low.split(/\s+/).length <= 4 && !/\?$/.test(t) && !/^(what|why|how|when|who|should|can|is|are|do)\b/i.test(low)) {
+    const who = findPlayer(t);
+    if (who) return {
+      kind: "player",
+      item: who
+    };
+  }
+
+  for (let i = 0; i < SPORT_WORDS.length; i++) {
+    if (/\b(switch|change|go|set|put me)\b/i.test(low) && SPORT_WORDS[i][0].test(low)) {
+      return {
+        kind: "sport",
+        to: SPORT_WORDS[i][1]
+      };
+    }
+  }
+
+  /* "Open X", "go to X", "take me to X". */
+  if (/\b(open|go to|take me to|show|bring up|pull up)\b/i.test(low)) {
+    for (let i = 0; i < PAGE_WORDS.length; i++) {
+      if (PAGE_WORDS[i][0].test(low)) return {
+        kind: "nav",
+        to: PAGE_WORDS[i][1]
+      };
+    }
+  }
+
   /* Questions about their own record are answered from the log rather than by
      asking a model what it cannot know. */
   if (/\b(how am i doing|my last grade|what did i get|my record|my progress|how have i been|last clip)\b/i.test(low)) {
@@ -6930,7 +7075,10 @@ function VoiceOrb({
   onFilm,
   onSport,
   onSession,
-  onBook
+  onBook,
+  onMindTab,
+  onFilter,
+  onHistory
 }) {
   const [on, setOn] = useState(voiceOn);
   const [state, setState] = useState("idle");
@@ -7124,10 +7272,19 @@ function VoiceOrb({
     }
     /* Orders first. They are free, they are instant, and they are most of what
        you actually say to a thing like this. */
-    const cmd = parseCommand(q);
+    /* A chain is carried out in order, with a pause between steps so the screen
+       is not yanked twice in a second, and it can be stopped part way through. */
+    const chain = parseChain(q);
+    const cmd = chain[0];
+    if (cmd && cmd.kind === "cancel") {
+      job.current++;
+      stopSpeaking();
+      speak("Stopped.").then(resume);
+      return;
+    }
     if (cmd) {
       if (cmd.kind === "mute") {
-        /* Muted, but still listening — otherwise you would have to reach for
+        /* Muted, but still listening \u2014 otherwise you would have to reach for
            the phone to turn it back on, which is the thing voice is for. */
         stopSpeaking();
         setOn(false);
@@ -7149,9 +7306,6 @@ function VoiceOrb({
       }
       if (cmd.kind === "say") {
         const line = cmd.lines[Math.floor(Math.random() * cmd.lines.length)];
-        /* hold means do not go straight back to listening \u2014 the moment after
-           something like that is not the moment to be waiting for the next
-           command. close means they said goodbye. */
         if (cmd.close) setLive(false);
         speak(line).then(function () {
           if (cmd.hold) {
@@ -7161,13 +7315,18 @@ function VoiceOrb({
         });
         return;
       }
-      speak(aye()).then(resume);
+
+      /* Everything else is something to do on screen. */
+      const mine = ++job.current;
+      speak(chain.length > 1 ? aye() : aye()).then(resume);
       setState("idle");
-      /* A beat, so the acknowledgement is heard before the screen changes
-         under it. */
-      setTimeout(function () {
-        if (cmd.kind === "book" && onBook) onBook(cmd.book);else if (cmd.kind === "player" && onItem) onItem(cmd.item);else if (cmd.kind === "film" && onFilm) onFilm(cmd.q);else if (cmd.kind === "sport" && onSport) onSport(cmd.to);else if (cmd.kind === "session" && onSession) onSession();else if (cmd.kind === "nav" && onGo) onGo(cmd.to);
-      }, 420);
+      chain.forEach(function (c, n) {
+        setTimeout(function () {
+          /* Cancelled, or a newer order arrived. Either way this one is off. */
+          if (job.current !== mine) return;
+          run(c);
+        }, 420 + n * 520);
+      });
       return;
     }
     setState("thinking");
@@ -7228,6 +7387,12 @@ function VoiceOrb({
   const answerAt = useRef(0);
   /* How many times in a row it has started without hearing anything. */
   const deaf = useRef(0);
+  /* Bumped whenever something new is asked for, or cancelled. Any step from an
+     older job checks this and quietly stands down. */
+  const job = useRef(0);
+  function run(c) {
+    if (c.kind === "book" && onBook) onBook(c.book);else if (c.kind === "player" && onItem) onItem(c.item);else if (c.kind === "film" && onFilm) onFilm(c.q);else if (c.kind === "sport" && onSport) onSport(c.to);else if (c.kind === "session" && onSession) onSession();else if (c.kind === "nav" && onGo) onGo(c.to);else if (c.kind === "mindtab" && onMindTab) onMindTab(c.to);else if (c.kind === "filter" && onFilter) onFilter(c);else if (c.kind === "history" && onHistory) onHistory();
+  }
   /* Whatever else happens, a conversation that is open should be listening.
      Rather than chase every path that might drop it, this checks twice a second
      and starts it again. Cheap, and it cannot be got around. */
@@ -9447,13 +9612,19 @@ function Train({
   onOutOfClips,
   chats,
   setChats
-}) {
+,
+  openHistory}) {
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
   const restored = useRef(false);
   const pushTimer = useRef(null);
   const pending = useRef(null);
   const [showHistory, setShowHistory] = useState(false);
+  /* Opened by voice. The stamp changes each time it is asked for, so asking
+     twice reopens it rather than doing nothing the second time. */
+  useEffect(function () {
+    if (openHistory) setShowHistory(true);
+  }, [openHistory]);
   const [mode, setMode] = useState(function () {
     return (loadMe(sport) || {}).mode || "quick";
   });
@@ -11694,6 +11865,8 @@ function Book3D({
 function MindPage({
   onSearch,
   openBook,
+  openTab,
+  openFilter,
   onOpened
 }) {
   /* Two things you can do here, so two tabs rather than one long page. */
@@ -11704,6 +11877,15 @@ function MindPage({
   const [reading, setReading] = useState(null);
   /* Arrived by voice. A free book opens in the reader; a loan can only show
      what it is and where to borrow it. */
+  useEffect(function () {
+    if (openTab) setTab(openTab);
+    if (openFilter) {
+      if (openFilter.where) setWhere(openFilter.where);
+      if (openFilter.topic) setTopic(openFilter.topic);
+      setTab("read");
+    }
+    if ((openTab || openFilter) && onOpened) onOpened();
+  }, [openTab, openFilter]);
   useEffect(function () {
     if (!openBook) return;
     if (openBook.how === "free") setReading(openBook);else {
@@ -12121,6 +12303,10 @@ function App() {
   const [seed, setSeed] = useState(null);
   /* A book asked for out loud, handed to the Mind page to open. */
   const [voiceBook, setVoiceBook] = useState(null);
+  /* Asked for out loud, handed to the page that owns it. */
+  const [voiceTab, setVoiceTab] = useState(null);
+  const [voiceFilter, setVoiceFilter] = useState(null);
+  const [voiceHistory, setVoiceHistory] = useState(0);
   const [user, setUser] = useState(loadSession);
   /* The profile — which is where the team code lives — used to be fetched only
      inside Train. So on a cold load the app had no idea you were in a team until
@@ -12557,6 +12743,18 @@ function App() {
         setSportState(k);
       }
     },
+    onMindTab: function (t) {
+      setVoiceTab(t);
+      go("mind");
+    },
+    onFilter: function (f) {
+      setVoiceFilter(f);
+      go("mind");
+    },
+    onHistory: function () {
+      setVoiceHistory(Date.now());
+      go("train");
+    },
     onBook: function (b) {
       /* Straight into the reader for a free one; the shelf otherwise, since a
          library loan cannot be opened here. */
@@ -12628,8 +12826,12 @@ function App() {
   }), top.page === "mind" && /*#__PURE__*/React.createElement(MindPage, {
     onSearch: openFilm,
     openBook: voiceBook,
+    openTab: voiceTab,
+    openFilter: voiceFilter,
     onOpened: function () {
       setVoiceBook(null);
+      setVoiceTab(null);
+      setVoiceFilter(null);
     }
   }), top.page === "games" && /*#__PURE__*/React.createElement(GamesPage, {
     onOpen: openItem,
@@ -12649,6 +12851,7 @@ function App() {
     user: user,
     chats: chats,
     setChats: setChats,
+    openHistory: voiceHistory,
     sport: sport,
     pro: isPro(user, profile),
     used: profile && profile.used || 0,
