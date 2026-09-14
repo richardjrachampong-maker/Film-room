@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b188</div>
+<div class="fr-build">b189</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6379,7 +6379,13 @@ function tidy(text) {
 /* Why nothing came out, when nothing comes out. */
 let voiceTrouble = null;
 
-function utter(line, tries) {
+function utter(line, tries, done) {
+  let finished = false;
+  const over = function () {
+    if (finished) return;
+    finished = true;
+    if (done) done();
+  };
   const u = new window.SpeechSynthesisUtterance(line);
   const v = pickVoice();
   if (v) u.voice = v;
@@ -6400,10 +6406,13 @@ function utter(line, tries) {
   u.onend = u.onerror = function () {
     speaking = false;
     if (onSpeakChange) onSpeakChange(false);
+    over();
   };
   try {
     window.speechSynthesis.speak(u);
-  } catch (e) {}
+  } catch (e) {
+    over();
+  }
 
   /* Safari accepts the utterance, says nothing, and reports no error. One
      retry, then it admits what has happened rather than leaving you staring at
@@ -6414,12 +6423,15 @@ function utter(line, tries) {
       try {
         window.speechSynthesis.resume();
       } catch (e) {}
-      utter(line, tries - 1);
+      utter(line, tries - 1, done);
       return;
     }
     try {
       console.warn("browser voice produced no sound");
     } catch (e) {}
+    /* Nothing came out, but the caller is waiting to start listening again, so
+       it must not be left hanging. */
+    over();
   }, 1100);
 }
 
@@ -6456,10 +6468,18 @@ async function speak(text) {
       console.warn("voice fell back:", lastVoiceFail);
     } catch (e) {}
   }
-  speakLocal(clean);
+  await speakLocal(clean);
 }
 function speakLocal(clean) {
+  /* Resolves when the voice has actually finished, so whatever is chained onto
+     speak() does not start while it is still talking. */
+  return new Promise(function (done) {
+    speakLocalNow(clean, done);
+  });
+}
+function speakLocalNow(clean, done) {
   if (!canSpeak()) {
+    done();
     if (voiceTrouble) voiceTrouble("This browser has no voice available.");
     return;
   }
@@ -6478,11 +6498,11 @@ function speakLocal(clean) {
       window.speechSynthesis.cancel();
     } catch (e) {}
     setTimeout(function () {
-      utter(clean.slice(0, 1200), 1);
+      utter(clean.slice(0, 1200), 1, done);
     }, 160);
     return;
   }
-  utter(clean.slice(0, 1200), 1);
+  utter(clean.slice(0, 1200), 1, done);
 }
 
 /* What it says when you arrive. Built from the clock, your name and the log, so
@@ -6911,13 +6931,18 @@ function VoiceOrb({
   }
 
   async function answer(q) {
+    answering.current = true;
+    const resume = function () {
+      answering.current = false;
+      if (live.current) setTimeout(listen, 200);
+    };
     if (!voiceOn()) {
       /* It heard you, it just cannot answer out loud. Saying nothing here is
          how you end up talking to a phone that has quietly stopped listening. */
       setTrouble("I am muted \u2014 say \u201cunmute\u201d.");
       const cmd0 = parseCommand(q);
       if (!cmd0 || cmd0.kind !== "unmute") {
-        if (live.current) setTimeout(listen, 400);
+        resume();
         return;
       }
     }
@@ -6932,22 +6957,21 @@ function VoiceOrb({
         setOn(false);
         setVoiceOn(false);
         setTrouble("Muted. Say \u201cunmute\u201d when you want me back.");
-        if (live.current) setTimeout(listen, 250);
+        resume();
         return;
       }
       if (cmd.kind === "unmute") {
         setOn(true);
         setVoiceOn(true);
         setTrouble("");
-        speak("Back.").then(function () {
-          if (live.current) listen();
-        });
+        speak("Back.").then(resume);
         return;
       }
-      if (cmd.kind === "status") return speak(statusLine());
-      speak(aye()).then(function () {
-        if (live.current) listen();
-      });
+      if (cmd.kind === "status") {
+        speak(statusLine()).then(resume);
+        return;
+      }
+      speak(aye()).then(resume);
       setState("idle");
       /* A beat, so the acknowledgement is heard before the screen changes
          under it. */
@@ -6961,9 +6985,7 @@ function VoiceOrb({
       const out = await askAloud(q);
       /* Listening resumes once it has finished the sentence, so a conversation
          is one press, not one press per question. */
-      speak(out).then(function () {
-        if (live.current) listen();
-      });
+      speak(out).then(resume);
       /* If the engine refuses — which iOS does silently when it has not been
          unlocked — nothing will fire onstart, so this is the backstop that
          stops the ring spinning for ever. */
@@ -6978,9 +7000,7 @@ function VoiceOrb({
       try {
         console.warn("ask failed:", e && e.message);
       } catch (e2) {}
-      speak("That did not go through. Ask me again.").then(function () {
-        if (live.current) listen();
-      });
+      speak("That did not go through. Ask me again.").then(resume);
       setState("idle");
     }
   }
@@ -6989,8 +7009,29 @@ function VoiceOrb({
      closes it; inside one, it goes back to listening after every answer so you
      never press anything twice. */
   const live = useRef(false);
+  /* A conversation, not a walkie-talkie. Once it is open it stays open: every
+     time the recogniser stops \u2014 because you paused, because it heard nothing,
+     because Safari ended the turn on its own \u2014 it simply starts again. It only
+     closes when you tap the bubble or tell it to stop.
+
+     Four separate things used to end it: a turn with nothing in it, a no-speech
+     error, a seven second timer, and starting a second recogniser while the
+     first was still running, which throws. All four now just mean "go round
+     again". */
+  const answering = useRef(false);
   function listen() {
-    if (!canHear()) return;
+    if (!canHear() || !live.current) return;
+    /* Never two at once. Starting a recogniser while one is running throws, and
+       that throw was killing the conversation. */
+    if (rec.current) {
+      try {
+        rec.current.onend = null;
+        rec.current.abort ? rec.current.abort() : rec.current.stop();
+      } catch (e) {}
+      rec.current = null;
+    }
+    /* Not while it is talking, or it transcribes its own voice back at itself. */
+    if (speaking || answering.current) return;
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new R();
     r.lang = "en-US";
@@ -6999,60 +7040,62 @@ function VoiceOrb({
     let heard = "";
     let done = false;
     r.onaudiostart = function () {
-      /* Audio actually reaching us is proof the permission went through, so the
-         next failure is not blamed on a permission that is fine. */
+      /* Audio reaching us is proof the permission went through. */
       rememberMic();
+      setTrouble("");
       pulse(0.35);
     };
-    r.onspeechstart = function () { pulse(0.85); };
-    r.onsoundstart = function () { pulse(0.6); };
-    /* If nothing at all comes back it should say so rather than sit there. A
-       refused microphone permission on iOS produces exactly this: no error, no
-       result, no end. */
-    const deadline = setTimeout(function () {
-      if (!heard.trim()) {
-        try { r.stop(); } catch (e2) {}
-        setState("idle");
-        setTrouble(micGranted() ? "" : "Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
-      }
-    }, 7000);
+    r.onspeechstart = function () {
+      pulse(0.85);
+    };
+    r.onsoundstart = function () {
+      pulse(0.6);
+    };
     r.onresult = function (e) {
-      clearTimeout(deadline);
       pulse(0.7);
       heard = "";
       for (let i = 0; i < e.results.length; i++) {
         heard += e.results[i][0].transcript;
         if (e.results[i].isFinal) done = true;
       }
-      /* The moment it is sure of the words, cut it off. Waiting for its own
-         silence timer was adding a second or two to every single question. */
+      /* The moment it is sure of the words, cut the turn short rather than
+         waiting out its own silence timer. */
       if (done && heard.trim()) try {
         r.stop();
       } catch (e2) {}
     };
     r.onerror = function (e) {
-      clearTimeout(deadline);
       const why = e && e.error || "";
-      /* Silence with no explanation is the worst possible outcome, so anything
-         that goes wrong here says what it was. */
-      /* Only the one thing a tap can fix. Everything else is noise. */
-      setTrouble(why === "not-allowed" || why === "service-not-allowed" ? "Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow." : "");
-      stopListening();
+      /* Only a refused microphone is worth saying, and only that ends it.
+         Hearing nothing is not an error, it is a pause. */
+      if (why === "not-allowed" || why === "service-not-allowed") {
+        live.current = false;
+        setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
+      }
     };
     r.onend = function () {
-      clearTimeout(deadline);
       rec.current = null;
-      setState(function (s) {
-        return s === "listening" ? "idle" : s;
-      });
-      if (heard.trim()) answer(heard.trim());
+      const said = heard.trim();
+      if (said) {
+        answer(said);
+        return;
+      }
+      /* Nothing that turn. Go round again, quietly, so a pause in the middle of
+         thinking does not hang up on you. */
+      if (live.current && !speaking && !answering.current) {
+        setTimeout(listen, 250);
+      } else if (!live.current) {
+        setState("idle");
+      }
     };
     rec.current = r;
     setState("listening");
     try {
       r.start();
     } catch (e) {
-      stopListening();
+      /* Already running, almost always. Give it a moment and try once more. */
+      rec.current = null;
+      if (live.current) setTimeout(listen, 400);
     }
   }
   function tap() {
