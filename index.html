@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b189</div>
+<div class="fr-build">b191</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1691,7 +1691,11 @@ const BILLING_WORKER = AI_PROXY;
    replacing it on an iPad means selecting a screenful of code in a cramped
    editor. A second worker is additive — if it is not deployed yet, or it
    breaks, everything else carries on exactly as before. */
-const VOICE_PROXY = "https://filmroomvoice.richardachampong075.workers.dev";
+/* More than one, because replacing a worker's code on an iPad means selecting a
+   screenful of text in a cramped editor, and making a new one is easier. The
+   newest is tried first; whichever answers with audio is used. An old one left
+   deployed costs nothing and is a spare if the new one is ever broken. */
+const VOICE_PROXIES = ["https://filmroomvoice2.richardachampong075.workers.dev", "https://filmroomvoice.richardachampong075.workers.dev"];
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -6246,27 +6250,34 @@ async function ttsAudio(line) {
     }
   }
 
-  /* The voice worker, which exists only to reach the speech model. */
-  if (VOICE_PROXY) {
+  /* The voice workers, newest first. */
+  for (let i = 0; i < VOICE_PROXIES.length; i++) {
+    const where = VOICE_PROXIES[i];
     try {
-      const res = await fetch(VOICE_PROXY, {
+      const res = await fetch(where, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(TTS_BODY(line))
       });
-      const got = readAudioPart(await res.json());
+      const data = await res.json();
+      const got = readAudioPart(data);
       if (got) {
         voiceCache[line] = got;
+        /* Which worker and which model, so a silent voice is a fact rather than
+           a mystery. */
+        try {
+          console.info("voice:", where.split("//")[1].split(".")[0], data.voiceModel || "");
+        } catch (e2) {}
         return got;
       }
-      tried.push("voice worker: answered, but with no audio in it");
+      tried.push(where.split("//")[1].split(".")[0] + ": answered without audio");
     } catch (e) {
       if (e && e.resting) throw e;
-      /* Naming the route matters: the same words from the voice worker and from
-         the text worker mean completely different things to fix. */
-      tried.push("voice worker: " + (e && e.message || "not reachable \u2014 check the name matches"));
+      /* Naming the route matters: the same words from one worker and another
+         mean completely different things to fix. */
+      tried.push(where.split("//")[1].split(".")[0] + ": " + (e && e.message || "not reachable"));
     }
   }
 
@@ -6560,7 +6571,7 @@ function voiceContext() {
     return e && e.sport === SPORT;
   });
   const last = mine[mine.length - 1];
-  return (who ? "\n\nThe player: " + who + "." : "") + (last ? "\nLast clip you graded: " + last.skill + (last.grade ? ", " + last.grade : "") + (last.broke ? ", broke at " + last.broke : "") + "." : "");
+  return (who ? "\n\nABOUT THEM: " + who + "." : "") + (last ? "\nThe last clip you graded for them: " + last.skill + (last.grade ? ", " + last.grade : "") + (last.broke ? ", broke at " + last.broke : "") + "." : "") + "\nThey are looking at the " + (D.label || SPORT) + " part of the app right now. That is " + "where they are, not what they are allowed to ask about. A question about another " + "sport, or about nothing to do with sport, gets a straight answer.";
 }
 /* How much room to think, decided by the question. "How many reps" wants an
    answer now; "why do I keep fading on my jumper" wants it to actually work
@@ -6582,24 +6593,21 @@ function thinkBudget(q) {
   return 768;
 }
 async function askAloud(question) {
+  const think = thinkBudget(question);
   const turns = [{
     role: "user",
-    parts: [T("You are an elite " + D.term + " coach, answering out loud to a player holding a " + "phone in a gym. Answer in spoken sentences \u2014 no headings, no bullets, no lists, no " + "markdown. Keep it to two or three sentences unless they asked something that genuinely " + "needs more, and never more than five. Reason it out before you answer, then give them " + "the conclusion rather than the working. If it needs film to answer properly, say so and " + "tell them to send the clip in Train." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
+    parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Some things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, go to a page, start a session. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
   }];
-  const think = thinkBudget(question);
   return ai(turns, false, {
-    fast: true,
+    /* No model alias and no explicit thinking budget \u2014 the worker in front of
+       Google is not mine to read, and every request that failed carried one of
+       those. Leaving thinkingConfig out is not "no thinking", it is Gemini's own
+       default, which is thinking. */
+    fast: think === 0,
     hurry: true,
-    think: think,
-    /* Room for the reasoning is separate from room for the answer, but a model
-       that has thought has more to say, so the cap moves with it. Still short
-       enough to be sayable. */
-    /* It was stopping mid-sentence, which sounds like a fault even when the
-       answer was right. Enough room to finish what it started. */
-    maxTokens: think ? 700 : 450
+    maxTokens: think ? 900 : 500
   });
 }
-
 /* ---------------------- COMMANDS ---------------------- */
 
 /* Some of what you say is a question and some of it is an order. An order does
@@ -6640,15 +6648,10 @@ function findPlayer(said) {
     if (!n) return;
     let s = 0;
     if (n === want) s = 100;else if (n.indexOf(want) === 0) s = 80;else if ((" " + n).indexOf(" " + want) > -1) s = 70;else {
+      /* Surname on its own — "pull film on Doncic". */
       const parts = n.split(" ");
       const sur = parts[parts.length - 1];
-      const w = want.split(" ");
-      const wsur = w[w.length - 1];
-      /* Surname on its own — "pull film on Doncic". */
-      if (sur === want) s = 60;
-      /* A shortened first name with the right surname — "Steph Curry" for
-         Stephen Curry, "Bron" for LeBron. People do not say the passport
-         version out loud and a recogniser writes down what it hears. */else if (w.length > 1 && sur === wsur && parts[0].indexOf(w[0]) === 0) s = 65;else if (w.length === 1 && sur.indexOf(want) === 0 && want.length > 3) s = 40;
+      if (sur === want) s = 60;else if (want.split(" ").length === 1 && sur.indexOf(want) === 0 && want.length > 3) s = 40;
     }
     if (s > score) {
       score = s;
@@ -6725,6 +6728,33 @@ function parseCommand(raw) {
     }
   }
 
+  /* A book on the shelf, by name. "Open the Inner Game of Tennis" is an order,
+     and it used to reach the model, which cannot open anything and so talked
+     about tennis instead. */
+  const bookAsk = /\b(open|read|start|pull up|bring up|show me)\b\s*(me\s*)?(the\s+)?(book\s+)?(.+)$/i.exec(t);
+  if (bookAsk && bookAsk[5]) {
+    const want = norm(bookAsk[5].replace(/\bbook\b/ig, ""));
+    if (want.length > 3) {
+      let best = null,
+        score = 0;
+      (typeof MIND_SHELVES === "undefined" ? [] : MIND_SHELVES).forEach(function (sh) {
+        sh.books.forEach(function (b) {
+          const n = norm(b.t);
+          let sc = 0;
+          if (n === want) sc = 100;else if (n.indexOf(want) > -1 || want.indexOf(n) > -1) sc = 70;
+          if (sc > score) {
+            score = sc;
+            best = b;
+          }
+        });
+      });
+      if (best) return {
+        kind: "book",
+        book: best
+      };
+    }
+  }
+
   /* Questions about their own record are answered from the log rather than by
      asking a model what it cannot know. */
   if (/\b(how am i doing|my last grade|what did i get|my record|my progress|how have i been|last clip)\b/i.test(low)) {
@@ -6765,7 +6795,8 @@ function VoiceOrb({
   onItem,
   onFilm,
   onSport,
-  onSession
+  onSession,
+  onBook
 }) {
   const [on, setOn] = useState(voiceOn);
   const [state, setState] = useState("idle");
@@ -6976,7 +7007,7 @@ function VoiceOrb({
       /* A beat, so the acknowledgement is heard before the screen changes
          under it. */
       setTimeout(function () {
-        if (cmd.kind === "player" && onItem) onItem(cmd.item);else if (cmd.kind === "film" && onFilm) onFilm(cmd.q);else if (cmd.kind === "sport" && onSport) onSport(cmd.to);else if (cmd.kind === "session" && onSession) onSession();else if (cmd.kind === "nav" && onGo) onGo(cmd.to);
+        if (cmd.kind === "book" && onBook) onBook(cmd.book);else if (cmd.kind === "player" && onItem) onItem(cmd.item);else if (cmd.kind === "film" && onFilm) onFilm(cmd.q);else if (cmd.kind === "sport" && onSport) onSport(cmd.to);else if (cmd.kind === "session" && onSession) onSession();else if (cmd.kind === "nav" && onGo) onGo(cmd.to);
       }, 420);
       return;
     }
@@ -11438,7 +11469,9 @@ function Book3D({
 }
 
 function MindPage({
-  onSearch
+  onSearch,
+  openBook,
+  onOpened
 }) {
   /* Two things you can do here, so two tabs rather than one long page. */
   const [tab, setTab] = useState("read");
@@ -11446,6 +11479,16 @@ function MindPage({
   const [where, setWhere] = useState("All");
   const [open, setOpen] = useState(null);
   const [reading, setReading] = useState(null);
+  /* Arrived by voice. A free book opens in the reader; a loan can only show
+     what it is and where to borrow it. */
+  useEffect(function () {
+    if (!openBook) return;
+    if (openBook.how === "free") setReading(openBook);else {
+      setTab("read");
+      setOpen(null);
+    }
+    if (onOpened) onOpened();
+  }, [openBook]);
   const [vidChan, setVidChan] = useState("All");
   const [mine, setMine] = useState(myChannels);
   const [adding, setAdding] = useState("");
@@ -11853,6 +11896,8 @@ function App() {
     });
   }
   const [seed, setSeed] = useState(null);
+  /* A book asked for out loud, handed to the Mind page to open. */
+  const [voiceBook, setVoiceBook] = useState(null);
   const [user, setUser] = useState(loadSession);
   /* The profile — which is where the team code lives — used to be fetched only
      inside Train. So on a cold load the app had no idea you were in a team until
@@ -12289,6 +12334,12 @@ function App() {
         setSportState(k);
       }
     },
+    onBook: function (b) {
+      /* Straight into the reader for a free one; the shelf otherwise, since a
+         library loan cannot be opened here. */
+      setVoiceBook(b);
+      go("mind");
+    },
     onSession: function () {
       /* "Start recording the session" means a clean thread, then the coach. */
       try {
@@ -12352,7 +12403,11 @@ function App() {
     onOpen: openItem,
     onSearch: query => openFilm(query, "any")
   }), top.page === "mind" && /*#__PURE__*/React.createElement(MindPage, {
-    onSearch: openFilm
+    onSearch: openFilm,
+    openBook: voiceBook,
+    onOpened: function () {
+      setVoiceBook(null);
+    }
   }), top.page === "games" && /*#__PURE__*/React.createElement(GamesPage, {
     onOpen: openItem,
     onSearch: query => openFilm(query, "long")
