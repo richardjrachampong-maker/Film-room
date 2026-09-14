@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b200</div>
+<div class="fr-build">b202</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6078,6 +6078,10 @@ let onWord = null;
 /* Counts the times speech has actually begun. Whether it is speaking *now* is
    no use for telling a refusal apart from a short line that already finished. */
 let spokeCount = 0;
+/* True from the moment anything decides to speak, not from when sound comes
+   out. The gap between the two is the time it takes to generate the voice, and
+   that gap is when it was opening the microphone and recording itself. */
+let speakPending = false;
 
 /* ---------------------- REAL VOICE ---------------------- */
 
@@ -6537,10 +6541,21 @@ function utter(line, tries, done) {
    still comes out rather than nothing. */
 async function speak(text) {
   if (!voiceOn()) return;
+  speakPending = true;
+  try {
+    await speakNow(text);
+  } finally {
+    speakPending = false;
+  }
+}
+async function speakNow(text) {
   /* Resolves either way, because callers chain listening onto it. */
   const clean = tidy(text);
   if (!clean) return;
-  stopSpeaking();
+  /* Deliberately does not stop whatever is talking. Answers are already one
+     after another — each waits for the last to finish — so the only thing this
+     ever interrupted was itself, cutting an answer off mid-sentence. Stopping
+     is now only done when you actually ask for it: tapping, muting, cancelling. */
   lastVoiceFail = "";
   try {
     const src = await ttsAudio(clean.slice(0, 1400));
@@ -7387,6 +7402,9 @@ function VoiceOrb({
   const answerAt = useRef(0);
   /* How many times in a row it has started without hearing anything. */
   const deaf = useRef(0);
+  /* How many turns in a row have come back empty, so the retries can slow down
+     instead of hammering. */
+  const quiet = useRef(0);
   /* Bumped whenever something new is asked for, or cancelled. Any step from an
      older job checks this and quietly stands down. */
   const job = useRef(0);
@@ -7405,9 +7423,9 @@ function VoiceOrb({
       if (answering.current && Date.now() - answerAt.current > 15000) {
         answering.current = false;
       }
-      if (rec.current || speaking || answering.current) return;
+      if (rec.current || speaking || speakPending || answering.current) return;
       listen();
-    }, 500);
+    }, 1500);
     return function () {
       clearInterval(t);
     };
@@ -7431,7 +7449,7 @@ function VoiceOrb({
        But waiting is not the same as giving up: this used to return and nothing
        ever called it again, which is exactly the "answers once then sits there"
        you saw. */
-    if (speaking || answering.current) {
+    if (speaking || speakPending || answering.current) {
       setTimeout(listen, 300);
       return;
     }
@@ -7439,7 +7457,10 @@ function VoiceOrb({
     const r = new R();
     r.lang = "en-US";
     r.interimResults = true;
-    r.continuous = false;
+    /* Kept open across pauses rather than ended and rebuilt after every one.
+       Safari stops granting the microphone to something that asks dozens of
+       times a minute, which is what the constant rebuilding was doing. */
+    r.continuous = true;
     let heard = "";
     let done = false;
     /* These three are in the spec and Safari fires none of them. Kept because
@@ -7468,6 +7489,8 @@ function VoiceOrb({
       }
       /* The moment it is sure of the words, cut the turn short rather than
          waiting out its own silence timer. */
+      /* With a continuous recogniser the turn does not end on its own, so a
+         finished sentence is stopped here to hand the words straight over. */
       if (done && heard.trim()) try {
         r.stop();
       } catch (e2) {}
@@ -7485,13 +7508,15 @@ function VoiceOrb({
       rec.current = null;
       const said = heard.trim();
       if (said) {
+        quiet.current = 0;
         answer(said);
         return;
       }
-      /* Nothing that turn. Go round again, quietly, so a pause in the middle of
-         thinking does not hang up on you. */
-      if (live.current && !speaking && !answering.current) {
-        setTimeout(listen, 250);
+      /* Nothing that turn. Go round again, but give it room: restarting
+         instantly, over and over, is what makes Safari stop cooperating. */
+      if (live.current && !speaking && !speakPending && !answering.current) {
+        quiet.current = Math.min(6, quiet.current + 1);
+        setTimeout(listen, 300 + quiet.current * 250);
       } else if (!live.current) {
         setState("idle");
       }
