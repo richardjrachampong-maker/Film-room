@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b197</div>
+<div class="fr-build">b199</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7398,7 +7398,8 @@ function VoiceOrb({
      and starts it again. Cheap, and it cannot be got around. */
   useEffect(function () {
     const t = setInterval(function () {
-      if (!live.current) return;
+      /* Same rule as listen(): no microphone without a touch behind it. */
+      if (!live.current || !gestured.current) return;
       /* A flag that has been up for more than fifteen seconds is not an answer
          in progress, it is a flag nobody put down. */
       if (answering.current && Date.now() - answerAt.current > 15000) {
@@ -7411,8 +7412,12 @@ function VoiceOrb({
       clearInterval(t);
     };
   }, []);
+  /* Safari only gives the microphone to something a person started, and that is
+     true for the whole page load, not just the first time ever. A conversation
+     restored from sessionStorage still has to wait for a touch. */
+  const gestured = useRef(false);
   function listen() {
-    if (!canHear() || !live.current) return;
+    if (!canHear() || !live.current || !gestured.current) return;
     /* Never two at once. Starting a recogniser while one is running throws, and
        that throw was killing the conversation. */
     if (rec.current) {
@@ -7519,6 +7524,7 @@ function VoiceOrb({
   }
   function tap() {
     if (holdEnd()) return;
+    gestured.current = true;
     unlockVoice();
     /* One control, and what it does depends on what it is doing. Talking, and a
        tap shuts it up \u2014 which is what you want when it is mid-sentence and
