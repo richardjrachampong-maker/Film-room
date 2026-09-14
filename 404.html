@@ -1343,7 +1343,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b191</div>
+<div class="fr-build">b192</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7050,6 +7050,19 @@ function VoiceOrb({
      first was still running, which throws. All four now just mean "go round
      again". */
   const answering = useRef(false);
+  /* Whatever else happens, a conversation that is open should be listening.
+     Rather than chase every path that might drop it, this checks twice a second
+     and starts it again. Cheap, and it cannot be got around. */
+  useEffect(function () {
+    const t = setInterval(function () {
+      if (!live.current) return;
+      if (rec.current || speaking || answering.current) return;
+      listen();
+    }, 500);
+    return function () {
+      clearInterval(t);
+    };
+  }, []);
   function listen() {
     if (!canHear() || !live.current) return;
     /* Never two at once. Starting a recogniser while one is running throws, and
@@ -7061,8 +7074,14 @@ function VoiceOrb({
       } catch (e) {}
       rec.current = null;
     }
-    /* Not while it is talking, or it transcribes its own voice back at itself. */
-    if (speaking || answering.current) return;
+    /* Not while it is talking, or it transcribes its own voice back at itself.
+       But waiting is not the same as giving up: this used to return and nothing
+       ever called it again, which is exactly the "answers once then sits there"
+       you saw. */
+    if (speaking || answering.current) {
+      setTimeout(listen, 300);
+      return;
+    }
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new R();
     r.lang = "en-US";
