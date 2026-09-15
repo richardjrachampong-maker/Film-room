@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b206</div>
+<div class="fr-build">b210</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7270,7 +7270,7 @@ function VoiceOrb({
       /* The tap that starts a conversation is not an arrival. Greeting on it is
          how it ended up talking over you. */
       if (e && e.target && e.target.closest && e.target.closest(".fr-orb")) return;
-      if (speaking || rec.current) return;
+      if (speaking || running.current) return;
       greet("touch");
     }
     document.addEventListener("pointerdown", onTouch);
@@ -7289,8 +7289,10 @@ function VoiceOrb({
       try {
         rec.current.stop();
       } catch (e) {}
-      rec.current = null;
     }
+    /* The instance is kept. Throwing it away and building another is what
+       makes iOS chime and misbehave. */
+    running.current = false;
     setState("idle");
   }
 
@@ -7518,12 +7520,12 @@ function VoiceOrb({
         answering.current = false;
       }
       /* The ring must not claim to be listening when nothing is. */
-      if (!rec.current && !speaking && !speakPending && !answering.current) {
+      if (!running.current && !speaking && !speakPending && !answering.current) {
         setState(function (st) {
           return st === "listening" ? "idle" : st;
         });
       }
-      if (rec.current || speaking || speakPending || answering.current) return;
+      if (running.current || speaking || speakPending || answering.current) return;
       /* Try. Only if several attempts in a row fail to take does it conclude
          that iOS wants a touch and say so. */
       if (tries.current > 3) {
@@ -7549,12 +7551,19 @@ function VoiceOrb({
     /* Any touch anywhere counts, not just the bubble. On iOS this is also how a
        session Safari has closed gets reopened — the next time you touch the
        screen for any reason, it is listening again. */
-    function anyTouch() {
+    function anyTouch(e) {
       gestured.current = true;
       unlockVoice();
-      if (!rec.current && !speaking && !speakPending && !answering.current) {
+      /* The bubble handles itself. Without this, a tap on it opened a session
+         here on pointerdown, and then its own click handler a moment later saw
+         a session running and switched the whole thing off — which is why
+         tapping the thing appeared to do nothing at all. */
+      if (e && e.target && e.target.closest && e.target.closest(".fr-orb")) return;
+      if (!running.current) {
+        /* Inside the touch, which is the whole point of listening for one. */
         setTrouble("");
-        listen();
+        tries.current = 0;
+        listen(true);
       }
     }
     document.addEventListener("pointerdown", anyTouch);
@@ -7573,7 +7582,7 @@ function VoiceOrb({
     const named = heardWake(said);
     const open = Date.now() < openUntil.current;
     if (!named && !open) {
-      if (live.current && !rec.current) setTimeout(listen, 150);
+      if (live.current && !running.current) setTimeout(listen, 150);
       return;
     }
     const body = named ? afterWake(said) : said;
@@ -7592,38 +7601,36 @@ function VoiceOrb({
     answer(body);
   }
 
-  function listen() {
-    if (!canHear() || !live.current || !gestured.current) return;
-    /* Never two at once. Starting a recogniser while one is running throws, and
-       that throw was killing the conversation. */
-    if (rec.current) {
-      try {
-        rec.current.onend = null;
-        rec.current.abort ? rec.current.abort() : rec.current.stop();
-      } catch (e) {}
-      rec.current = null;
-    }
-    /* Not while it is talking, or it transcribes its own voice back at itself.
-       But waiting is not the same as giving up: this used to return and nothing
-       ever called it again, which is exactly the "answers once then sits there"
-       you saw. */
-    if (speaking || speakPending || answering.current) {
-      setTimeout(listen, 300);
-      return;
-    }
+  /* One recogniser, made once and reused.
+
+     Two things I had wrong, both documented iOS faults rather than guesses:
+
+     Creating a new SpeechRecognition for every turn is what makes iOS play the
+     system chime and behave erratically. It wants a single instance, started
+     and stopped.
+
+     And continuous is specifically broken on iOS \u2014 the microphone never stops
+     when you finish speaking and the transcript never arrives at all. I turned
+     it on for iOS four builds ago to avoid restarting. That was the wrong
+     trade: it is the one setting Apple's own developer forums single out as not
+     working. Off everywhere now, and the same instance is restarted rather than
+     rebuilt. */
+  const running = useRef(false);
+  const taken = useRef(0);
+  function makeRec() {
+    if (rec.current) return rec.current;
+    if (!canHear()) return null;
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     const r = new R();
     r.lang = "en-US";
     r.interimResults = true;
-    /* On a desktop, ending the turn and reopening is better: it delivers the
-       words promptly. On iOS it is fatal, because reopening needs a touch. */
-    r.continuous = IS_IOS;
-    let heard = "";
-    let done = false;
-    /* How far through this session's results we have already dealt with. */
-    let taken = 0;
-    /* These three are in the spec and Safari fires none of them. Kept because
-       other browsers do, but nothing depends on them. */
+    r.continuous = false;
+    r.onstart = function () {
+      running.current = true;
+      taken.current = 0;
+      tries.current = 0;
+      setState("listening");
+    };
     r.onaudiostart = function () {
       rememberMic();
       setTrouble("");
@@ -7632,99 +7639,87 @@ function VoiceOrb({
     r.onspeechstart = function () {
       pulse(0.85);
     };
-    r.onsoundstart = function () {
-      pulse(0.6);
-    };
     r.onresult = function (e) {
-      /* Words arriving is the only proof Safari gives that it can hear you, so
-         this is what moves the ring and what confirms the permission. */
       rememberMic();
       tries.current = 0;
       setTrouble("");
       pulse(0.8);
-
-      if (IS_IOS) {
-        /* The session is never stopped here, because reopening one needs a
-           touch. Finished sentences are lifted out of it as they land. */
-        for (let i = taken; i < e.results.length; i++) {
-          if (!e.results[i].isFinal) continue;
-          taken = i + 1;
-          const line = String(e.results[i][0].transcript || "").trim();
-          if (!line) continue;
-          /* Its own voice is discarded. Something said while it is merely
-             thinking is a real sentence, so it is held rather than lost. */
-          if (speaking) continue;
-          quiet.current = 0;
-          if (answering.current || speakPending) {
-            heldLine.current = line;
-            continue;
-          }
-          route(line);
+      for (let i = taken.current; i < e.results.length; i++) {
+        if (!e.results[i].isFinal) continue;
+        taken.current = i + 1;
+        const line = String(e.results[i][0].transcript || "").trim();
+        if (!line) continue;
+        /* Its own voice is discarded. Something said while it is only thinking
+           is real, so it is held rather than lost. */
+        if (speaking) continue;
+        quiet.current = 0;
+        if (answering.current || speakPending) {
+          heldLine.current = line;
+          continue;
         }
-        return;
+        route(line);
       }
-
-      heard = "";
-      for (let i = 0; i < e.results.length; i++) {
-        heard += e.results[i][0].transcript;
-        if (e.results[i].isFinal) done = true;
-      }
-      if (done && heard.trim()) try {
-        r.stop();
-      } catch (e2) {}
     };
     r.onerror = function (e) {
       const why = e && e.error || "";
-      /* Only a refused microphone is worth saying, and only that ends it.
-         Hearing nothing is not an error, it is a pause. */
       if (why === "not-allowed" || why === "service-not-allowed") {
-        setLive(false);
-        setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
+        /* One error name for two different things: a blocked microphone, and
+           iOS wanting the start to come from a touch. If audio has ever reached
+           us the permission is fine, so it waits for a touch rather than
+           shutting the whole thing down. */
+        if (micGranted()) {
+          setTrouble("Tap anywhere to keep listening.");
+        } else {
+          setLive(false);
+          setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
+        }
       }
     };
     r.onend = function () {
-      rec.current = null;
-      const said = heard.trim();
-      if (said) {
-        quiet.current = 0;
-        route(said);
-        return;
-      }
+      running.current = false;
       if (!live.current) {
         setState("idle");
         return;
       }
-      /* Busy right now — almost always because playing the answer ended the
-         session underneath us. Remembered, and picked up the moment it is free.
-         The old version simply did nothing here, which is where every iOS
-         conversation died after one question. */
+      /* Busy \u2014 usually because playing the answer ended the session. Picked up
+         the moment it is free. */
       if (speaking || speakPending || answering.current) {
         wantListen.current = true;
+        setState(function (st) {
+          return st === "listening" ? "idle" : st;
+        });
         return;
       }
-      /* Nothing that turn. Go round again, with a little room: restarting
-         instantly, over and over, is what makes Safari stop cooperating. */
       quiet.current = Math.min(4, quiet.current + 1);
-      setTimeout(listen, 150 + quiet.current * 120);
+      setTimeout(listen, 200 + quiet.current * 150);
     };
     rec.current = r;
-    setState("listening");
-    sessionAt.current = Date.now();
-    try {
-      r.start();
-    } catch (e) {
-      /* Already running, almost always. Give it a moment and try once more. */
-      rec.current = null;
-      if (live.current) setTimeout(listen, 400);
+    return r;
+  }
+
+  function listen(fromTouch) {
+    if (!canHear() || !live.current || !gestured.current) return;
+    if (!fromTouch && (speaking || speakPending || answering.current)) {
+      setTimeout(listen, 300);
       return;
     }
-    /* There is deliberately no watchdog here any more. Safari does not fire
-       onaudiostart, onsoundstart or onspeechstart at all, so "no audio has
-       arrived yet" is its normal state even when the microphone is working
-       perfectly. The version that tore the recogniser down on that basis was
-       killing it 1.4 seconds after every start \u2014 mid-sentence, every time.
-       The only honest signs of life in Safari are onresult and onend, and both
-       are handled above. */
+    const r = makeRec();
+    if (!r) return;
+    /* Already listening \u2014 restarting would only interrupt it. */
+    if (running.current) return;
+    if (fromTouch) {
+      stopSpeaking();
+      answering.current = false;
+      speakPending = false;
+    }
+    try {
+      r.start();
+      setState("listening");
+      sessionAt.current = Date.now();
+    } catch (e) {
+      /* Almost always "already started", which is harmless. */
+      tries.current++;
+    }
   }
   function tap() {
     if (holdEnd()) return;
@@ -7738,7 +7733,7 @@ function VoiceOrb({
          it goes straight back to listening. */
       stopSpeaking();
       if (live.current) {
-        listen();
+        listen(true);
         return;
       }
       setState("idle");
@@ -7748,17 +7743,18 @@ function VoiceOrb({
        to be showing. The ring said "listening" for a long time after iOS had
        quietly closed the session, so the tap meant to revive it was read as
        "stop" and shut everything down — which is exactly what you saw. */
-    if (rec.current) {
+    if (running.current) {
       setLive(false);
       stopListening();
       return;
     }
     if (live.current) {
-      /* Open but not actually listening. This is the revival case. */
+      /* Open but not actually listening — the revival case. Started inside
+         this touch, because that is the only place iOS will allow it. */
       setTrouble("");
       tries.current = 0;
       openUntil.current = Date.now() + 25000;
-      listen();
+      listen(true);
       return;
     }
     if (!on) {
@@ -7776,6 +7772,7 @@ function VoiceOrb({
        needing the name as well. */
     asleep.current = false;
     openUntil.current = Date.now() + 25000;
+    tries.current = 0;
     /* First time on this device: say what to do with it, once. After that the
        bubble is just a light — you never have to press it again. */
     try {
@@ -7784,8 +7781,8 @@ function VoiceOrb({
         setTrouble("Listening. Just say \u201cHey Film Room\u201d \u2014 you never need to tap this again.");
       }
     } catch (e) {}
-    listen();
-
+    /* Inside the tap that switched it on. */
+    listen(true);
   }
 
   /* Hold the bubble and it says one line, so you can find out in a second
