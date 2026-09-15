@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b213</div>
+<div class="fr-build">b214</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6059,7 +6059,9 @@ function canSpeak() {
 const IS_IOS = typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 function canHear() {
-  return typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  /* What listening needs now is a microphone, not the browser's speech
+     recogniser — which is no longer used anywhere. */
+  return typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && !!(window.AudioContext || window.webkitAudioContext);
 }
 
 /* Voices load asynchronously in every browser, and on iOS the list is empty
@@ -6718,6 +6720,224 @@ async function askAloud(question) {
     maxTokens: think ? 900 : 500
   });
 }
+/* ---------------------- THE MICROPHONE ---------------------- */
+
+/* Safari's SpeechRecognition has beaten us for a whole evening. It needs a
+   touch for every start, it throttles a page that starts too often, its
+   continuous mode is broken, and building more than one instance makes it
+   misbehave. Every fix worked around one of those and ran into the next.
+
+   So this does what ChatGPT's voice mode does instead, and does not use it at
+   all. One microphone stream is opened by your tap and held open for as long as
+   the page lives. The audio is watched here, in the page, to work out when you
+   start and stop talking. Each sentence is turned into a WAV and sent off to be
+   transcribed.
+
+   Nothing is started or stopped per turn, so there is nothing for Safari to
+   refuse, throttle, or chime at. */
+
+let micStream = null;
+let micCtx = null;
+let micNode = null;
+let micSrc = null;
+
+/* How loud counts as talking, and how long a gap ends a sentence. */
+const SPEAK_LEVEL = 0.015;
+const HUSH_MS = 750;
+const MIN_SPEECH_MS = 350;
+const MAX_SPEECH_MS = 14000;
+
+function floatsToWav(chunks, rate) {
+  let n = 0;
+  chunks.forEach(function (c) {
+    n += c.length;
+  });
+  const all = new Float32Array(n);
+  let at = 0;
+  chunks.forEach(function (c) {
+    all.set(c, at);
+    at += c.length;
+  });
+
+  /* Whisper-style models want 16kHz mono, and it is a quarter of the bytes to
+     send. Plain decimation is enough for speech. */
+  const want = 16000;
+  const step = rate / want;
+  const outLen = Math.floor(all.length / step);
+  const pcm = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const v = all[Math.floor(i * step)] || 0;
+    pcm[i] = Math.max(-1, Math.min(1, v)) * 0x7fff;
+  }
+
+  const buf = new ArrayBuffer(44 + pcm.length * 2);
+  const view = new DataView(buf);
+  const put = function (off, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+  };
+  put(0, "RIFF");
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  put(8, "WAVE");
+  put(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, want, true);
+  view.setUint32(28, want * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  put(36, "data");
+  view.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) view.setInt16(44 + i * 2, pcm[i], true);
+
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  }
+  return window.btoa(bin);
+}
+
+/* Sent to the model that already answers everything else, so no new service and
+   nothing to redeploy. */
+async function transcribe(wavB64) {
+  const turns = [{
+    role: "user",
+    parts: [{
+      inline_data: {
+        mime_type: "audio/wav",
+        data: wavB64
+      }
+    }, T("Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description. If it is silence, " + "noise, or you cannot make out words, reply with the single word NOTHING.")]
+  }];
+  const out = await ai(turns, false, {
+    fast: true,
+    hurry: true,
+    maxTokens: 120
+  });
+  const said = String(out || "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
+  if (!said || /^nothing[.!]?$/i.test(said)) return "";
+  return said;
+}
+
+/* Opens the microphone. Must be called from inside a touch the first time,
+   which is the only gesture requirement left anywhere in this. */
+async function openMic(onLevel, onSentence, isBusy) {
+  if (micStream) return true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+  } catch (e) {
+    micStream = null;
+    return false;
+  }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  micCtx = new Ctx();
+  try {
+    await micCtx.resume();
+  } catch (e) {}
+  micSrc = micCtx.createMediaStreamSource(micStream);
+  /* ScriptProcessor is old and deprecated, and it is the one that works in
+     every Safari without shipping a separate worklet file. */
+  micNode = micCtx.createScriptProcessor(4096, 1, 1);
+
+  let chunks = [];
+  let talking = false;
+  let lastLoud = 0;
+  let startedAt = 0;
+
+  micNode.onaudioprocess = function (ev) {
+    const inBuf = ev.inputBuffer.getChannelData(0);
+    let peak = 0;
+    let sum = 0;
+    for (let i = 0; i < inBuf.length; i++) {
+      const v = Math.abs(inBuf[i]);
+      if (v > peak) peak = v;
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / inBuf.length);
+    const now = Date.now();
+
+    /* While it is talking, everything coming in is its own voice. Thrown away,
+       and the sentence so far with it, so half a question does not get sent. */
+    if (isBusy && isBusy()) {
+      chunks = [];
+      talking = false;
+      if (onLevel) onLevel(0);
+      return;
+    }
+    if (onLevel) onLevel(Math.min(1, peak * 6));
+
+    if (rms > SPEAK_LEVEL) {
+      if (!talking) {
+        talking = true;
+        startedAt = now;
+        chunks = [];
+      }
+      lastLoud = now;
+    }
+    if (talking) {
+      chunks.push(new Float32Array(inBuf));
+      const longEnough = now - startedAt > MIN_SPEECH_MS;
+      const hushed = now - lastLoud > HUSH_MS;
+      const tooLong = now - startedAt > MAX_SPEECH_MS;
+      if (longEnough && hushed || tooLong) {
+        const got = chunks;
+        chunks = [];
+        talking = false;
+        if (onSentence) onSentence(floatsToWav(got, micCtx.sampleRate));
+      } else if (!longEnough && now - lastLoud > HUSH_MS) {
+        /* A cough, a door, a word from across the room. */
+        chunks = [];
+        talking = false;
+      }
+    }
+  };
+  micSrc.connect(micNode);
+  /* Safari will not run a ScriptProcessor unless it is connected to something.
+     A gain of zero means nothing is played back. */
+  const sink = micCtx.createGain();
+  sink.gain.value = 0;
+  micNode.connect(sink);
+  sink.connect(micCtx.destination);
+  return true;
+}
+
+function micOpen() {
+  return !!micStream;
+}
+
+async function wakeMic() {
+  /* iOS suspends the audio context when the page is backgrounded. */
+  if (micCtx && micCtx.state === "suspended") {
+    try {
+      await micCtx.resume();
+    } catch (e) {}
+  }
+}
+
+function closeMic() {
+  try {
+    if (micNode) micNode.disconnect();
+    if (micSrc) micSrc.disconnect();
+    if (micStream) micStream.getTracks().forEach(function (t) {
+      t.stop();
+    });
+    if (micCtx) micCtx.close();
+  } catch (e) {}
+  micStream = null;
+  micCtx = null;
+  micNode = null;
+  micSrc = null;
+}
+
 /* ---------------------- COMMANDS ---------------------- */
 
 /* Some of what you say is a question and some of it is an order. An order does
@@ -7285,13 +7505,9 @@ function VoiceOrb({
 
   function stopListening() {
     dropMic();
-    if (rec.current) {
-      try {
-        rec.current.stop();
-      } catch (e) {}
-    }
-    /* The instance is kept. Throwing it away and building another is what
-       makes iOS chime and misbehave. */
+    /* The stream is left open. Closing and reopening a microphone is exactly
+       the churn that caused all of this; ignoring what comes down it costs
+       nothing and means switching back on is instant. */
     running.current = false;
     setState("idle");
   }
@@ -7501,6 +7717,8 @@ function VoiceOrb({
   /* When the microphone was last asked for. Safari throttles a page that asks
      too often, and a throttled page is silent for about a minute. */
   const lastStart = useRef(0);
+  /* The microphone is open and being watched. */
+  const running = useRef(false);
   function busy(ms) {
     busyUntil.current = Date.now() + (ms || 15000);
   }
@@ -7531,6 +7749,12 @@ function VoiceOrb({
       const busyNow = speaking || speakPending || Date.now() < busyUntil.current;
 
       /* The ring must never claim to be listening when nothing is. */
+      if (micOpen() && !busyNow && live.current) {
+        running.current = true;
+        setState(function (st) {
+          return st === "idle" ? "listening" : st;
+        });
+      }
       if (!running.current && !busyNow) {
         setState(function (st) {
           return st === "listening" ? "idle" : st;
@@ -7618,148 +7842,59 @@ function VoiceOrb({
     answer(body);
   }
 
-  /* One recogniser, made once and reused.
-
-     Two things I had wrong, both documented iOS faults rather than guesses:
-
-     Creating a new SpeechRecognition for every turn is what makes iOS play the
-     system chime and behave erratically. It wants a single instance, started
-     and stopped.
-
-     And continuous is specifically broken on iOS \u2014 the microphone never stops
-     when you finish speaking and the transcript never arrives at all. I turned
-     it on for iOS four builds ago to avoid restarting. That was the wrong
-     trade: it is the one setting Apple's own developer forums single out as not
-     working. Off everywhere now, and the same instance is restarted rather than
-     rebuilt. */
-  const running = useRef(false);
-  const taken = useRef(0);
-  function makeRec() {
-    if (rec.current) return rec.current;
-    if (!canHear()) return null;
-    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const r = new R();
-    r.lang = "en-US";
-    r.interimResults = true;
-    r.continuous = false;
-    let gotSomething = false;
-    r.onstart = function () {
+  /* Opening the microphone, once. After this nothing is started or stopped per
+     turn \u2014 the stream stays open, the page watches it, and each sentence is
+     sent off to be written down. There is nothing left for Safari to refuse,
+     throttle or chime at. */
+  function listen(fromTouch) {
+    if (!live.current || !gestured.current) return;
+    if (micOpen()) {
+      wakeMic();
       running.current = true;
-      taken.current = 0;
-      tries.current = 0;
-      gotSomething = false;
       setState("listening");
-    };
-    r.onaudiostart = function () {
-      rememberMic();
-      setTrouble("");
-      pulse(0.35);
-    };
-    r.onspeechstart = function () {
-      pulse(0.85);
-    };
-    r.onresult = function (e) {
-      rememberMic();
-      tries.current = 0;
-      setTrouble("");
-      pulse(0.8);
-      for (let i = taken.current; i < e.results.length; i++) {
-        if (!e.results[i].isFinal) continue;
-        taken.current = i + 1;
-        const line = String(e.results[i][0].transcript || "").trim();
-        if (!line) continue;
-        gotSomething = true;
-        quiet.current = 0;
-        /* Its own voice is discarded. Something said while it is only thinking
-           is real, so it is held rather than lost. */
-        if (speaking) continue;
-        quiet.current = 0;
-        if (answering.current || speakPending) {
-          heldLine.current = line;
-          continue;
-        }
-        route(line);
-      }
-    };
-    r.onerror = function (e) {
-      const why = e && e.error || "";
-      if (why === "not-allowed" || why === "service-not-allowed") {
-        /* One error name for two different things: a blocked microphone, and
-           iOS wanting the start to come from a touch. If audio has ever reached
-           us the permission is fine, so it waits for a touch rather than
-           shutting the whole thing down. */
-        if (micGranted()) {
-          setTrouble("Tap anywhere to keep listening.");
-        } else {
-          setLive(false);
-          setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
-        }
-      }
-    };
-    r.onend = function () {
-      running.current = false;
-      if (!live.current) {
-        setState("idle");
+      return;
+    }
+    /* The very first open has to come from a touch. That is the only gesture
+       requirement left in the whole thing. */
+    if (!fromTouch) return;
+    openMic(function (lvl) {
+      /* how loud you are, for the ring */
+      if (lvl > 0.04) pulse(Math.min(1, lvl));
+    }, function (wav) {
+      /* a finished sentence */
+      heardWav(wav);
+    }, function () {
+      /* busy: everything coming in while it talks is its own voice */
+      return speaking || speakPending || Date.now() < busyUntil.current;
+    }).then(function (ok) {
+      if (!ok) {
+        setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
         return;
       }
-      /* Busy \u2014 usually because playing the answer ended the session. Picked up
-         the moment it is free. */
-      /* Between turns it is still listening as far as you are concerned, so the
-         ring stays lit rather than flickering off for half a second every time
-         Safari ends a turn. It only goes dark if a restart really does not
-         happen. */
-      /* A turn that heard something restarts promptly, because you are
-         talking. A turn that heard nothing backs off, because you are not \u2014
-         and because asking Safari for the microphone over and over is what gets
-         the page throttled, and a throttled page is silent for about a minute.
-         Between roughly four and thirty starts a minute, depending on whether a
-         conversation is actually happening. */
-      const gap = gotSomething ? 250 : Math.min(2500, 400 + quiet.current * 500);
-      if (!gotSomething) quiet.current = Math.min(5, quiet.current + 1);
-      if (live.current) setTimeout(function () {
-        if (!running.current && !speaking && !speakPending && Date.now() > busyUntil.current) listen();
-      }, gap);else setState("idle");
-      setTimeout(function () {
-        if (!running.current && !speaking && !speakPending) setState(function (st) {
-          return st === "listening" ? "idle" : st;
-        });
-      }, gap + 1500);
-    };
-    rec.current = r;
-    return r;
+      rememberMic();
+      running.current = true;
+      setTrouble("");
+      setState("listening");
+    });
   }
 
-  function listen(fromTouch) {
-    if (!canHear() || !live.current || !gestured.current) return;
-    if (!fromTouch && (speaking || speakPending || Date.now() < busyUntil.current)) return;
-    const r = makeRec();
-    if (!r) return;
-    /* Already listening \u2014 restarting would only interrupt it. */
-    if (running.current) return;
-    if (fromTouch) {
-      stopSpeaking();
-      answering.current = false;
-      speakPending = false;
-    }
-    lastStart.current = Date.now();
+  /* A sentence arrived as audio. Written down, then treated exactly as before. */
+  async function heardWav(wav) {
+    if (!live.current) return;
+    if (speaking || speakPending || Date.now() < busyUntil.current) return;
+    setState("thinking");
     try {
-      r.start();
-      setState("listening");
-      sessionAt.current = Date.now();
-    } catch (e) {
-      /* Usually "already started", which is harmless. But if the same instance
-         keeps refusing, Safari has wedged it \u2014 throw it away and let a fresh
-         one be made, rather than asking a dead object over and over. */
-      tries.current++;
-      if (tries.current > 2) {
-        try {
-          r.abort();
-        } catch (e2) {}
-        rec.current = null;
-        tries.current = 0;
+      const said = await transcribe(wav);
+      if (!said) {
+        setState("listening");
+        return;
       }
+      route(said);
+    } catch (e) {
+      setState("listening");
     }
   }
+
   function tap() {
     if (holdEnd()) return;
     gestured.current = true;
