@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b205</div>
+<div class="fr-build">b206</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7324,9 +7324,11 @@ function VoiceOrb({
         }, 120);
         return;
       }
-      /* On iOS the session is still open and carries on by itself — restarting
-         would be refused. Everywhere else, a beat and then listen again. */
-      if (!IS_IOS && live.current) setTimeout(listen, 180);
+      /* Always tries, on every platform. If iOS refuses, the check below
+         notices and asks for a touch — but refusing to even try is what left
+         it dead after one answer. */
+      wantListen.current = false;
+      if (live.current) setTimeout(listen, 180);
     };
     /* Whatever happens in here — including a promise rejecting somewhere I did
        not expect — listening comes back. Leaving this to the happy path is why
@@ -7492,6 +7494,11 @@ function VoiceOrb({
   const asleep = useRef(false);
   /* Something said while it was busy, waiting its turn. */
   const heldLine = useRef("");
+  /* The session ended while it was busy and wants reopening. */
+  const wantListen = useRef(false);
+  /* Attempts to open a session that have not taken. Reset the moment one does. */
+  const tries = useRef(0);
+  const sessionAt = useRef(0);
   /* Bumped whenever something new is asked for, or cancelled. Any step from an
      older job checks this and quietly stands down. */
   const job = useRef(0);
@@ -7510,13 +7517,19 @@ function VoiceOrb({
       if (answering.current && Date.now() - answerAt.current > 15000) {
         answering.current = false;
       }
-      if (rec.current || speaking || speakPending || answering.current) return;
-      /* On iOS a session that has ended cannot be reopened without a touch, so
-         rather than trying and failing silently, it says so. */
-      if (IS_IOS) {
-        setTrouble("Tap anywhere to keep listening.");
-        return;
+      /* The ring must not claim to be listening when nothing is. */
+      if (!rec.current && !speaking && !speakPending && !answering.current) {
+        setState(function (st) {
+          return st === "listening" ? "idle" : st;
+        });
       }
+      if (rec.current || speaking || speakPending || answering.current) return;
+      /* Try. Only if several attempts in a row fail to take does it conclude
+         that iOS wants a touch and say so. */
+      if (tries.current > 3) {
+        setTrouble("Tap anywhere to keep listening.");
+      }
+      tries.current++;
       listen();
     }, 900);
     return function () {
@@ -7560,7 +7573,7 @@ function VoiceOrb({
     const named = heardWake(said);
     const open = Date.now() < openUntil.current;
     if (!named && !open) {
-      if (!IS_IOS && live.current) setTimeout(listen, 150);
+      if (live.current && !rec.current) setTimeout(listen, 150);
       return;
     }
     const body = named ? afterWake(said) : said;
@@ -7571,7 +7584,7 @@ function VoiceOrb({
       answerAt.current = Date.now();
       speak(asleep.current ? "" : pick(["Go ahead.", "Yeah?", "I'm listening."])).then(function () {
         answering.current = false;
-        if (!IS_IOS && live.current) setTimeout(listen, 150);
+        if (live.current) setTimeout(listen, 150);
       });
       return;
     }
@@ -7626,6 +7639,7 @@ function VoiceOrb({
       /* Words arriving is the only proof Safari gives that it can hear you, so
          this is what moves the ring and what confirms the permission. */
       rememberMic();
+      tries.current = 0;
       setTrouble("");
       pulse(0.8);
 
@@ -7676,19 +7690,26 @@ function VoiceOrb({
         route(said);
         return;
       }
-      /* Nothing that turn. Go round again, but give it room: restarting
-         instantly, over and over, is what makes Safari stop cooperating. */
-      if (live.current && !speaking && !speakPending && !answering.current) {
-        quiet.current = Math.min(4, quiet.current + 1);
-        /* Gentle, not glacial. A second of dead air between turns is the
-           difference between a conversation and an interrogation. */
-        setTimeout(listen, 150 + quiet.current * 120);
-      } else if (!live.current) {
+      if (!live.current) {
         setState("idle");
+        return;
       }
+      /* Busy right now — almost always because playing the answer ended the
+         session underneath us. Remembered, and picked up the moment it is free.
+         The old version simply did nothing here, which is where every iOS
+         conversation died after one question. */
+      if (speaking || speakPending || answering.current) {
+        wantListen.current = true;
+        return;
+      }
+      /* Nothing that turn. Go round again, with a little room: restarting
+         instantly, over and over, is what makes Safari stop cooperating. */
+      quiet.current = Math.min(4, quiet.current + 1);
+      setTimeout(listen, 150 + quiet.current * 120);
     };
     rec.current = r;
     setState("listening");
+    sessionAt.current = Date.now();
     try {
       r.start();
     } catch (e) {
@@ -7723,9 +7744,21 @@ function VoiceOrb({
       setState("idle");
       return;
     }
-    if (state === "listening") {
+    /* Judged on whether a session really exists, not on what the ring happens
+       to be showing. The ring said "listening" for a long time after iOS had
+       quietly closed the session, so the tap meant to revive it was read as
+       "stop" and shut everything down — which is exactly what you saw. */
+    if (rec.current) {
       setLive(false);
       stopListening();
+      return;
+    }
+    if (live.current) {
+      /* Open but not actually listening. This is the revival case. */
+      setTrouble("");
+      tries.current = 0;
+      openUntil.current = Date.now() + 25000;
+      listen();
       return;
     }
     if (!on) {
