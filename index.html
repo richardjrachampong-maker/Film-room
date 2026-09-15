@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b215</div>
+<div class="fr-build">b217</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6704,13 +6704,22 @@ function thinkBudget(q) {
   if (quick || words <= 6) return 0;
   return 768;
 }
+/* Nothing on the spoken path may take longer than its budget. A late answer is
+   worse than none, because you have already asked something else. */
+function withLimit(p, ms) {
+  return Promise.race([p, new Promise(function (_, bad) {
+    setTimeout(function () {
+      bad(new Error("took too long"));
+    }, ms);
+  })]);
+}
 async function askAloud(question) {
   const think = thinkBudget(question);
   const turns = [{
     role: "user",
     parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, move between pages, open a book, switch between the library and the videos, " + "set or clear the filters on the library, open their past chats, start a session, and " + "stop whatever you are doing if they say cancel. You can do several of those in one go. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "IF THEY SAY YOU ALREADY KNOW SOMETHING:\n" + "Believe them. Speech recognition drops words constantly and you hear a transcript, not " + "their voice \u2014 so if they say they told you something, the likeliest thing by far is " + "that you missed it. Say sorry, you did not catch it, and ask them to say it again. " + "Never tell them they did not say it. Never say there is no point arguing about it. " + "Being told you are wrong about your own memory is infuriating, and you will usually be " + "the one who is wrong.\n\n" + "IF THEY ARE IN TROUBLE:\n" + "If anything they say suggests they might hurt themselves, stop being a coach. Say " + "plainly that you are not the right help, tell them to talk to a parent, a coach, or " + "call or text 988 in the US or their local emergency number, and say you will be here " + "after. No drills. No silver lining. Do not change the subject.\n\n" + "IF THEY ARE RUDE:\n" + "Take it. Do not retaliate, do not grovel, do not lecture them about tone, and do not " + "stop helping. A coach who took that personally would be a bad coach.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
   }];
-  return ai(turns, false, {
+  return withLimit(ai(turns, false, {
     /* No model alias and no explicit thinking budget \u2014 the worker in front of
        Google is not mine to read, and every request that failed carried one of
        those. Leaving thinkingConfig out is not "no thinking", it is Gemini's own
@@ -6721,7 +6730,7 @@ async function askAloud(question) {
     fast: think < 2048,
     hurry: true,
     maxTokens: think >= 2048 ? 700 : 400
-  });
+  }), think >= 2048 ? 12000 : 7000);
 }
 /* ---------------------- THE MICROPHONE ---------------------- */
 
@@ -6816,13 +6825,19 @@ async function transcribe(wavB64) {
       }
     }, T("Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description. If it is silence, " + "noise, or you cannot make out words, reply with the single word NOTHING.")]
   }];
-  const out = await ai(turns, false, {
-    fast: true,
+  /* No fast alias here. That points at the small text model, and the small text
+     model cannot accept audio at all \u2014 so every word you said was being sent
+     somewhere that could not hear it, failing, and retrying. That is the six
+     minutes, and the reason nothing came back. Eight seconds is the whole
+     budget: better to miss a sentence than to hang on it. */
+  const out = await Promise.race([ai(turns, false, {
     hurry: true,
-    /* Writing down one sentence never needs more than this, and a low ceiling
-       is time saved on everything you say. */
     maxTokens: 80
-  });
+  }), new Promise(function (_, bad) {
+    setTimeout(function () {
+      bad(new Error("transcribe timed out"));
+    }, 8000);
+  })]);
   const said = String(out || "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
   if (!said || /^nothing[.!]?$/i.test(said)) return "";
   return said;
@@ -6986,7 +7001,11 @@ const SPORT_WORDS = [[/\bbasketball|hoops|nba\b/i, "basketball"], [/\bsoccer|foo
 /* Names are matched against the index for the sport you are in, surname first,
    because that is what people say and what a recogniser gets right. */
 function findPlayer(said) {
-  const want = norm(said);
+  /* "Kyrie's film" reaches us as "Kyries". A possessive is not a different
+     person. */
+  const want = norm(said).replace(/(\w)'?s\b/g, "$1s").replace(/\b(\w{4,})s\b/g, function (m, base) {
+    return base;
+  });
   if (!want || want.length < 3) return null;
   const pool = (D && D.pool || []).filter(function (r) {
     return r && r.kind === "player";
@@ -7001,7 +7020,7 @@ function findPlayer(said) {
       /* Surname on its own — "pull film on Doncic". */
       const parts = n.split(" ");
       const sur = parts[parts.length - 1];
-      if (sur === want) s = 60;else if (want.split(" ").length === 1 && sur.indexOf(want) === 0 && want.length > 3) s = 40;
+      if (sur === want) s = 60;else if (parts[0] === want) s = 58;else if (want.split(" ").length === 1 && parts[0].indexOf(want) === 0 && want.length > 3) s = 45;else if (want.split(" ").length === 1 && sur.indexOf(want) === 0 && want.length > 3) s = 40;
     }
     if (s > score) {
       score = s;
@@ -7121,7 +7140,8 @@ function parseCommand(raw) {
       kind: "sleep"
     };
   }
-  if (/\b(wake up|turn on|start listening|you there|i'?m back)\b/i.test(low)) {
+  /* "turn on" only means wake up when there is nothing else being turned on. */
+  if (/\b(wake up|start listening|you there|i'?m back)\b/i.test(low) || /\bturn on\b/i.test(low) && words(low) <= 3) {
     return {
       kind: "wake"
     };
@@ -7184,6 +7204,52 @@ function parseCommand(raw) {
     return {
       kind: "mindtab",
       to: "read"
+    };
+  }
+
+  /* The look of the place. */
+  if (/\b(dark mode|dark theme|night mode|lights? off|make it dark|darker)\b/i.test(low)) {
+    return {
+      kind: "theme",
+      to: "dark"
+    };
+  }
+  if (/\b(light mode|light theme|day mode|lights? on|make it light|brighter)\b/i.test(low)) {
+    return {
+      kind: "theme",
+      to: "light"
+    };
+  }
+  if (/\b(settings|preferences|options|my account|profile)\b/i.test(low) && /\b(open|show|go to|take me|bring up|pull up)\b/i.test(low)) {
+    return {
+      kind: "settings"
+    };
+  }
+
+  /* Shut whatever is open. */
+  if (/^(close|close (it|that|this)|go back|back|shut (it|that)|dismiss|exit|never ?mind that)\b/i.test(low) && words(low) <= 4) {
+    return {
+      kind: "close"
+    };
+  }
+
+  /* A particular past conversation, by what it was about. "Open the session
+     about my jumper" should put that conversation on the screen, not a list. */
+  const chatAsk = /\b(open|show|pull up|bring up|go to|find)\b[^.]*\b(chat|session|conversation|talk)\b\s*(about|on|from|where|called|titled)?\s*(.*)$/i.exec(t);
+  if (chatAsk) {
+    const about = String(chatAsk[4] || "").trim();
+    if (/^(last|latest|most recent|previous)\b/i.test(about) || !about && /\b(last|latest|recent)\b/i.test(low)) {
+      return {
+        kind: "chat",
+        pick: "last"
+      };
+    }
+    if (about.length > 2) return {
+      kind: "chat",
+      about: about
+    };
+    return {
+      kind: "history"
     };
   }
 
@@ -7264,6 +7330,16 @@ function parseCommand(raw) {
 
   /* Pull film. Spoken requests are sentences, so the useful part has to be
      found rather than assumed to be everything after the preposition. */
+  /* "Pull up Kyrie's film" puts the name before the word film, so looking only
+     at what follows finds nothing. If film is being asked for at all, the whole
+     sentence is searched for a name. */
+  if (/\b(film|tape|footage|highlights?|clips?)\b/i.test(low)) {
+    const who0 = findPlayerLoose(t);
+    if (who0) return {
+      kind: "player",
+      item: who0
+    };
+  }
   const film = /\b(pull (up )?(the )?film|pull (up )?tape|show me|watch|find film|film)\b\s*(on|from|of|about|for)?\s*(.+)$/i.exec(t);
   if (film && film[6]) {
     /* A name anywhere in the whole sentence wins. "that because I really wanna
@@ -7356,7 +7432,11 @@ function VoiceOrb({
   onBook,
   onMindTab,
   onFilter,
-  onHistory
+  onHistory,
+  onTheme,
+  onSettings,
+  onChat,
+  onClose
 }) {
   const [on, setOn] = useState(voiceOn);
   const [state, setState] = useState("idle");
@@ -7747,7 +7827,7 @@ function VoiceOrb({
      older job checks this and quietly stands down. */
   const job = useRef(0);
   function run(c) {
-    if (c.kind === "book" && onBook) onBook(c.book);else if (c.kind === "player" && onItem) onItem(c.item);else if (c.kind === "film" && onFilm) onFilm(c.q);else if (c.kind === "sport" && onSport) onSport(c.to);else if (c.kind === "session" && onSession) onSession();else if (c.kind === "nav" && onGo) onGo(c.to);else if (c.kind === "mindtab" && onMindTab) onMindTab(c.to);else if (c.kind === "filter" && onFilter) onFilter(c);else if (c.kind === "history" && onHistory) onHistory();
+    if (c.kind === "chat" && onChat) onChat(c);else if (c.kind === "close" && onClose) onClose();else if (c.kind === "theme" && onTheme) onTheme(c.to);else if (c.kind === "settings" && onSettings) onSettings();else if (c.kind === "book" && onBook) onBook(c.book);else if (c.kind === "player" && onItem) onItem(c.item);else if (c.kind === "film" && onFilm) onFilm(c.q);else if (c.kind === "sport" && onSport) onSport(c.to);else if (c.kind === "session" && onSession) onSession();else if (c.kind === "nav" && onGo) onGo(c.to);else if (c.kind === "mindtab" && onMindTab) onMindTab(c.to);else if (c.kind === "filter" && onFilter) onFilter(c);else if (c.kind === "history" && onHistory) onHistory();
   }
   /* Whatever else happens, a conversation that is open should be listening.
      Rather than chase every path that might drop it, this checks twice a second
@@ -10044,7 +10124,10 @@ function Train({
   chats,
   setChats
 ,
-  openHistory}) {
+  openHistory,
+  openChat,
+  closeAll,
+  onChatOpened}) {
   // a reload always starts clean; the old conversation is safe in history
   const [chatId, setChatId] = useState(null);
   const restored = useRef(false);
@@ -10056,6 +10139,49 @@ function Train({
   useEffect(function () {
     if (openHistory) setShowHistory(true);
   }, [openHistory]);
+  /* A particular past conversation, asked for out loud. Matched on what it was
+     called, because that is what you would say. */
+  useEffect(function () {
+    if (!openChat) return;
+    let pick = null;
+    if (openChat.pick === "last") {
+      pick = chats[0];
+    } else if (openChat.about) {
+      const want = norm(openChat.about);
+      let best = 0;
+      chats.forEach(function (c) {
+        const n = norm(c.title || "");
+        let sc = 0;
+        if (n === want) sc = 100;else if (n.indexOf(want) > -1) sc = 70;else {
+          /* Any decent word in common is better than nothing. */
+          const words = want.split(" ").filter(function (x) {
+            return x.length > 3;
+          });
+          words.forEach(function (x) {
+            if (n.indexOf(x) > -1) sc += 20;
+          });
+        }
+        if (sc > best) {
+          best = sc;
+          pick = c;
+        }
+      });
+      if (best < 20) pick = null;
+    }
+    if (pick) {
+      openChat_(pick);
+      setShowHistory(false);
+    } else {
+      /* Could not place it, so show the list rather than guessing. */
+      setShowHistory(true);
+    }
+    if (onChatOpened) onChatOpened();
+  }, [openChat]);
+  /* "Close" puts away whatever is on top. */
+  useEffect(function () {
+    if (!closeAll) return;
+    setShowHistory(false);
+  }, [closeAll]);
   const [mode, setMode] = useState(function () {
     return (loadMe(sport) || {}).mode || "quick";
   });
@@ -10344,7 +10470,7 @@ function Train({
     setShowHistory(false);
     rememberOpen(sport, null);
   }
-  function openChat(c) {
+  function openChat_(c) {
     rememberOpen(sport, c.id);
     setChatId(c.id);
     setMsgs(c.msgs || []);
@@ -10809,7 +10935,7 @@ function Train({
       "data-on": c.id === chatId ? "1" : "0"
     }, /*#__PURE__*/React.createElement("button", {
       onClick: function () {
-        openChat(c);
+        openChat_(c);
       }
     }, /*#__PURE__*/React.createElement("b", null, c.title), /*#__PURE__*/React.createElement("span", null, new Date(c.at).toLocaleDateString())), /*#__PURE__*/React.createElement("button", {
       className: "fr-x",
@@ -12296,6 +12422,7 @@ function Book3D({
 function MindPage({
   onSearch,
   openBook,
+  closeAll,
   openTab,
   openFilter,
   onOpened
@@ -12308,6 +12435,13 @@ function MindPage({
   const [reading, setReading] = useState(null);
   /* Arrived by voice. A free book opens in the reader; a loan can only show
      what it is and where to borrow it. */
+  /* "Close" puts the book down and shuts any sheet. */
+  useEffect(function () {
+    if (!closeAll) return;
+    setReading(null);
+    setOpen(null);
+    setPanel(false);
+  }, [closeAll]);
   useEffect(function () {
     if (openTab) setTab(openTab);
     if (openFilter) {
@@ -12738,6 +12872,8 @@ function App() {
   const [voiceTab, setVoiceTab] = useState(null);
   const [voiceFilter, setVoiceFilter] = useState(null);
   const [voiceHistory, setVoiceHistory] = useState(0);
+  const [voiceChat, setVoiceChat] = useState(null);
+  const [voiceClose, setVoiceClose] = useState(0);
   const [user, setUser] = useState(loadSession);
   /* The profile — which is where the team code lives — used to be fetched only
      inside Train. So on a cold load the app had no idea you were in a team until
@@ -13174,6 +13310,25 @@ function App() {
         setSportState(k);
       }
     },
+    onChat: function (c) {
+      setVoiceChat(c);
+      go("train");
+    },
+    onClose: function () {
+      /* Whatever is on top, put it away. */
+      setShowSettings(false);
+      setVoiceClose(Date.now());
+      go("home");
+    },
+    onTheme: function (t) {
+      setTheme(t);
+      try {
+        window.localStorage.setItem("fr-theme", t);
+      } catch (e) {}
+    },
+    onSettings: function () {
+      setShowSettings(true);
+    },
     onMindTab: function (t) {
       setVoiceTab(t);
       go("mind");
@@ -13257,6 +13412,7 @@ function App() {
   }), top.page === "mind" && /*#__PURE__*/React.createElement(MindPage, {
     onSearch: openFilm,
     openBook: voiceBook,
+    closeAll: voiceClose,
     openTab: voiceTab,
     openFilter: voiceFilter,
     onOpened: function () {
@@ -13283,6 +13439,11 @@ function App() {
     chats: chats,
     setChats: setChats,
     openHistory: voiceHistory,
+    openChat: voiceChat,
+    closeAll: voiceClose,
+    onChatOpened: function () {
+      setVoiceChat(null);
+    },
     sport: sport,
     pro: isPro(user, profile),
     used: profile && profile.used || 0,
