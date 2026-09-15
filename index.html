@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b217</div>
+<div class="fr-build">b218</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6816,31 +6816,61 @@ function floatsToWav(chunks, rate) {
 /* Sent to the model that already answers everything else, so no new service and
    nothing to redeploy. */
 async function transcribe(wavB64) {
-  const turns = [{
-    role: "user",
-    parts: [{
-      inline_data: {
-        mime_type: "audio/wav",
-        data: wavB64
-      }
-    }, T("Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description. If it is silence, " + "noise, or you cannot make out words, reply with the single word NOTHING.")]
-  }];
-  /* No fast alias here. That points at the small text model, and the small text
-     model cannot accept audio at all \u2014 so every word you said was being sent
-     somewhere that could not hear it, failing, and retrying. That is the six
-     minutes, and the reason nothing came back. Eight seconds is the whole
-     budget: better to miss a sentence than to hang on it. */
-  const out = await Promise.race([ai(turns, false, {
-    hurry: true,
-    maxTokens: 80
-  }), new Promise(function (_, bad) {
-    setTimeout(function () {
-      bad(new Error("transcribe timed out"));
-    }, 8000);
-  })]);
-  const said = String(out || "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
-  if (!said || /^nothing[.!]?$/i.test(said)) return "";
-  return said;
+  const body = {
+    contents: [{
+      role: "user",
+      parts: [{
+        inline_data: {
+          mime_type: "audio/wav",
+          data: wavB64
+        }
+      }, {
+        text: "Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description. If it is silence, " + "noise, or you cannot make out words, reply with the single word NOTHING."
+      }]
+    }],
+    generationConfig: {
+      maxOutputTokens: 80
+    }
+  };
+
+  /* The voice worker first, because I wrote it and know it passes the request
+     straight through. The older worker may rebuild the body, which silently
+     drops the audio and leaves the model with nothing to listen to \u2014 words go
+     in, nothing comes back, and the assistant looks deaf. It is still tried
+     second in case the voice worker is not deployed. */
+  const where = VOICE_PROXIES.concat(AI_PROXY ? [AI_PROXY] : []);
+  for (let i = 0; i < where.length; i++) {
+    try {
+      const res = await Promise.race([fetch(where[i], {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      }), new Promise(function (_, bad) {
+        setTimeout(function () {
+          bad(new Error("slow"));
+        }, 8000);
+      })]);
+      const data = await res.json();
+      if (data.error) continue;
+      const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+      let said = "";
+      parts.forEach(function (pp) {
+        if (pp.text) said += pp.text;
+      });
+      said = said.replace(/^["'\s]+|["'\s]+$/g, "").trim();
+      if (!said) continue;
+      if (/^nothing[.!]?$/i.test(said)) return "";
+      /* If the audio never reached the model it answers about the instruction
+         instead of the recording. That is not a transcript. */
+      if (/\b(no audio|cannot (hear|process)|unable to|as an ai|i don't have)\b/i.test(said)) continue;
+      return said;
+    } catch (e) {
+      /* Try the next one. */
+    }
+  }
+  return "";
 }
 
 /* Opens the microphone. Must be called from inside a touch the first time,
