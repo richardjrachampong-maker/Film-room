@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b214</div>
+<div class="fr-build">b215</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6715,9 +6715,12 @@ async function askAloud(question) {
        Google is not mine to read, and every request that failed carried one of
        those. Leaving thinkingConfig out is not "no thinking", it is Gemini's own
        default, which is thinking. */
-    fast: think === 0,
+    /* Only a real "why" question is worth the slow model. Everything else takes
+       the quick one: in three spoken sentences the difference in quality is
+       invisible and the difference in waiting is not. */
+    fast: think < 2048,
     hurry: true,
-    maxTokens: think ? 900 : 500
+    maxTokens: think >= 2048 ? 700 : 400
   });
 }
 /* ---------------------- THE MICROPHONE ---------------------- */
@@ -6743,7 +6746,9 @@ let micSrc = null;
 
 /* How loud counts as talking, and how long a gap ends a sentence. */
 const SPEAK_LEVEL = 0.015;
-const HUSH_MS = 750;
+/* Three quarters of a second of silence before it even started working was a
+   quarter of the whole wait, spent doing nothing. */
+const HUSH_MS = 520;
 const MIN_SPEECH_MS = 350;
 const MAX_SPEECH_MS = 14000;
 
@@ -6814,7 +6819,9 @@ async function transcribe(wavB64) {
   const out = await ai(turns, false, {
     fast: true,
     hurry: true,
-    maxTokens: 120
+    /* Writing down one sentence never needs more than this, and a low ceiling
+       is time saved on everything you say. */
+    maxTokens: 80
   });
   const said = String(out || "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
   if (!said || /^nothing[.!]?$/i.test(said)) return "";
@@ -7512,7 +7519,7 @@ function VoiceOrb({
     setState("idle");
   }
 
-  async function answer(q) {
+  async function answer(q, mine) {
     /* Standing down means it still hears, but only answers to being woken. */
     if (asleep.current) {
       const c0 = parseCommand(q);
@@ -7635,7 +7642,9 @@ function VoiceOrb({
       let out;
       try {
         out = await askAloud(q);
+        if (stale(mine)) return;
       } catch (first) {
+        if (stale(mine)) return;
         /* One quiet retry. Most of what goes wrong here is a moment of
            congestion, and telling someone "that did not go through" when trying
            again would have worked is the worst possible answer. */
@@ -7643,6 +7652,7 @@ function VoiceOrb({
           setTimeout(r, 700);
         });
         out = await askAloud(q);
+        if (stale(mine)) return;
       }
       /* Listening resumes once it has finished the sentence, so a conversation
          is one press, not one press per question. */
@@ -7717,6 +7727,11 @@ function VoiceOrb({
   /* When the microphone was last asked for. Safari throttles a page that asks
      too often, and a throttled page is silent for about a minute. */
   const lastStart = useRef(0);
+  /* Which question is the current one. Anything older stands down. */
+  const turn = useRef(0);
+  function stale(n) {
+    return n !== undefined && n !== turn.current;
+  }
   /* The microphone is open and being watched. */
   const running = useRef(false);
   function busy(ms) {
@@ -7815,11 +7830,12 @@ function VoiceOrb({
   /* One sentence, and what to do with it. Shared, because iOS lifts sentences
      out of a session that stays open, and everything else gets them when the
      turn ends. */
-  function route(said) {
+  function route(said, mine) {
     /* It is listening the whole time, so most of what it hears is not for it.
        Something counts as addressed to it if the name is in it, or if you are
        already mid-conversation \u2014 for a short while after it last spoke, so a
        follow-up does not need the name again. */
+    if (stale(mine)) return;
     const named = heardWake(said);
     const open = Date.now() < openUntil.current;
     if (!named && !open) {
@@ -7839,7 +7855,7 @@ function VoiceOrb({
       return;
     }
     openUntil.current = Date.now() + 25000;
-    answer(body);
+    answer(body, mine);
   }
 
   /* Opening the microphone, once. After this nothing is started or stopped per
@@ -7864,8 +7880,11 @@ function VoiceOrb({
       /* a finished sentence */
       heardWav(wav);
     }, function () {
-      /* busy: everything coming in while it talks is its own voice */
-      return speaking || speakPending || Date.now() < busyUntil.current;
+      /* Only while sound is actually coming out. That is its own voice and has
+         to go. While it is merely thinking, you must be able to cut in and
+         change your mind \u2014 blocking the microphone then is what made it finish
+         a question you had already given up on. */
+      return speaking;
     }).then(function (ok) {
       if (!ok) {
         setTrouble("Microphone blocked. Tap \u24d8 by the address bar \u2192 Website Settings \u2192 Microphone \u2192 Allow.");
@@ -7881,17 +7900,24 @@ function VoiceOrb({
   /* A sentence arrived as audio. Written down, then treated exactly as before. */
   async function heardWav(wav) {
     if (!live.current) return;
-    if (speaking || speakPending || Date.now() < busyUntil.current) return;
+    if (speaking || speakPending) return;
+    /* Whatever was in flight is now out of date. Saying something new means you
+       have moved on, and an answer to the question before last arriving two
+       minutes later is worse than no answer at all. */
+    const mine = ++turn.current;
+    stopSpeaking();
+    busyUntil.current = 0;
     setState("thinking");
     try {
       const said = await transcribe(wav);
+      if (turn.current !== mine) return;
       if (!said) {
         setState("listening");
         return;
       }
-      route(said);
+      route(said, mine);
     } catch (e) {
-      setState("listening");
+      if (turn.current === mine) setState("listening");
     }
   }
 
