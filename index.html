@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b202</div>
+<div class="fr-build">b205</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -6049,6 +6049,15 @@ function setVoiceOn(on) {
 function canSpeak() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
+/* iOS Safari will only open a microphone from inside a real touch, and it means
+   every single start, not just the first. So the pattern that works everywhere
+   else — end the turn, start a new one — dies after one sentence on an iPhone
+   or iPad: the restart is not inside a gesture and is refused without a word.
+
+   The way round it is to never restart. One session is opened by your tap and
+   left running, and each finished sentence is taken out of it as it arrives. */
+const IS_IOS = typeof navigator !== "undefined" && (/iPad|iPhone|iPod/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 function canHear() {
   return typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
@@ -6719,7 +6728,20 @@ async function askAloud(question) {
    obeyed locally, instantly and for free. Only what is left over goes to the
    coach. */
 
+/* Anywhere in the sentence, not only at the front — recognisers drop the first
+   word constantly, and "hey, film room" comes back as everything from
+   "filmroom" to "film room" to "hey film". */
+const WAKE_ANY = /\b(hey|ok|okay|yo)?\s*(film\s*room|filmroom|jarvis)\b/i;
 const WAKE = /^(hey\s+)?(film\s*room|filmroom|jarvis|coach)[,.\s]*/i;
+
+function heardWake(t) {
+  return WAKE_ANY.test(String(t || ""));
+}
+/* What is left once the name is taken out. "Hey Film Room pull film on Kyrie"
+   is an order with a name attached, not a different order. */
+function afterWake(t) {
+  return String(t || "").replace(WAKE_ANY, " ").replace(/\s+/g, " ").trim();
+}
 
 /* Said back the moment it understands, before the screen moves, because the
    gap between asking and arriving is exactly where it feels dead. */
@@ -6867,6 +6889,16 @@ function parseCommand(raw) {
     };
   }
 
+  if (/\b(go to sleep|turn off|shut down|stand down|that'?s enough|stop listening)\b/i.test(low)) {
+    return {
+      kind: "sleep"
+    };
+  }
+  if (/\b(wake up|turn on|start listening|you there|i'?m back)\b/i.test(low)) {
+    return {
+      kind: "wake"
+    };
+  }
   if (/\b(unmute|un mute|speak again|voice on|turn (your )?voice on|you can talk)\b/i.test(low)) {
     return {
       kind: "unmute"
@@ -7082,6 +7114,10 @@ function statusLine() {
   return mine.length + (mine.length === 1 ? " clip graded. It was " : " clips graded. The last was ") + last.skill + (last.grade ? ", " + last.grade : "") + ", " + agoWords(last.on) + "." + (n > 2 ? " " + n + " of them broke at the " + worst + "." : "");
 }
 
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function VoiceOrb({
   sport,
   onOpenTrain,
@@ -7259,6 +7295,14 @@ function VoiceOrb({
   }
 
   async function answer(q) {
+    /* Standing down means it still hears, but only answers to being woken. */
+    if (asleep.current) {
+      const c0 = parseCommand(q);
+      if (!c0 || c0.kind !== "wake") {
+        if (live.current) setTimeout(listen, 200);
+        return;
+      }
+    }
     answering.current = true;
     /* Stamped, so the watchdog can tell "still working" from "stuck". */
     answerAt.current = Date.now();
@@ -7269,7 +7313,20 @@ function VoiceOrb({
       answering.current = false;
       /* A beat after speaking, so iOS has finished handing the audio session
          back before the recogniser asks for it. */
-      if (live.current) setTimeout(listen, 450);
+      /* Straight back to listening. The old half-second was there to let iOS
+         release the audio session, which releaseAudio() now does properly. */
+      /* Anything said while it was busy gets dealt with now, rather than lost. */
+      if (heldLine.current) {
+        const held = heldLine.current;
+        heldLine.current = "";
+        setTimeout(function () {
+          route(held);
+        }, 120);
+        return;
+      }
+      /* On iOS the session is still open and carries on by itself — restarting
+         would be refused. Everywhere else, a beat and then listen again. */
+      if (!IS_IOS && live.current) setTimeout(listen, 180);
     };
     /* Whatever happens in here — including a promise rejecting somewhere I did
        not expect — listening comes back. Leaving this to the happy path is why
@@ -7298,6 +7355,18 @@ function VoiceOrb({
       return;
     }
     if (cmd) {
+      if (cmd.kind === "sleep") {
+        asleep.current = true;
+        openUntil.current = 0;
+        speak("Standing down. Say hey Film Room when you want me.").then(resume);
+        return;
+      }
+      if (cmd.kind === "wake") {
+        asleep.current = false;
+        openUntil.current = Date.now() + 25000;
+        speak("I'm here.").then(resume);
+        return;
+      }
       if (cmd.kind === "mute") {
         /* Muted, but still listening \u2014 otherwise you would have to reach for
            the phone to turn it back on, which is the thing voice is for. */
@@ -7346,7 +7415,18 @@ function VoiceOrb({
     }
     setState("thinking");
     try {
-      const out = await askAloud(q);
+      let out;
+      try {
+        out = await askAloud(q);
+      } catch (first) {
+        /* One quiet retry. Most of what goes wrong here is a moment of
+           congestion, and telling someone "that did not go through" when trying
+           again would have worked is the worst possible answer. */
+        await new Promise(function (r) {
+          setTimeout(r, 700);
+        });
+        out = await askAloud(q);
+      }
       /* Listening resumes once it has finished the sentence, so a conversation
          is one press, not one press per question. */
       speak(out).then(resume);
@@ -7368,7 +7448,8 @@ function VoiceOrb({
       try {
         console.warn("ask failed:", e && e.message);
       } catch (e2) {}
-      speak("That did not go through. Ask me again.").then(resume);
+      const why = String(e && e.message || "");
+      speak(/busy|quota|rate/i.test(why) ? "Give me a second, then ask again." : /reach|connection|network/i.test(why) ? "I can't reach the coach right now. Check your connection." : "Something went wrong there. Say it again.").then(resume);
       setState("idle");
     }
   }
@@ -7405,6 +7486,12 @@ function VoiceOrb({
   /* How many turns in a row have come back empty, so the retries can slow down
      instead of hammering. */
   const quiet = useRef(0);
+  /* While this is in the future, anything you say counts without the name. */
+  const openUntil = useRef(0);
+  /* Told to stand down. Still listening, but only for its name and "wake up". */
+  const asleep = useRef(false);
+  /* Something said while it was busy, waiting its turn. */
+  const heldLine = useRef("");
   /* Bumped whenever something new is asked for, or cancelled. Any step from an
      older job checks this and quietly stands down. */
   const job = useRef(0);
@@ -7424,8 +7511,14 @@ function VoiceOrb({
         answering.current = false;
       }
       if (rec.current || speaking || speakPending || answering.current) return;
+      /* On iOS a session that has ended cannot be reopened without a touch, so
+         rather than trying and failing silently, it says so. */
+      if (IS_IOS) {
+        setTrouble("Tap anywhere to keep listening.");
+        return;
+      }
       listen();
-    }, 1500);
+    }, 900);
     return function () {
       clearInterval(t);
     };
@@ -7434,6 +7527,58 @@ function VoiceOrb({
      true for the whole page load, not just the first time ever. A conversation
      restored from sessionStorage still has to wait for a touch. */
   const gestured = useRef(false);
+  /* Switched on once, on for good. The only reason a touch is still needed
+     after a reload is that browsers will not open a microphone without one —
+     so the first touch anywhere on the page counts, not just the bubble. You
+     never have to find and press this thing again. */
+  useEffect(function () {
+    if (!live.current) return;
+    /* Any touch anywhere counts, not just the bubble. On iOS this is also how a
+       session Safari has closed gets reopened — the next time you touch the
+       screen for any reason, it is listening again. */
+    function anyTouch() {
+      gestured.current = true;
+      unlockVoice();
+      if (!rec.current && !speaking && !speakPending && !answering.current) {
+        setTrouble("");
+        listen();
+      }
+    }
+    document.addEventListener("pointerdown", anyTouch);
+    return function () {
+      document.removeEventListener("pointerdown", anyTouch);
+    };
+  }, []);
+  /* One sentence, and what to do with it. Shared, because iOS lifts sentences
+     out of a session that stays open, and everything else gets them when the
+     turn ends. */
+  function route(said) {
+    /* It is listening the whole time, so most of what it hears is not for it.
+       Something counts as addressed to it if the name is in it, or if you are
+       already mid-conversation \u2014 for a short while after it last spoke, so a
+       follow-up does not need the name again. */
+    const named = heardWake(said);
+    const open = Date.now() < openUntil.current;
+    if (!named && !open) {
+      if (!IS_IOS && live.current) setTimeout(listen, 150);
+      return;
+    }
+    const body = named ? afterWake(said) : said;
+    if (!body) {
+      openUntil.current = Date.now() + 25000;
+      setState("idle");
+      answering.current = true;
+      answerAt.current = Date.now();
+      speak(asleep.current ? "" : pick(["Go ahead.", "Yeah?", "I'm listening."])).then(function () {
+        answering.current = false;
+        if (!IS_IOS && live.current) setTimeout(listen, 150);
+      });
+      return;
+    }
+    openUntil.current = Date.now() + 25000;
+    answer(body);
+  }
+
   function listen() {
     if (!canHear() || !live.current || !gestured.current) return;
     /* Never two at once. Starting a recogniser while one is running throws, and
@@ -7457,12 +7602,13 @@ function VoiceOrb({
     const r = new R();
     r.lang = "en-US";
     r.interimResults = true;
-    /* Kept open across pauses rather than ended and rebuilt after every one.
-       Safari stops granting the microphone to something that asks dozens of
-       times a minute, which is what the constant rebuilding was doing. */
-    r.continuous = true;
+    /* On a desktop, ending the turn and reopening is better: it delivers the
+       words promptly. On iOS it is fatal, because reopening needs a touch. */
+    r.continuous = IS_IOS;
     let heard = "";
     let done = false;
+    /* How far through this session's results we have already dealt with. */
+    let taken = 0;
     /* These three are in the spec and Safari fires none of them. Kept because
        other browsers do, but nothing depends on them. */
     r.onaudiostart = function () {
@@ -7482,15 +7628,33 @@ function VoiceOrb({
       rememberMic();
       setTrouble("");
       pulse(0.8);
+
+      if (IS_IOS) {
+        /* The session is never stopped here, because reopening one needs a
+           touch. Finished sentences are lifted out of it as they land. */
+        for (let i = taken; i < e.results.length; i++) {
+          if (!e.results[i].isFinal) continue;
+          taken = i + 1;
+          const line = String(e.results[i][0].transcript || "").trim();
+          if (!line) continue;
+          /* Its own voice is discarded. Something said while it is merely
+             thinking is a real sentence, so it is held rather than lost. */
+          if (speaking) continue;
+          quiet.current = 0;
+          if (answering.current || speakPending) {
+            heldLine.current = line;
+            continue;
+          }
+          route(line);
+        }
+        return;
+      }
+
       heard = "";
       for (let i = 0; i < e.results.length; i++) {
         heard += e.results[i][0].transcript;
         if (e.results[i].isFinal) done = true;
       }
-      /* The moment it is sure of the words, cut the turn short rather than
-         waiting out its own silence timer. */
-      /* With a continuous recogniser the turn does not end on its own, so a
-         finished sentence is stopped here to hand the words straight over. */
       if (done && heard.trim()) try {
         r.stop();
       } catch (e2) {}
@@ -7509,14 +7673,16 @@ function VoiceOrb({
       const said = heard.trim();
       if (said) {
         quiet.current = 0;
-        answer(said);
+        route(said);
         return;
       }
       /* Nothing that turn. Go round again, but give it room: restarting
          instantly, over and over, is what makes Safari stop cooperating. */
       if (live.current && !speaking && !speakPending && !answering.current) {
-        quiet.current = Math.min(6, quiet.current + 1);
-        setTimeout(listen, 300 + quiet.current * 250);
+        quiet.current = Math.min(4, quiet.current + 1);
+        /* Gentle, not glacial. A second of dead air between turns is the
+           difference between a conversation and an interrogation. */
+        setTimeout(listen, 150 + quiet.current * 120);
       } else if (!live.current) {
         setState("idle");
       }
@@ -7573,6 +7739,18 @@ function VoiceOrb({
       return;
     }
     setLive(true);
+    /* Pressing it is addressing it, so the next thing you say counts without
+       needing the name as well. */
+    asleep.current = false;
+    openUntil.current = Date.now() + 25000;
+    /* First time on this device: say what to do with it, once. After that the
+       bubble is just a light — you never have to press it again. */
+    try {
+      if (!window.localStorage.getItem("fr-woke")) {
+        window.localStorage.setItem("fr-woke", "1");
+        setTrouble("Listening. Just say \u201cHey Film Room\u201d \u2014 you never need to tap this again.");
+      }
+    } catch (e) {}
     listen();
 
   }
