@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b210</div>
+<div class="fr-build">b211</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7300,19 +7300,19 @@ function VoiceOrb({
     /* Standing down means it still hears, but only answers to being woken. */
     if (asleep.current) {
       const c0 = parseCommand(q);
-      if (!c0 || c0.kind !== "wake") {
-        if (live.current) setTimeout(listen, 200);
-        return;
-      }
+      if (!c0 || c0.kind !== "wake") return;
     }
+    /* Busy for at most twenty seconds, whatever happens. If every line below
+       throws, the heartbeat still picks listening back up when this lapses. */
     answering.current = true;
-    /* Stamped, so the watchdog can tell "still working" from "stuck". */
     answerAt.current = Date.now();
+    busy(20000);
     let resumed = false;
     const resume = function () {
       if (resumed) return;
       resumed = true;
       answering.current = false;
+      free();
       /* A beat after speaking, so iOS has finished handing the audio session
          back before the recogniser asks for it. */
       /* Straight back to listening. The old half-second was there to let iOS
@@ -7326,11 +7326,8 @@ function VoiceOrb({
         }, 120);
         return;
       }
-      /* Always tries, on every platform. If iOS refuses, the check below
-         notices and asks for a touch — but refusing to even try is what left
-         it dead after one answer. */
-      wantListen.current = false;
-      if (live.current) setTimeout(listen, 180);
+      /* Nothing to do here any more. The heartbeat notices within the second
+         that nothing is busy and starts listening. */
     };
     /* Whatever happens in here — including a promise rejecting somewhere I did
        not expect — listening comes back. Leaving this to the happy path is why
@@ -7498,6 +7495,15 @@ function VoiceOrb({
   const heldLine = useRef("");
   /* The session ended while it was busy and wants reopening. */
   const wantListen = useRef(false);
+  /* Busy until this moment. A number, not a flag: it expires on its own whether
+     or not anything remembers to clear it. */
+  const busyUntil = useRef(0);
+  function busy(ms) {
+    busyUntil.current = Date.now() + (ms || 15000);
+  }
+  function free() {
+    busyUntil.current = 0;
+  }
   /* Attempts to open a session that have not taken. Reset the moment one does. */
   const tries = useRef(0);
   const sessionAt = useRef(0);
@@ -7512,28 +7518,33 @@ function VoiceOrb({
      and starts it again. Cheap, and it cannot be got around. */
   useEffect(function () {
     const t = setInterval(function () {
-      /* Same rule as listen(): no microphone without a touch behind it. */
       if (!live.current || !gestured.current) return;
-      /* A flag that has been up for more than fifteen seconds is not an answer
-         in progress, it is a flag nobody put down. */
-      if (answering.current && Date.now() - answerAt.current > 15000) {
-        answering.current = false;
-      }
-      /* The ring must not claim to be listening when nothing is. */
-      if (!running.current && !speaking && !speakPending && !answering.current) {
+
+      /* Busy is a moment in time, not a flag. Whatever set it, it expires by
+         itself, so nothing here can be left permanently wedged by a path that
+         forgot to clear something. That is what has been killing this all
+         evening: thirteen pieces of state between them deciding whether to
+         listen, and any one of them sticking meant silence for ever. */
+      const busyNow = speaking || speakPending || Date.now() < busyUntil.current;
+
+      /* The ring must never claim to be listening when nothing is. */
+      if (!running.current && !busyNow) {
         setState(function (st) {
           return st === "listening" ? "idle" : st;
         });
       }
-      if (running.current || speaking || speakPending || answering.current) return;
-      /* Try. Only if several attempts in a row fail to take does it conclude
-         that iOS wants a touch and say so. */
-      if (tries.current > 3) {
-        setTrouble("Tap anywhere to keep listening.");
+      if (running.current || busyNow) {
+        tries.current = 0;
+        return;
       }
+
+      /* Nothing running, nothing busy, conversation open: start it. Every time,
+         unconditionally. There is no longer any path that can fail to reach
+         this. */
       tries.current++;
+      if (tries.current > 6) setTrouble("Tap anywhere to keep listening.");
       listen();
-    }, 900);
+    }, 700);
     return function () {
       clearInterval(t);
     };
@@ -7582,7 +7593,7 @@ function VoiceOrb({
     const named = heardWake(said);
     const open = Date.now() < openUntil.current;
     if (!named && !open) {
-      if (live.current && !running.current) setTimeout(listen, 150);
+      /* Not for me. The heartbeat keeps listening. */
       return;
     }
     const body = named ? afterWake(said) : said;
@@ -7593,7 +7604,7 @@ function VoiceOrb({
       answerAt.current = Date.now();
       speak(asleep.current ? "" : pick(["Go ahead.", "Yeah?", "I'm listening."])).then(function () {
         answering.current = false;
-        if (live.current) setTimeout(listen, 150);
+        free();
       });
       return;
     }
@@ -7683,15 +7694,12 @@ function VoiceOrb({
       }
       /* Busy \u2014 usually because playing the answer ended the session. Picked up
          the moment it is free. */
-      if (speaking || speakPending || answering.current) {
-        wantListen.current = true;
-        setState(function (st) {
-          return st === "listening" ? "idle" : st;
-        });
-        return;
-      }
-      quiet.current = Math.min(4, quiet.current + 1);
-      setTimeout(listen, 200 + quiet.current * 150);
+      /* Whether it stopped because you paused, because the answer started
+         playing, or because Safari felt like it, the heartbeat starts it again
+         within the second. Nothing to decide here. */
+      setState(function (st) {
+        return st === "listening" ? "idle" : st;
+      });
     };
     rec.current = r;
     return r;
@@ -7699,10 +7707,7 @@ function VoiceOrb({
 
   function listen(fromTouch) {
     if (!canHear() || !live.current || !gestured.current) return;
-    if (!fromTouch && (speaking || speakPending || answering.current)) {
-      setTimeout(listen, 300);
-      return;
-    }
+    if (!fromTouch && (speaking || speakPending || Date.now() < busyUntil.current)) return;
     const r = makeRec();
     if (!r) return;
     /* Already listening \u2014 restarting would only interrupt it. */
