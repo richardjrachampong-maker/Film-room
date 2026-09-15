@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b211</div>
+<div class="fr-build">b213</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -7498,6 +7498,9 @@ function VoiceOrb({
   /* Busy until this moment. A number, not a flag: it expires on its own whether
      or not anything remembers to clear it. */
   const busyUntil = useRef(0);
+  /* When the microphone was last asked for. Safari throttles a page that asks
+     too often, and a throttled page is silent for about a minute. */
+  const lastStart = useRef(0);
   function busy(ms) {
     busyUntil.current = Date.now() + (ms || 15000);
   }
@@ -7538,13 +7541,16 @@ function VoiceOrb({
         return;
       }
 
-      /* Nothing running, nothing busy, conversation open: start it. Every time,
-         unconditionally. There is no longer any path that can fail to reach
-         this. */
+      /* A rescue, not the engine. Restarting is done once per turn where it
+         belongs; this only steps in if that somehow did not happen, and it
+         waits three seconds before doing so. Asking Safari for the microphone
+         eighty times a minute is what got the page throttled, and the throttle
+         is the minute of silence. */
+      if (Date.now() - lastStart.current < 3000) return;
       tries.current++;
-      if (tries.current > 6) setTrouble("Tap anywhere to keep listening.");
+      if (tries.current > 4) setTrouble("Tap anywhere to keep listening.");
       listen();
-    }, 700);
+    }, 1000);
     return function () {
       clearInterval(t);
     };
@@ -7636,10 +7642,12 @@ function VoiceOrb({
     r.lang = "en-US";
     r.interimResults = true;
     r.continuous = false;
+    let gotSomething = false;
     r.onstart = function () {
       running.current = true;
       taken.current = 0;
       tries.current = 0;
+      gotSomething = false;
       setState("listening");
     };
     r.onaudiostart = function () {
@@ -7660,6 +7668,8 @@ function VoiceOrb({
         taken.current = i + 1;
         const line = String(e.results[i][0].transcript || "").trim();
         if (!line) continue;
+        gotSomething = true;
+        quiet.current = 0;
         /* Its own voice is discarded. Something said while it is only thinking
            is real, so it is held rather than lost. */
         if (speaking) continue;
@@ -7694,12 +7704,26 @@ function VoiceOrb({
       }
       /* Busy \u2014 usually because playing the answer ended the session. Picked up
          the moment it is free. */
-      /* Whether it stopped because you paused, because the answer started
-         playing, or because Safari felt like it, the heartbeat starts it again
-         within the second. Nothing to decide here. */
-      setState(function (st) {
-        return st === "listening" ? "idle" : st;
-      });
+      /* Between turns it is still listening as far as you are concerned, so the
+         ring stays lit rather than flickering off for half a second every time
+         Safari ends a turn. It only goes dark if a restart really does not
+         happen. */
+      /* A turn that heard something restarts promptly, because you are
+         talking. A turn that heard nothing backs off, because you are not \u2014
+         and because asking Safari for the microphone over and over is what gets
+         the page throttled, and a throttled page is silent for about a minute.
+         Between roughly four and thirty starts a minute, depending on whether a
+         conversation is actually happening. */
+      const gap = gotSomething ? 250 : Math.min(2500, 400 + quiet.current * 500);
+      if (!gotSomething) quiet.current = Math.min(5, quiet.current + 1);
+      if (live.current) setTimeout(function () {
+        if (!running.current && !speaking && !speakPending && Date.now() > busyUntil.current) listen();
+      }, gap);else setState("idle");
+      setTimeout(function () {
+        if (!running.current && !speaking && !speakPending) setState(function (st) {
+          return st === "listening" ? "idle" : st;
+        });
+      }, gap + 1500);
     };
     rec.current = r;
     return r;
@@ -7717,13 +7741,23 @@ function VoiceOrb({
       answering.current = false;
       speakPending = false;
     }
+    lastStart.current = Date.now();
     try {
       r.start();
       setState("listening");
       sessionAt.current = Date.now();
     } catch (e) {
-      /* Almost always "already started", which is harmless. */
+      /* Usually "already started", which is harmless. But if the same instance
+         keeps refusing, Safari has wedged it \u2014 throw it away and let a fresh
+         one be made, rather than asking a dead object over and over. */
       tries.current++;
+      if (tries.current > 2) {
+        try {
+          r.abort();
+        } catch (e2) {}
+        rec.current = null;
+        tries.current = 0;
+      }
     }
   }
   function tap() {
