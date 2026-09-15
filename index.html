@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b218</div>
+<div class="fr-build">b220</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1704,7 +1704,10 @@ const BILLING_WORKER = AI_PROXY;
    screenful of text in a cramped editor, and making a new one is easier. The
    newest is tried first; whichever answers with audio is used. An old one left
    deployed costs nothing and is a spare if the new one is ever broken. */
-const VOICE_PROXIES = ["https://filmroomvoice2.richardachampong075.workers.dev", "https://filmroomvoice.richardachampong075.workers.dev"];
+/* Newest first. Replacing a worker's code in the dashboard on an iPad is
+   miserable, so making a new one is the easier path — and an old one left
+   deployed costs nothing and acts as a spare. Whichever answers is used. */
+const VOICE_PROXIES = ["https://filmroomvoice3.richardachampong075.workers.dev", "https://filmroomvoice2.richardachampong075.workers.dev", "https://filmroomvoice.richardachampong075.workers.dev"];
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -4249,7 +4252,7 @@ function VideoList({
   return /*#__PURE__*/React.createElement(React.Fragment, null, active && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("iframe", {
     className: "fr-player",
     title: active.title,
-    src: "https://www.youtube-nocookie.com/embed/" + active.id,
+    src: "https://www.youtube-nocookie.com/embed/" + active.id + "?enablejsapi=1&origin=" + encodeURIComponent(window.location.origin),
     allow: "accelerometer; encrypted-media; picture-in-picture",
     allowFullScreen: true
   }), /*#__PURE__*/React.createElement("p", {
@@ -4841,7 +4844,7 @@ function TeamPage({
       className: "fr-postbody"
     }, post.video ? /*#__PURE__*/React.createElement("iframe", {
       className: "fr-player",
-      src: "https://www.youtube.com/embed/" + post.video,
+      src: "https://www.youtube.com/embed/" + post.video + "?enablejsapi=1",
       title: post.title || "Film",
       allow: "accelerometer; clipboard-write; encrypted-media; picture-in-picture",
       allowFullScreen: true,
@@ -6717,7 +6720,7 @@ async function askAloud(question) {
   const think = thinkBudget(question);
   const turns = [{
     role: "user",
-    parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, move between pages, open a book, switch between the library and the videos, " + "set or clear the filters on the library, open their past chats, start a session, and " + "stop whatever you are doing if they say cancel. You can do several of those in one go. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "IF THEY SAY YOU ALREADY KNOW SOMETHING:\n" + "Believe them. Speech recognition drops words constantly and you hear a transcript, not " + "their voice \u2014 so if they say they told you something, the likeliest thing by far is " + "that you missed it. Say sorry, you did not catch it, and ask them to say it again. " + "Never tell them they did not say it. Never say there is no point arguing about it. " + "Being told you are wrong about your own memory is infuriating, and you will usually be " + "the one who is wrong.\n\n" + "IF THEY ARE IN TROUBLE:\n" + "If anything they say suggests they might hurt themselves, stop being a coach. Say " + "plainly that you are not the right help, tell them to talk to a parent, a coach, or " + "call or text 988 in the US or their local emergency number, and say you will be here " + "after. No drills. No silver lining. Do not change the subject.\n\n" + "IF THEY ARE RUDE:\n" + "Take it. Do not retaliate, do not grovel, do not lecture them about tone, and do not " + "stop helping. A coach who took that personally would be a bad coach.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
+    parts: [T("You are the assistant inside Film Room, a film-study app for athletes. You are " + "talking out loud to someone holding a phone, so this is spoken, not read.\n\n" + "WHO YOU ARE:\n" + "A sharp, direct person who happens to know a great deal about sport. You think before " + "you answer. You can disagree with them, and should when they are wrong. You can say you " + "do not know. You can be funny. You have opinions and you give them rather than hedging " + "into mush.\n\n" + "WHAT YOU ANSWER:\n" + "Anything they ask. Any sport, not just the one on screen. Anything that is not sport at " + "all \u2014 school, sleep, what to eat, whether they should quit, a question about a film or " + "a word they heard. If it is a real question, give it a real answer.\n\n" + "WHEN THEY ASK YOU TO DO SOMETHING:\n" + "Things you can do: open a player's page, pull film on a player or a skill, switch " + "sport, move between pages, open a book, switch between the library and the videos, " + "set or clear the filters on the library, open a past conversation, close whatever is " + "open, turn dark or light mode on, open settings, play, pause, rewind or skip the " + "video on screen, and stop whatever you are doing if they say cancel. Several at once " + "is fine.\n" + "If they ask for something genuinely not on that list, say so plainly in one " + "sentence \u2014 \"I can't do that one yet\" \u2014 and then help with what they were " + "actually after. Do not say something went wrong. Do not pretend you did it. Those are handled before you ever see them, so if " + "one reaches you it means it did not match \u2014 say plainly that you cannot do that one " + "yet, in a sentence, and then help with what they actually wanted. Never pretend you did " + "something. Never answer a different question than the one asked because it is easier.\n\n" + "IF THEY SAY YOU ALREADY KNOW SOMETHING:\n" + "Believe them. Speech recognition drops words constantly and you hear a transcript, not " + "their voice \u2014 so if they say they told you something, the likeliest thing by far is " + "that you missed it. Say sorry, you did not catch it, and ask them to say it again. " + "Never tell them they did not say it. Never say there is no point arguing about it. " + "Being told you are wrong about your own memory is infuriating, and you will usually be " + "the one who is wrong.\n\n" + "IF THEY ARE IN TROUBLE:\n" + "If anything they say suggests they might hurt themselves, stop being a coach. Say " + "plainly that you are not the right help, tell them to talk to a parent, a coach, or " + "call or text 988 in the US or their local emergency number, and say you will be here " + "after. No drills. No silver lining. Do not change the subject.\n\n" + "IF THEY ARE RUDE:\n" + "Take it. Do not retaliate, do not grovel, do not lecture them about tone, and do not " + "stop helping. A coach who took that personally would be a bad coach.\n\n" + "HOW YOU SOUND:\n" + "Spoken English. No headings, no bullets, no lists, no markdown, no asterisks. Two or " + "three sentences for something simple. Longer when the question earns it, never more than " + "about six. Say the conclusion, not the working." + voiceContext() + "\n\nTHEY SAID: \"" + String(question || "").slice(0, 400) + "\"")]
   }];
   return withLimit(ai(turns, false, {
     /* No model alias and no explicit thinking budget \u2014 the worker in front of
@@ -6825,7 +6828,10 @@ async function transcribe(wavB64) {
           data: wavB64
         }
       }, {
-        text: "Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description. If it is silence, " + "noise, or you cannot make out words, reply with the single word NOTHING."
+        /* A transcriber that knows what it is likely to hear makes far fewer
+           mistakes, especially with an accent, with slang, and with names. The
+           words below are the ones this app is actually full of. */
+        text: "Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description, no translation.\n\n" + "This is someone speaking to a sports film app called Film Room. They are " + "likely to be saying things like: hey Film Room, pull film on someone, show " + "me tape, open the players tab, go to games, train, mind, switch to soccer, " + "dark mode, settings, mute, unmute, close, pause, play, run that back, how " + "many reps, why do I keep. They will often say a player's name.\n\n" + "Write it down as they said it, including slang and casual speech. Do not " + "tidy it up, do not guess at something more formal, and do not add anything " + "they did not say. If it is silence, noise, or you cannot make out words, " + "reply with the single word NOTHING."
       }]
     }],
     generationConfig: {
@@ -6988,6 +6994,45 @@ function closeMic() {
   micCtx = null;
   micNode = null;
   micSrc = null;
+}
+
+/* Talking to whatever video is on screen. YouTube takes instructions posted to
+   its frame, so there is nothing to load and no library to wait for. */
+function tellVideo(what, arg) {
+  const frames = document.querySelectorAll("iframe.fr-player, iframe[src*='youtube']");
+  let spoke = false;
+  for (let i = 0; i < frames.length; i++) {
+    const w = frames[i].contentWindow;
+    if (!w) continue;
+    try {
+      w.postMessage(JSON.stringify({
+        event: "command",
+        func: what,
+        args: arg === undefined ? [] : [arg]
+      }), "*");
+      spoke = true;
+    } catch (e) {}
+  }
+  return spoke;
+}
+
+/* Skipping needs to know where it is, which the frame will only tell us if we
+   ask it to keep us posted. Close enough is fine for "go back ten seconds". */
+let videoAt = 0;
+if (typeof window !== "undefined") {
+  window.addEventListener("message", function (e) {
+    if (!e || !e.data || typeof e.data !== "string") return;
+    if (e.data.indexOf("currentTime") < 0) return;
+    try {
+      const d = JSON.parse(e.data);
+      const t = d && d.info && d.info.currentTime;
+      if (typeof t === "number") videoAt = t;
+    } catch (err) {}
+  });
+  setInterval(function () {
+    tellVideo("addEventListener", "onStateChange");
+    tellVideo("getCurrentTime");
+  }, 3000);
 }
 
 /* ---------------------- COMMANDS ---------------------- */
@@ -7256,6 +7301,48 @@ function parseCommand(raw) {
     };
   }
 
+  /* The video on screen. */
+  if (/\b(pause|hold on|freeze|stop the (video|film|tape))\b/i.test(low) && !/\bstop listening\b/i.test(low)) {
+    return {
+      kind: "video",
+      do: "pause"
+    };
+  }
+  if (/\b(play|resume|carry on|keep going|un ?pause|continue)\b/i.test(low) && words(low) <= 5) {
+    return {
+      kind: "video",
+      do: "play"
+    };
+  }
+  if (/\b(rewind|go back|back it up|run that back|again|replay|watch that again)\b/i.test(low) && /\b(video|film|tape|clip|that|it|seconds?)\b/i.test(low)) {
+    const secs = parseInt((/(\d+)\s*seconds?/i.exec(low) || [])[1] || "10", 10);
+    return {
+      kind: "video",
+      do: "back",
+      secs: secs
+    };
+  }
+  if (/\b(skip|forward|jump ahead|fast forward)\b/i.test(low)) {
+    const secs = parseInt((/(\d+)\s*seconds?/i.exec(low) || [])[1] || "10", 10);
+    return {
+      kind: "video",
+      do: "forward",
+      secs: secs
+    };
+  }
+  if (/\b(from the (start|beginning)|start over|restart (it|that|the video))\b/i.test(low)) {
+    return {
+      kind: "video",
+      do: "restart"
+    };
+  }
+  if (/\b(mute|silence) the (video|film|sound|audio)\b/i.test(low)) {
+    return {
+      kind: "video",
+      do: "mutevid"
+    };
+  }
+
   /* Shut whatever is open. */
   if (/^(close|close (it|that|this)|go back|back|shut (it|that)|dismiss|exit|never ?mind that)\b/i.test(low) && words(low) <= 4) {
     return {
@@ -7320,7 +7407,17 @@ function parseCommand(raw) {
   /* The ordinary things people say to someone they are working with. None of
      these need a model, and waiting three seconds for "thanks" to come back is
      what makes a thing feel like software instead of a person. */
-  if (/^(thanks|thank you|cheers|appreciate it|much appreciated|nice one|good looks|thx)\b/i.test(low)) {
+  /* A courtesy with something after it is a courtesy and an order. Answering
+     the pleasantry and dropping the instruction is the most annoying thing a
+     thing like this can do. */
+  const POLITE = /^(thanks|thank you|cheers|appreciate it|much appreciated|nice one|good looks|thx|ok|okay|alright|cool|got it|nice|perfect|sweet)[,.!]?\s*(and\s+)?(now\s+)?/i;
+  if (POLITE.test(low)) {
+    const rest = t.replace(POLITE, "").trim();
+    if (rest.length > 2) {
+      const then = parseCommand(rest);
+      if (then) return then;
+      return null; /* it was a real question wearing a polite hat */
+    }
     return {
       kind: "say",
       lines: ["Any time.", "You got it.", "No problem.", "Course."]
@@ -7786,7 +7883,10 @@ function VoiceOrb({
         console.warn("ask failed:", e && e.message);
       } catch (e2) {}
       const why = String(e && e.message || "");
-      speak(/busy|quota|rate/i.test(why) ? "Give me a second, then ask again." : /reach|connection|network/i.test(why) ? "I can't reach the coach right now. Check your connection." : "Something went wrong there. Say it again.").then(resume);
+      /* "Something went wrong" is what you say when you have not bothered to
+         find out. Each of these is a different problem with a different thing
+         to do about it. */
+      speak(/busy|quota|rate/i.test(why) ? "Google's busy. Give it a few seconds." : /took too long|timed out|slow/i.test(why) ? "That's taking too long. Ask me again." : /reach|connection|network|failed to fetch|load failed/i.test(why) ? "I can't reach the coach. Check your connection." : "I didn't get an answer to that one. Try asking it a different way.").then(resume);
       setState("idle");
     }
   }
@@ -7857,6 +7957,11 @@ function VoiceOrb({
      older job checks this and quietly stands down. */
   const job = useRef(0);
   function run(c) {
+    if (c.kind === "video") {
+      const ok = c.do === "pause" ? tellVideo("pauseVideo") : c.do === "play" ? tellVideo("playVideo") : c.do === "mutevid" ? tellVideo("mute") : c.do === "restart" ? tellVideo("seekTo", 0) : c.do === "back" ? tellVideo("seekTo", Math.max(0, videoAt - (c.secs || 10))) : c.do === "forward" ? tellVideo("seekTo", videoAt + (c.secs || 10)) : false;
+      if (!ok) speak("There's no video on screen.");
+      return;
+    }
     if (c.kind === "chat" && onChat) onChat(c);else if (c.kind === "close" && onClose) onClose();else if (c.kind === "theme" && onTheme) onTheme(c.to);else if (c.kind === "settings" && onSettings) onSettings();else if (c.kind === "book" && onBook) onBook(c.book);else if (c.kind === "player" && onItem) onItem(c.item);else if (c.kind === "film" && onFilm) onFilm(c.q);else if (c.kind === "sport" && onSport) onSport(c.to);else if (c.kind === "session" && onSession) onSession();else if (c.kind === "nav" && onGo) onGo(c.to);else if (c.kind === "mindtab" && onMindTab) onMindTab(c.to);else if (c.kind === "filter" && onFilter) onFilter(c);else if (c.kind === "history" && onHistory) onHistory();
   }
   /* Whatever else happens, a conversation that is open should be listening.
