@@ -1352,7 +1352,7 @@ body { background: #EDF0F2; }
 </head>
 
 <body>
-<div class="fr-build">b220</div>
+<div class="fr-build">b224</div>
 <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;color:#7E9099;padding:40px 24px;font-size:15px;line-height:1.6">Loading Film Room…</div></div>
 
 <script>
@@ -1707,7 +1707,7 @@ const BILLING_WORKER = AI_PROXY;
 /* Newest first. Replacing a worker's code in the dashboard on an iPad is
    miserable, so making a new one is the easier path — and an old one left
    deployed costs nothing and acts as a spare. Whichever answers is used. */
-const VOICE_PROXIES = ["https://filmroomvoice3.richardachampong075.workers.dev", "https://filmroomvoice2.richardachampong075.workers.dev", "https://filmroomvoice.richardachampong075.workers.dev"];
+const VOICE_PROXIES = ["https://filmroomvoice4.richardachampong075.workers.dev", "https://filmroomvoice3.richardachampong075.workers.dev", "https://filmroomvoice2.richardachampong075.workers.dev", "https://filmroomvoice.richardachampong075.workers.dev"];
 const GEMINI_KEY = "";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -6756,13 +6756,23 @@ let micCtx = null;
 let micNode = null;
 let micSrc = null;
 
-/* How loud counts as talking, and how long a gap ends a sentence. */
+/* A fixed loudness threshold cannot tell you from a television. In a quiet room
+   it triggers on nothing; with music on it triggers constantly, and then it is
+   busy writing down the radio when you actually speak.
+
+   So it learns the room instead. The quietest level it has heard recently is
+   taken as the floor, and talking means clearly above that floor — which is
+   true whether the room is silent or has a game on in the background. */
+const FLOOR_MIN = 0.004;
+const FLOOR_MAX = 0.08;
+const OVER_FLOOR = 3.2;
+const ONSET_MS = 120;
 const SPEAK_LEVEL = 0.015;
 /* Three quarters of a second of silence before it even started working was a
    quarter of the whole wait, spent doing nothing. */
-const HUSH_MS = 520;
+const HUSH_MS = 420;
 const MIN_SPEECH_MS = 350;
-const MAX_SPEECH_MS = 14000;
+const MAX_SPEECH_MS = 9000;
 
 function floatsToWav(chunks, rate) {
   let n = 0;
@@ -6816,8 +6826,129 @@ function floatsToWav(chunks, rate) {
   return window.btoa(bin);
 }
 
+/* One request instead of two.
+
+   It used to write down what you said, wait, then send those words back to be
+   answered \u2014 two full round trips for every question, and the first one was
+   pure overhead. The model can hear the recording and answer it in the same
+   breath, so it does both and returns the words alongside the answer.
+
+   The words still come back because they are what decides whether this was an
+   instruction. "Pull film on Kyrie" is carried out here, not answered. */
+/* The same brief as before, plus the transcription job. Nothing has been
+   softened: it is the identical character, the identical rules on safety,
+   rudeness and not arguing, and the identical instruction to think before
+   answering. Only the delivery changed. */
+function voicePrompt() {
+  return "You are given a recording of someone speaking to Film Room, a sports film-study app.\n\n" + "Reply with JSON only, exactly this shape:\n" + '{"said": "...", "reply": "..."}\n\n' + "said = exactly what they said, word for word, slang and all. Do not tidy it, do not " + "translate it, do not add anything. If it is silence or noise, use the word NOTHING.\n" + "The names likely to come up: " + nameHints() + ". If what you hear is close to one of " + "those it is almost certainly that name \u2014 people say them fast and in every accent.\n\n" + "reply = your spoken answer, or an empty string.\n" + "Leave reply EMPTY if what they said is an instruction to the app rather than a " + "question \u2014 anything like pull film on someone, open a page or a book, switch sport, " + "change a filter, dark mode, settings, pause or rewind the video, mute, close, or just " + "your name. Those are carried out by the app and an answer would talk over it.\n\n" + "Otherwise answer them as: " + "a sharp, direct person who knows a great deal about sport and thinks before answering. " + "Disagree when they are wrong. Say so when you do not know. Answer anything \u2014 any " + "sport, not just the one on screen, and things that are nothing to do with sport. " + "Spoken English, no headings or bullets or markdown. Two or three sentences, four at the very most, " + "even for a hard question \u2014 say the one thing that matters rather than everything " + "that is true. Give the conclusion, not the working.\n" + "If they say you already know something, believe them and ask them to say it again \u2014 " + "you hear a transcript, not their voice, and you are usually the one who missed it. " + "Never argue about what they said.\n" + "If anything suggests they might hurt themselves, stop being a coach: say plainly you " + "are not the right help, tell them to talk to a parent or coach or call 988 or their " + "local emergency number, and that you will be here after. No drills.\n" + "If they are rude, take it. Do not retaliate, do not grovel, keep helping." + voiceContext();
+}
+
+async function hearAndAnswer(wavB64) {
+  const body = {
+    contents: [{
+      role: "user",
+      parts: [{
+        inline_data: {
+          mime_type: "audio/wav",
+          data: wavB64
+        }
+      }, {
+        text: voicePrompt()
+      }]
+    }],
+    generationConfig: {
+      /* Enough for six spoken sentences and the transcript. Every token above
+         that is time you spend waiting for words nobody wanted. */
+      /* Roughly four spoken sentences and the transcript. A model writes to
+         whatever ceiling it is given, and every token over what is wanted is
+         time spent waiting for words nobody asked for. */
+      maxOutputTokens: 320,
+      responseMimeType: "application/json"
+    }
+  };
+  const where = VOICE_PROXIES.concat(AI_PROXY ? [AI_PROXY] : []);
+  for (let i = 0; i < where.length; i++) {
+    try {
+      const res = await Promise.race([fetch(where[i], {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      }), new Promise(function (_, bad) {
+        setTimeout(function () {
+          bad(new Error("slow"));
+          /* Five seconds is the whole budget, from you finishing to it having
+             something to say. Past that it is not worth having: you have moved
+             on, and a late answer is an interruption. */
+        }, 5000);
+      })]);
+      const data = await res.json();
+      if (data.error) continue;
+      const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+      let out = "";
+      parts.forEach(function (pp) {
+        if (pp.text) out += pp.text;
+      });
+      out = out.replace(/```json|```/g, "").trim();
+      if (!out) continue;
+      let got = null;
+      try {
+        got = JSON.parse(out);
+      } catch (e) {
+        /* It answered in plain words instead of the shape asked for. Still
+           usable: treat the lot as the answer. */
+        got = {
+          said: "",
+          reply: out
+        };
+      }
+      const said = String(got.said || "").trim();
+      if (/^nothing[.!]?$/i.test(said)) return {
+        said: "",
+        reply: ""
+      };
+      if (/\b(no audio|cannot hear|unable to)\b/i.test(said)) continue;
+      return {
+        said: said,
+        reply: String(got.reply || "").trim()
+      };
+    } catch (e) {
+      /* Next one. */
+    }
+  }
+  return null;
+}
+
 /* Sent to the model that already answers everything else, so no new service and
    nothing to redeploy. */
+/* The names it is most likely to hear. A transcriber given the actual spellings
+   stops turning Doncic into "done chich" and Giannis into "yannis" — which is
+   most of what looks like an accent problem. Drawn from the sport you are in
+   and the biggest names in the others. */
+let nameHintCache = "";
+let nameHintFor = "";
+function nameHints() {
+  if (nameHintFor === SPORT && nameHintCache) return nameHintCache;
+  const here = ((D && D.pool || []).filter(function (r) {
+    return r && r.kind === "player";
+  }).slice(0, 60) || []).map(function (r) {
+    return r.n;
+  });
+  const there = [];
+  SPORT_KEYS.forEach(function (k) {
+    if (k === SPORT) return;
+    (SPORTS[k].pool || []).filter(function (r) {
+      return r && r.kind === "player";
+    }).slice(0, 12).forEach(function (r) {
+      there.push(r.n);
+    });
+  });
+  nameHintCache = here.concat(there).join(", ").slice(0, 1800);
+  nameHintFor = SPORT;
+  return nameHintCache;
+}
+
 async function transcribe(wavB64) {
   const body = {
     contents: [{
@@ -6831,7 +6962,7 @@ async function transcribe(wavB64) {
         /* A transcriber that knows what it is likely to hear makes far fewer
            mistakes, especially with an accent, with slang, and with names. The
            words below are the ones this app is actually full of. */
-        text: "Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description, no translation.\n\n" + "This is someone speaking to a sports film app called Film Room. They are " + "likely to be saying things like: hey Film Room, pull film on someone, show " + "me tape, open the players tab, go to games, train, mind, switch to soccer, " + "dark mode, settings, mute, unmute, close, pause, play, run that back, how " + "many reps, why do I keep. They will often say a player's name.\n\n" + "Write it down as they said it, including slang and casual speech. Do not " + "tidy it up, do not guess at something more formal, and do not add anything " + "they did not say. If it is silence, noise, or you cannot make out words, " + "reply with the single word NOTHING."
+        text: "Write out exactly what is said in this recording, and nothing else. " + "No quotation marks, no commentary, no description, no translation.\n\n" + "This is someone speaking to a sports film app called Film Room. They are " + "likely to be saying things like: hey Film Room, pull film on someone, show " + "me tape, open the players tab, go to games, train, mind, switch to soccer, " + "dark mode, settings, mute, unmute, close, pause, play, run that back, how " + "many reps, why do I keep.\n\n" + "They will very often say a player's name. Names that come up here include: " + nameHints() + ". If what you hear is close to one of those, it is almost " + "certainly that name \u2014 people say them quickly and with every accent there " + "is.\n\n" + "Write it down as they said it, including slang and casual speech. Do not " + "tidy it up, do not guess at something more formal, and do not add anything " + "they did not say. If it is silence, noise, or you cannot make out words, " + "reply with the single word NOTHING."
       }]
     }],
     generationConfig: {
@@ -6910,6 +7041,10 @@ async function openMic(onLevel, onSentence, isBusy) {
   let talking = false;
   let lastLoud = 0;
   let startedAt = 0;
+  /* The room, as it sounds when nobody is talking. */
+  let floor = 0.01;
+  let loudSince = 0;
+  let peakInSeg = 0;
 
   micNode.onaudioprocess = function (ev) {
     const inBuf = ev.inputBuffer.getChannelData(0);
@@ -6933,14 +7068,31 @@ async function openMic(onLevel, onSentence, isBusy) {
     }
     if (onLevel) onLevel(Math.min(1, peak * 6));
 
-    if (rms > SPEAK_LEVEL) {
-      if (!talking) {
+    /* The floor creeps up slowly and drops fast, so a door slamming does not
+       deafen it for a minute, and a television coming on is absorbed within a
+       second or two. */
+    if (!talking) {
+      floor = rms < floor ? floor * 0.9 + rms * 0.1 : floor * 0.995 + rms * 0.005;
+      floor = Math.max(FLOOR_MIN, Math.min(FLOOR_MAX, floor));
+    }
+    const bar = Math.max(SPEAK_LEVEL * 0.45, floor * OVER_FLOOR);
+
+    if (rms > bar) {
+      /* Has to stay up for a moment. A click, a tap on the table and a single
+         drum beat all clear the bar for one frame; speech does not stop after
+         one frame. */
+      if (!loudSince) loudSince = now;
+      if (!talking && now - loudSince > ONSET_MS) {
         talking = true;
         startedAt = now;
+        peakInSeg = 0;
         chunks = [];
       }
-      lastLoud = now;
+      if (talking) lastLoud = now;
+    } else {
+      loudSince = 0;
     }
+    if (talking && peak > peakInSeg) peakInSeg = peak;
     if (talking) {
       chunks.push(new Float32Array(inBuf));
       const longEnough = now - startedAt > MIN_SPEECH_MS;
@@ -6950,11 +7102,29 @@ async function openMic(onLevel, onSentence, isBusy) {
         const got = chunks;
         chunks = [];
         talking = false;
-        if (onSentence) onSentence(floatsToWav(got, micCtx.sampleRate));
+        loudSince = 0;
+        /* Someone talking near a microphone is far louder than the room they
+           are in. Music or a television sitting a couple of notches above the
+           floor is not, and sending it costs a request and, worse, makes it
+           busy when you do speak. */
+        const standsOut = peakInSeg > Math.max(0.045, floor * 6);
+        /* A stretch that ran to the limit without a single pause is not a
+           sentence \u2014 people breathe. It is the room being steadily loud. */
+        const noPause = !hushed && tooLong;
+        if (standsOut && !noPause) {
+          if (onSentence) onSentence(floatsToWav(got, micCtx.sampleRate));
+        } else {
+          /* Whatever that was, it was not you. The floor clearly sits lower
+             than the room really does, so it is pulled up towards what was just
+             heard \u2014 which is how a television that has just come on stops
+             setting this off within a few seconds. */
+          floor = Math.max(floor, Math.min(FLOOR_MAX, peakInSeg * 0.55));
+        }
       } else if (!longEnough && now - lastLoud > HUSH_MS) {
         /* A cough, a door, a word from across the room. */
         chunks = [];
         talking = false;
+        loudSince = 0;
       }
     }
   };
@@ -6998,18 +7168,35 @@ function closeMic() {
 
 /* Talking to whatever video is on screen. YouTube takes instructions posted to
    its frame, so there is nothing to load and no library to wait for. */
+function videoFrames() {
+  return document.querySelectorAll("iframe[src*='youtube']");
+}
+
 function tellVideo(what, arg) {
-  const frames = document.querySelectorAll("iframe.fr-player, iframe[src*='youtube']");
+  const frames = videoFrames();
   let spoke = false;
   for (let i = 0; i < frames.length; i++) {
     const w = frames[i].contentWindow;
     if (!w) continue;
     try {
+      /* YouTube ignores anything sent before it has decided it is listening, so
+         it is greeted first and the instruction sent twice, a moment apart.
+         Sending once is why pause and rewind did nothing. */
       w.postMessage(JSON.stringify({
+        event: "listening",
+        id: i
+      }), "*");
+      const msg = JSON.stringify({
         event: "command",
         func: what,
         args: arg === undefined ? [] : [arg]
-      }), "*");
+      });
+      w.postMessage(msg, "*");
+      setTimeout(function () {
+        try {
+          w.postMessage(msg, "*");
+        } catch (e) {}
+      }, 350);
       spoke = true;
     } catch (e) {}
   }
@@ -7030,6 +7217,7 @@ if (typeof window !== "undefined") {
     } catch (err) {}
   });
   setInterval(function () {
+    if (!videoFrames().length) return;
     tellVideo("addEventListener", "onStateChange");
     tellVideo("getCurrentTime");
   }, 3000);
@@ -7102,7 +7290,52 @@ function findPlayer(said) {
       best = r;
     }
   });
-  return score >= 40 ? best : null;
+  /* A near miss is not a match. Below this it is guessing, and guessing gives
+     you a stranger with a vaguely similar name. */
+  return score >= 55 ? best : null;
+}
+
+/* The other sports, for when the name is not from this one. Answering "who is
+   LeBron" with a soccer player because that is the tab you happen to be on is
+   the wrong answer confidently given. */
+function findElsewhere(said) {
+  const words = norm(said).split(" ").filter(Boolean);
+  let found = null;
+  /* Every run of words, longest first, so the name is found wherever it sits in
+     the sentence. */
+  for (let len = Math.min(3, words.length); len >= 1 && !found; len--) {
+    for (let i = 0; i + len <= words.length && !found; i++) {
+      found = elsewhereExact(words.slice(i, i + len).join(" "));
+    }
+  }
+  return found;
+}
+
+function elsewhereExact(want) {
+  if (!want || want.length < 4) return null;
+  /* Nothing in here may throw. A parser that falls over takes the whole voice
+     with it, and it runs on every single thing you say. */
+  if (typeof SPORT_KEYS === "undefined" || typeof SPORTS === "undefined") return null;
+  let found = null;
+  SPORT_KEYS.forEach(function (key) {
+    if (found || key === SPORT) return;
+    const pool = (SPORTS[key].pool || []).filter(function (r) {
+      return r && r.kind === "player";
+    });
+    pool.forEach(function (r) {
+      if (found) return;
+      const n = norm(r.n);
+      const parts = n.split(" ");
+      if (n === want || n.indexOf(want) === 0 || parts[parts.length - 1] === want || parts[0] === want) {
+        found = {
+          item: r,
+          sport: key,
+          label: SPORTS[key].label
+        };
+      }
+    });
+  });
+  return found;
 }
 
 /* Every run of words in a sentence, longest first, checked against the index.
@@ -7197,6 +7430,19 @@ function parseChain(raw) {
 }
 
 function parseCommand(raw) {
+  try {
+    return parseCommandInner(raw);
+  } catch (e) {
+    /* Whatever went wrong reading it, the sentence still deserves an answer —
+       so it falls through to the assistant rather than taking the voice down. */
+    try {
+      console.warn("could not read that:", e && e.message);
+    } catch (e2) {}
+    return null;
+  }
+}
+
+function parseCommandInner(raw) {
   let t = String(raw || "").trim().replace(WAKE, "").trim();
   if (!t) return null;
   const low = t.toLowerCase();
@@ -7414,7 +7660,7 @@ function parseCommand(raw) {
   if (POLITE.test(low)) {
     const rest = t.replace(POLITE, "").trim();
     if (rest.length > 2) {
-      const then = parseCommand(rest);
+      const then = parseCommandInner(rest);
       if (then) return then;
       return null; /* it was a real question wearing a polite hat */
     }
@@ -7457,6 +7703,18 @@ function parseCommand(raw) {
 
   /* Pull film. Spoken requests are sentences, so the useful part has to be
      found rather than assumed to be everything after the preposition. */
+  /* Not in this sport, but they exist. Offer to move rather than inventing
+     someone. */
+  const elsewhere = /\b(film|tape|footage|highlights?|clips?|who is|show me|pull up|open)\b/i.test(low) ? findElsewhere(tidySubject(t)) || findElsewhere(t) : null;
+  if (elsewhere) {
+    return {
+      kind: "elsewhere",
+      item: elsewhere.item,
+      sport: elsewhere.sport,
+      label: elsewhere.label
+    };
+  }
+
   /* "Pull up Kyrie's film" puts the name before the word film, so looking only
      at what follows finds nothing. If film is being asked for at all, the whole
      sentence is searched for a name. */
@@ -7727,6 +7985,27 @@ function VoiceOrb({
   }
 
   async function answer(q, mine) {
+    /* Answering the question it just asked. */
+    if (pendingSwitch.current) {
+      const want = pendingSwitch.current;
+      if (/^(yes|yeah|yep|sure|please|go ahead|do it|ok|okay|switch)\b/i.test(q.trim())) {
+        pendingSwitch.current = null;
+        if (onSport) onSport(want.sport);
+        speak("Switching to " + want.label.toLowerCase() + ".").then(function () {
+          setTimeout(function () {
+            if (onItem) onItem(want.item);
+          }, 600);
+        });
+        return;
+      }
+      if (/^(no|nah|nope|forget it|never ?mind|don'?t)\b/i.test(q.trim())) {
+        pendingSwitch.current = null;
+        speak("No problem.");
+        return;
+      }
+      /* Anything else means they moved on. */
+      pendingSwitch.current = null;
+    }
     /* Standing down means it still hears, but only answers to being woken. */
     if (asleep.current) {
       const c0 = parseCommand(q);
@@ -7929,6 +8208,8 @@ function VoiceOrb({
   const asleep = useRef(false);
   /* Something said while it was busy, waiting its turn. */
   const heldLine = useRef("");
+  /* A player from another sport, waiting on a yes. */
+  const pendingSwitch = useRef(null);
   /* The session ended while it was busy and wants reopening. */
   const wantListen = useRef(false);
   /* Busy until this moment. A number, not a flag: it expires on its own whether
@@ -7957,6 +8238,14 @@ function VoiceOrb({
      older job checks this and quietly stands down. */
   const job = useRef(0);
   function run(c) {
+    if (c.kind === "elsewhere") {
+      /* Ask rather than act. Switching sport changes the whole app, and doing
+         that uninvited because you said a name is too much. */
+      pendingSwitch.current = c;
+      openUntil.current = Date.now() + 25000;
+      speak(c.item.n + " is " + (/^[aeiou]/i.test(c.label) ? "an " : "a ") + c.label.toLowerCase() + " player, and you're on " + (D.label || SPORT) + ". Want me to switch over?");
+      return;
+    }
     if (c.kind === "video") {
       const ok = c.do === "pause" ? tellVideo("pauseVideo") : c.do === "play" ? tellVideo("playVideo") : c.do === "mutevid" ? tellVideo("mute") : c.do === "restart" ? tellVideo("seekTo", 0) : c.do === "back" ? tellVideo("seekTo", Math.max(0, videoAt - (c.secs || 10))) : c.do === "forward" ? tellVideo("seekTo", videoAt + (c.secs || 10)) : false;
       if (!ok) speak("There's no video on screen.");
@@ -8124,13 +8413,16 @@ function VoiceOrb({
     busyUntil.current = 0;
     setState("thinking");
     try {
-      const said = await transcribe(wav);
+      /* One request: it hears you and answers in the same breath. */
+      const got = await hearAndAnswer(wav);
       if (turn.current !== mine) return;
-      if (!said) {
+      if (!got || !got.said) {
         setState("listening");
         return;
       }
-      route(said, mine);
+      /* An instruction is carried out here; the answer it may have written is
+         thrown away because the app is about to do the thing. */
+      route(got.said, mine, got.reply);
     } catch (e) {
       if (turn.current === mine) setState("listening");
     }
@@ -12298,7 +12590,7 @@ function WatchShelf({
     }, on ? /*#__PURE__*/React.createElement("div", {
       className: "fr-vidframe"
     }, /*#__PURE__*/React.createElement("iframe", {
-      src: "https://www.youtube.com/embed/" + v.id + "?autoplay=1&rel=0&playsinline=1",
+      src: "https://www.youtube.com/embed/" + v.id + "?autoplay=1&rel=0&playsinline=1&enablejsapi=1",
       title: v.title,
       allow: "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture",
       allowFullScreen: true,
